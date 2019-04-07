@@ -35,11 +35,12 @@ void* recibirBuffer(int* size, int socketCliente)
 	return buffer;
 }
 
-void recibirMensaje(int socketCliente)
+// Recibe funcion por orden superior
+void recibirMensajeYHacer(int socketCliente,void (*hacerAlgo)(char*))
 {
 	int size;
 	char* buffer = recibirBuffer(&size, socketCliente);
-	log_info(logger, "Me llego el mensaje %s", buffer);
+	hacerAlgo(buffer);
 	free(buffer);
 }
 
