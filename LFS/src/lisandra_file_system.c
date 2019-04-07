@@ -4,21 +4,58 @@
  Author      : 
  Version     :
  Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
+ Description :
  ============================================================================
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include<readline/readline.h>
+
+typedef enum{
+	SE, //Select
+	IN, //Insert
+	CR, //Create
+	DA, //Describe All
+	DT, //Describe Table
+	DR //Drop
+}casos;
 
 int main(int argc, char* argv[]) {
-	int caso;
+	casos caso;
+
+	//leerConsola();
 	switch (caso){
-		case 1:
+		case SE:
 			//Select
 			break;
-		case 2:
-			//
+		case IN:
+			//Insert
+			break;
+		case CR:
+			//Create
+			break;
+		case DA:
+			//Describe todas las tablas(All)
+			break;
+		case DT:
+			//Describe una tabla
+			break;
+		case DR:
+			//Drop table
+			break;
+		default:
+			printf("Error del header");
+			//agregar al archivo de log
 	}
 	return EXIT_SUCCESS;
+}
+
+void leerConsola(){
+	char* linea = readline(">");
+	while (strcmp(linea,'\0')==0){
+
+	}
+	//readline()
 }
