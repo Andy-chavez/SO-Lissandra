@@ -5,14 +5,10 @@
  *      Author: whyAreYouRunning?
  */
 
-
 int main() {
-	char* instruccion;
-	instruccion = leerMensaje();
-
-	ejecutarInstruccion(instruccion);
-	free(instruccion);
-
+	/*char* mensaje;
+	mensaje = leerMensaje();
+*/
 	return 0;
 }
 

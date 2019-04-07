@@ -1,5 +1,6 @@
 #include "servidor.h"
 #include <commons/collections/list.h>
+#include <commons/log.h>
 
 int esperarCliente(int socketServidor)
 {
@@ -11,7 +12,7 @@ int esperarCliente(int socketServidor)
 	log_info(logger, "Se conecto un cliente!");
 
 	return socketCliente;
-}
+} log_trace()
 
 int recibirOperacion(int socketCliente)
 {
