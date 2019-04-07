@@ -1,6 +1,6 @@
 /*
  ============================================================================
- Name        : lisandra_file_system.c
+ Name        : Kernel.c
  Author      :
  Version     :
  Copyright   : Your copyright notice
@@ -25,6 +25,27 @@ typedef enum{
 
 int main()
 {
+	casos CASO;
+	switch(CASO){
+	case IN:
+		break;
+	case CR:
+		break;
+	case DT:
+		break;
+	case DA:
+		break;
+	case DR:
+		break;
+	case RU:
+		break;
+	case JO:
+		break;
+	case AD:
+		break;
+	default:
+		break;
 
+	}
 	return 0;
 }
