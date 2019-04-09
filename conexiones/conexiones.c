@@ -1,70 +1,57 @@
-#include "servidor.h"
-#include <commons/collections/list.h>
-#include <commons/log.h>
+/*
+ * conexiones.c
+ *
+ *  Created on: 9 abr. 2019
+ *      Author: utnso
+ */
 
-int esperarCliente(int socketServidor)
-{
-	struct sockaddr_in direccionCliente;
-	int tamanioDireccion = sizeof(struct sockaddr_in);
 
-	int socketCliente = accept(socketServidor, (void*) &direccionCliente, &tamanioDireccion);
+#include <stdio.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <string.h>
+#include <netdb.h>
 
-	log_info(logger, "Se conecto un cliente!");
+// crea un socket para la comunicacion con un servidor (Dado IP y puerto).
+int crearSocketCliente(char *ip, char *puerto) {
+	int conexionSocket, intentarConexion;
+	struct addrinfo hints, *infoDireccion, *iterLista;
 
-	return socketCliente;
-} log_trace()
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
 
-int recibirOperacion(int socketCliente)
-{
-	int codigoOperaciones;
-	if(recv(socketCliente, &codigoOperacion, sizeof(int), MSG_WAITALL) != 0)
-		return codigoOperacion;
-	else
-	{
-		close(socketCliente);
+	if(getaddrinfo(ip, puerto, &hints, &infoDireccion)){
+		printf("Hubo un problema con la obtencion de datos del servidor.");
 		return -1;
 	}
-}
 
-void* recibirBuffer(int* size, int socketCliente)
-{
-	void * buffer;
-
-	recv(socketCliente, size, sizeof(int), MSG_WAITALL);
-	buffer = malloc(*size);
-	recv(socketCliente, buffer, *size, MSG_WAITALL);
-
-	return buffer;
-}
-
-// Recibe funcion por orden superior
-void recibirMensajeYHacer(int socketCliente,void (*hacerAlgo)(char*))
-{
-	int size;
-	char* buffer = recibirBuffer(&size, socketCliente);
-	hacerAlgo(buffer);
-	free(buffer);
-}
-
-//podemos usar la lista de valores para poder hablar del for y de como recorrer la lista
-void recibirPaqueteYHacer(int socket_cliente, void(*hacerAlgo)(t_list*))
-{
-	int size;
-	int desplazamiento = 0;
-	void * buffer;
-	t_list* valores = list_create();
-	int tamanio;
-
-	buffer = recibirBuffer(&size, socket_cliente);
-	while(desplazamiento < size)
-	{
-		memcpy(&tamanio, buffer + desplazamiento, sizeof(int));
-		desplazamiento+=sizeof(int);
-		char* valor = malloc(tamanio);
-		memcpy(valor, buffer+desplazamiento, tamanio);
-		desplazamiento+=tamanio;
-		list_add(valores, valor);
+	// Iterar por toda la lista de posibles direcciones a las cuales me puedo conectar
+	for(iterLista = infoDireccion; iterLista != NULL; iterLista->ai_next) {
+		if((conexionSocket = socket(iterLista->ai_family, iterLista->ai_socktype, iterLista->ai_protocol)) == -1) continue;
+		if((intentarConexion = connect(conexionSocket, iterLista->ai_addr, iterLista->ai_addrlen)) == -1) continue;
+		break;
 	}
-	free(buffer);
-	hacerAlgo(valores); // OJO, verificar que los valores no sea NULL
+
+	//Chequear errores
+	if(conexionSocket == -1) {
+		printf("Hubo un error en la creacion del socket");
+		freeaddrinfo(infoDireccion);
+		return -1;
+	} else if(intentarConexion == -1) {
+		printf("Hubo un error en la conexion del socket");
+		freeaddrinfo(infoDireccion);
+		return -1;
+	}
+
+	freeaddrinfo(infoDireccion);
+	return conexionSocket;
+}
+
+int crearSocketServidor(char *ip, char *puerto) {
+	return 2;
+}
+
+int cerrarConexion(int unSocket) {
+	close(unSocket);
 }
