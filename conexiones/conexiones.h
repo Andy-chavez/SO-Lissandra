@@ -7,6 +7,9 @@
 
 #ifndef CONEXIONES_H_
 #define CONEXIONES_H_
+//de prueba
+#define IP "128.0.0.5"
+#define PUERTO "444"
 
 int crearSocketCliente(char *ip,char *puerto);
 int crearSocketServidor(char *ip, char *puerto);

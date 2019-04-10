@@ -4,19 +4,18 @@
  *  Created on: 9 abr. 2019
  *      Author: utnso
  */
-
-
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <string.h>
 #include <netdb.h>
+#include "conexiones.h"
 
 // crea un socket para la comunicacion con un servidor (Dado IP y puerto).
+
 int crearSocketCliente(char *ip, char *puerto) {
 	int conexionSocket, intentarConexion;
 	struct addrinfo hints, *infoDireccion, *iterLista;
-
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -48,10 +47,50 @@ int crearSocketCliente(char *ip, char *puerto) {
 	return conexionSocket;
 }
 
+//crea un servidor que se comunicara con los clientes que se conecten a el (dado IP y puerto)
 int crearSocketServidor(char *ip, char *puerto) {
-	return 2;
+
+	int socketServidor;
+	struct addrinfo hints, *infoDireccionServidor, *lista;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+
+	getaddrinfo(ip, puerto, &hints, &infoDireccionServidor);
+
+			    for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next)
+			       {
+			    	//errores de conexion
+			           if ((socketServidor = socket(lista->ai_family, lista->ai_socktype, lista->ai_protocol)) == -1)
+			               continue;
+			        //
+			           if (bind(socketServidor, lista->ai_addr, lista->ai_addrlen) == -1) {
+			               cerrarConexion(socketServidor);
+			               continue;
+			           }
+			           break;
+			       }
+
+	listen(socketServidor, SOMAXCONN);
+	freeaddrinfo(infoDireccionServidor);
+	printf("El servidor esta listo para escuchar al cliente");
+	return socketServidor;
+
+	//return 2;
 }
 
 int cerrarConexion(int unSocket) {
 	close(unSocket);
+}
+
+//hice un define con una direccion y un puerto cualquiera en el .h para probar
+int main(void)
+{
+	//printf("El servidor esta listo para escuchar al cliente");
+
+	int servidor = crearSocketServidor(IP, PUERTO);
+	int cliente = crearSocketCliente(IP, PUERTO);
+
+	return 0;
 }
