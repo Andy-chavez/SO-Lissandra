@@ -18,7 +18,7 @@ typedef enum{
 	DESCRIBEALL,
 	DROP,
 	JOURNAL,
-
+	SELECT
 }casos;
 
 int main()
@@ -35,11 +35,12 @@ int main()
 		break;
 	case DROP:
 		break;
+	case SELECT:
+		break;
 	case JOURNAL:
 		break;
 	default:
 		break;
-
 	}
 	return 0;
 }
