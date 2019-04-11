@@ -10,9 +10,9 @@
 #include <string.h>
 #include <netdb.h>
 #include "conexiones.h"
+#include <unistd.h>
 
 // crea un socket para la comunicacion con un servidor (Dado IP y puerto).
-
 int crearSocketCliente(char *ip, char *puerto) {
 	int conexionSocket, intentarConexion;
 	struct addrinfo hints, *infoDireccion, *iterLista;
@@ -50,7 +50,7 @@ int crearSocketCliente(char *ip, char *puerto) {
 //crea un servidor que se comunicara con los clientes que se conecten a el (dado IP y puerto)
 int crearSocketServidor(char *ip, char *puerto) {
 
-	int socketServidor;
+	int socketServidor, intentarBindeo;
 	struct addrinfo hints, *infoDireccionServidor, *lista;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -59,38 +59,49 @@ int crearSocketServidor(char *ip, char *puerto) {
 
 	getaddrinfo(ip, puerto, &hints, &infoDireccionServidor);
 
-			    for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next)
-			       {
-			    	//errores de conexion
-			           if ((socketServidor = socket(lista->ai_family, lista->ai_socktype, lista->ai_protocol)) == -1)
-			               continue;
-			        //
-			           if (bind(socketServidor, lista->ai_addr, lista->ai_addrlen) == -1) {
-			               cerrarConexion(socketServidor);
-			               continue;
-			           }
-			           break;
-			       }
+		for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next) {
+			//errores de conexion
+			if ((socketServidor = socket(lista->ai_family, lista->ai_socktype, lista->ai_protocol)) == -1) continue;
+			if ((intentarBindeo = bind(socketServidor, lista->ai_addr, lista->ai_addrlen)) == -1) continue; // no estuy seguro, pero no se necesita cerrar la conexion de algo que no conecto :p
+			break;
+		}
+
+	if(socketServidor == -1) {
+		printf("Hubo un error en la creacion del socket");
+		freeaddrinfo(infoDireccionServidor);
+		return -1;
+	} else if(intentarBindeo == -1) {
+		printf("Hubo un error en el bindeo del socket");
+		freeaddrinfo(infoDireccionServidor);
+		return -1;
+	}
 
 	listen(socketServidor, SOMAXCONN);
 	freeaddrinfo(infoDireccionServidor);
 	printf("El servidor esta listo para escuchar al cliente");
 	return socketServidor;
+}
 
-	//return 2;
+int aceptarCliente(int unSocketDeServidor) {
+	struct sockaddr_in direccionCliente;
+	int tamanioDireccion = sizeof(struct sockaddr_in);
+
+	int socketDelCliente = accept(unSocketDeServidor, (void*) &direccionCliente, &tamanioDireccion);
+
+	printf("Se Conecto cliente");
+
+	return socketDelCliente;
 }
 
 int cerrarConexion(int unSocket) {
-	close(unSocket);
+	return close(unSocket);
 }
 
-//hice un define con una direccion y un puerto cualquiera en el .h para probar
 int main(void)
 {
-	//printf("El servidor esta listo para escuchar al cliente");
 
 	int servidor = crearSocketServidor(IP, PUERTO);
 	int cliente = crearSocketCliente(IP, PUERTO);
-
+	aceptarCliente(servidor);
 	return 0;
 }
