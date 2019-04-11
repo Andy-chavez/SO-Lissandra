@@ -12,12 +12,12 @@
 
 
 typedef enum{
-	IN,
-	CR,
-	DT,
-	DA,
-	DR,
-	JO,
+	INSERT,
+	CREATE,
+	DESCRIBETABLE,
+	DESCRIBEALL,
+	DROP,
+	JOURNAL,
 
 }casos;
 
@@ -25,17 +25,17 @@ int main()
 {
 	casos CASO;
 	switch(CASO){
-	case IN:
+	case INSERT:
 		break;
-	case CR:
+	case CREATE:
 		break;
-	case DT:
+	case DESCRIBETABLE:
 		break;
-	case DA:
+	case DESCRIBEALL:
 		break;
-	case DR:
+	case DROP:
 		break;
-	case JO:
+	case JOURNAL:
 		break;
 	default:
 		break;
