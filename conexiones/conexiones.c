@@ -83,6 +83,7 @@ int crearSocketServidor(char *ip, char *puerto) {
 }
 
 int aceptarCliente(int unSocketDeServidor) {
+	// si bien no vamos a estar trabajando con esto, puede ser que mas adelante lo usemos. el segundo parametro podria ser NULL tranquilamente.
 	struct sockaddr_in direccionCliente;
 	int tamanioDireccion = sizeof(struct sockaddr_in);
 
