@@ -7,12 +7,10 @@
 
 #ifndef CONEXIONES_H_
 #define CONEXIONES_H_
-//de prueba
-#define IP "127.0.0.1"
-#define PUERTO "4444"
 
 int crearSocketCliente(char *ip,char *puerto);
 int crearSocketServidor(char *ip, char *puerto);
+int aceptarCliente(int unSocket);
 int cerrarConexion(int unSocket);
 void enviar(int unSocket, void* algoAEnviar, int tamanioAEnviar);
 void *recibir(int unSocket);

@@ -127,7 +127,7 @@ void *recibir(int unSocket) {
 	int bytesRecibidosTotales = 0;
 
 	while(bytesRecibidosTotales < tamanioBufferARecibir && bytesRecibidos){
-		bytesRecibidos = recv(socket, (recibido + bytesRecibidosTotales), (tamanioBufferARecibir - bytesRecibidosTotales), MSG_WAITALL); // lo mismo, es bloqueante
+		bytesRecibidos = recv(unSocket, (recibido + bytesRecibidosTotales), (tamanioBufferARecibir - bytesRecibidosTotales), MSG_WAITALL); // lo mismo, es bloqueante
 		bytesRecibidosTotales += bytesRecibidos;
 	}
 
