@@ -41,6 +41,6 @@ int main()
 		break;
 	default:
 		break;
-	}
+	} //test
 	return 0;
 }
