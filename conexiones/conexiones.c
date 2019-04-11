@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include "conexiones.h"
 #include <unistd.h>
+#include <stdlib.h>
 
 // crea un socket para la comunicacion con un servidor (Dado IP y puerto).
 int crearSocketCliente(char *ip, char *puerto) {
@@ -55,7 +56,7 @@ int crearSocketServidor(char *ip, char *puerto) {
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
+	hints.ai_flags = AI_PASSIVE; // Este flag no esta al pedo??
 
 	getaddrinfo(ip, puerto, &hints, &infoDireccionServidor);
 
@@ -98,11 +99,41 @@ int cerrarConexion(int unSocket) {
 	return close(unSocket);
 }
 
-int main(void)
-{
+// Envia algo de tipo void*, dado un socket y un tamanio a enviar.
+void enviar(int unSocket, void* algoAEnviar, int tamanioAEnviar) {
+	void *buffer = malloc(sizeof(int) + tamanioAEnviar); // alojar memoria para el mensaje
+	void *aux = buffer; // auxiliar
+	*((int*)aux) = tamanioAEnviar; // guardar el tamanio
+	aux += sizeof(int); // desplazar auxiliar
+	memcpy(aux, algoAEnviar, tamanioAEnviar); // copiar el mensaje en el buffer
 
-	int servidor = crearSocketServidor(IP, PUERTO);
-	int cliente = crearSocketCliente(IP, PUERTO);
-	aceptarCliente(servidor);
-	return 0;
+	send(unSocket, buffer, sizeof(int) + tamanioAEnviar, NULL); // enviarlo
+	free(buffer); // liberar mensaje
+}
+
+// Recibe algo de tipo void*, dado un socket. si no recibe nada, devuelve un NULL.
+void *recibir(int unSocket) {
+	void *recibido = malloc(sizeof(int));
+	int bytesRecibidos = recv(unSocket, recibido, sizeof(int), MSG_WAITALL) // OJO, el flag dice que esto es bloqueante!
+
+	if(!bytesRecibidos || bytesRecibidos == -1)  {
+		return NULL;
+	}
+
+	int tamanioBufferARecibir = *((int*) recibido);
+	free(recibido);
+	recibido = malloc(tamanioBufferARecibir);
+
+	int bytesRecibidosTotales = 0;
+
+	while(bytesRecibidosTotales < tamanioBufferARecibir && bytesRecibidos){
+		bytesRecibidos = recv(socket, (recibido + bytesRecibidosTotales), (tamanioDelMensaje - bytesRecibidosTotales), MSG_WAITALL); // lo mismo, es bloqueante
+		bytesRecibidosTotales += bytesRecibidos;
+	}
+
+	if(!bytesRecibidos || bytesRecibidos == -1)  {
+		return NULL;
+	}
+
+	return recibido;
 }

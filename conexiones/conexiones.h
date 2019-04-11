@@ -14,5 +14,7 @@
 int crearSocketCliente(char *ip,char *puerto);
 int crearSocketServidor(char *ip, char *puerto);
 int cerrarConexion(int unSocket);
+void enviar(int unSocket, void* algoAEnviar, int tamanioAEnviar);
+void *recibir(int unSocket);
 
 #endif /* CONEXIONES_H_ */
