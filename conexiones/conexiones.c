@@ -27,7 +27,7 @@ int crearSocketCliente(char *ip, char *puerto) {
 	}
 
 	// Iterar por toda la lista de posibles direcciones a las cuales me puedo conectar
-	for(iterLista = infoDireccion; iterLista != NULL; iterLista->ai_next) {
+	for(iterLista = infoDireccion; iterLista != NULL; iterLista = iterLista->ai_next) {
 		if((conexionSocket = socket(iterLista->ai_family, iterLista->ai_socktype, iterLista->ai_protocol)) == -1) continue;
 		if((intentarConexion = connect(conexionSocket, iterLista->ai_addr, iterLista->ai_addrlen)) == -1) continue;
 		break;
@@ -114,7 +114,7 @@ void enviar(int unSocket, void* algoAEnviar, int tamanioAEnviar) {
 // Recibe algo de tipo void*, dado un socket. si no recibe nada, devuelve un NULL.
 void *recibir(int unSocket) {
 	void *recibido = malloc(sizeof(int));
-	int bytesRecibidos = recv(unSocket, recibido, sizeof(int), MSG_WAITALL) // OJO, el flag dice que esto es bloqueante!
+	int bytesRecibidos = recv(unSocket, recibido, sizeof(int), MSG_WAITALL); // OJO, el flag dice que esto es bloqueante!
 
 	if(!bytesRecibidos || bytesRecibidos == -1)  {
 		return NULL;
@@ -127,7 +127,7 @@ void *recibir(int unSocket) {
 	int bytesRecibidosTotales = 0;
 
 	while(bytesRecibidosTotales < tamanioBufferARecibir && bytesRecibidos){
-		bytesRecibidos = recv(socket, (recibido + bytesRecibidosTotales), (tamanioDelMensaje - bytesRecibidosTotales), MSG_WAITALL); // lo mismo, es bloqueante
+		bytesRecibidos = recv(socket, (recibido + bytesRecibidosTotales), (tamanioBufferARecibir - bytesRecibidosTotales), MSG_WAITALL); // lo mismo, es bloqueante
 		bytesRecibidosTotales += bytesRecibidos;
 	}
 
