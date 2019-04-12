@@ -22,7 +22,7 @@ typedef enum{
 	DROP //Drop
 }casos;
 
-void ipa(casos caso;){
+void ipa(casos caso){
 	//leerConsola();
 	switch (caso){
 		case SE:
