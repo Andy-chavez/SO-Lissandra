@@ -9,9 +9,13 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
 #include<readline/readline.h>
+#include <time.h>
+#include <commons/string.h>
+
+#define CANTPARTICIONES 5 // esto esta en el metadata
 
 typedef enum{
 	SELECT, //Select
@@ -21,6 +25,40 @@ typedef enum{
 	DESCRIBETABLE, //Describe Table
 	DROP //Drop
 }casos;
+
+typedef enum {
+	SC,
+	SH,
+	EC
+}consistencia;
+
+typedef struct {
+	time_t timestamp;
+	u_int16_t key;
+	void* value;  //no seria siempre un char*?
+} registro;
+
+typedef struct {
+	registro *registros;
+} particion;
+
+typedef struct {
+	consistencia tipoConsistencia;
+	int cantParticiones;
+	int tiempoCompactacion;
+} metadata;
+
+typedef struct {
+	int blockSize;
+	int blocks;
+	char* magicNumber; //es siempre string lisandra?
+} metadataFS;
+
+typedef struct {
+	char* nombre;
+	metadata* metadataAsociada;
+	particion particiones[CANTPARTICIONES];
+} tabla;
 
 void api(casos caso){
 	//leerConsola();
@@ -50,7 +88,7 @@ void api(casos caso){
 }
 
 int main(int argc, char* argv[]) {
-	
+
 	return EXIT_SUCCESS;
 }
 
