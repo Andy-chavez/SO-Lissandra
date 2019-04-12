@@ -14,17 +14,15 @@
 #include<readline/readline.h>
 
 typedef enum{
-	SE, //Select
-	IN, //Insert
-	CR, //Create
-	DA, //Describe All
-	DT, //Describe Table
-	DR //Drop
+	SELECT, //Select
+	INSERT, //Insert
+	CREATE, //Create
+	DESCRIBEALL, //Describe All
+	DESCRIBETABLE, //Describe Table
+	DROP //Drop
 }casos;
 
-int main(int argc, char* argv[]) {
-	casos caso;
-
+void ipa(casos caso;){
 	//leerConsola();
 	switch (caso){
 		case SE:
@@ -49,13 +47,10 @@ int main(int argc, char* argv[]) {
 			printf("Error del header");
 			//agregar al archivo de log
 	}
+}
+
+int main(int argc, char* argv[]) {
+	
 	return EXIT_SUCCESS;
 }
 
-void leerConsola(){
-	char* linea = readline(">");
-	while (strcmp(linea,'\0')==0){
-
-	}
-	//readline()
-}
