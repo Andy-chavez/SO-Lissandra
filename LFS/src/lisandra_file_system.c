@@ -22,25 +22,25 @@ typedef enum{
 	DROP //Drop
 }casos;
 
-void ipa(casos caso){
+void api(casos caso){
 	//leerConsola();
 	switch (caso){
-		case SE:
+		case SELECT:
 			//Select
 			break;
-		case IN:
+		case INSERT:
 			//Insert
 			break;
-		case CR:
+		case CREATE:
 			//Create
 			break;
-		case DA:
+		case DESCRIBEALL:
 			//Describe todas las tablas(All)
 			break;
-		case DT:
+		case DESCRIBETABLE:
 			//Describe una tabla
 			break;
-		case DR:
+		case DROP:
 			//Drop table
 			break;
 		default:
