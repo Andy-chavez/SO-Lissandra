@@ -52,7 +52,7 @@ Mkfile.old
 dkms.conf
 
 .cproject
-
+Kernel/.settings/language.settings.xml
 LFS/.settings/language.settings.xml
 pruebasPropias/
 
