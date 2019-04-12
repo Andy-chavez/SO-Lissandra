@@ -9,23 +9,27 @@
  */
 
 #include<stdio.h>
+#include<stdlib.h>
 
-#define CANTIDAD_MEMORIAS_CONECTADAS // tambien esto
+#define CANTIDADCRITERIOS 2 //0-2
+#define STRONG 0
+#define HASH 1
+#define EVENTUAL 2
 
 typedef enum {
-	SC,
-	SH,
-	EC
+	SC, // UNA
+	SH, // MUCHAS
+	EC  // MUCHAS
 }criterios;
 
 typedef struct{
 	int numeroDeMemoria;
-	criterios *criterioAsociado;
+	criterios *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
 }memoria;
 
 typedef struct{
 	criterios unCriterio;
-	int *memoriaAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
+	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
 }criterio;
 
 typedef enum {
@@ -42,11 +46,13 @@ typedef enum {
 }caso;
 
 void interfaz();
+void inicializarCriterios();
 
-int main(){
+int main(int argc, char *argv[]){
+	printf("hello");
+//	inicializarCriterios();
 	return 0;
 }
-
 
 void interfaz(caso UN_CASO) //Cada aso deberia verse para luego implementarse
 {
@@ -86,6 +92,18 @@ void interfaz(caso UN_CASO) //Cada aso deberia verse para luego implementarse
 
 	}
 }
+
+/*void inicializarCriterios(){
+	criterio *datos = calloc(3,sizeof(criterio));
+	datos[STRONG].unCriterio = SC; //Strong
+	datos[HASH].unCriterio = SH; //Hash
+	datos[EVENTUAL].unCriterio = EC; //Eventual
+	for(int iter=0; iter <= CANTIDADCRITERIOS; iter++){
+		*(datos+iter)->memoriasAsociadas=);
+		printf("Criterio: %d \n Memoria: %d \n",*(datos+iter), *(datos+iter)->memoriasAsociadas );
+	}
+}
+*/
 void roundRobinQuantumModificable(int quantum){
 
 }
