@@ -1,59 +1,84 @@
 /*
  ============================================================================
  Name        : Kernel.c
- Author      :
+ Author      : whyAreYouRunning?
  Version     :
  Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
+ Description :
  ============================================================================
  */
 
 #include<stdio.h>
 
-void api();
+#define CANTIDAD_MEMORIAS_CONECTADAS // tambien esto
 
-typedef enum{
-	IN,
-	CR,
-	DT,
-	DA,
-	DR,
-	RU,
-	JO,
-	AD
+typedef enum {
+	SC,
+	SH,
+	EC
+}criterios;
 
-}casos;
+typedef struct{
+	int numeroDeMemoria;
+	criterios *criterioAsociado;
+}memoria;
+
+typedef struct{
+	criterios unCriterio;
+	int *memoriaAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
+}criterio;
+
+typedef enum {
+	INSERT,
+	CREATE,
+	DESCRIBETABLE,
+	DESCRIBEALL,
+	DROP,
+	JOURNAL,
+	SELECT,
+	RUN,
+	METRICS,
+	ADD
+}caso;
+
+void interfaz();
+
 int main(){
 	return 0;
 }
 
 
-void api() //Cada aso deberia verse para luego implementarse
+void interfaz(caso UN_CASO) //Cada aso deberia verse para luego implementarse
 {
-	casos CASO; //Deberia de inicializarse?
-	switch(CASO){
-	case IN:
+	switch(UN_CASO){
+	case SELECT:
 		printf("Caso a implementar INSERT");
 		break;
-	case CR:
+	case INSERT:
+		printf("Caso a implementar INSERT");
+		break;
+	case CREATE:
 		printf("Caso a implementar CREATE");
 		break;
-	case DT:
+	case DESCRIBETABLE:
 		printf("Caso a implementar DESCRIBE TABLE");
 		break;
-	case DA:
+	case DESCRIBEALL:
 		printf("Caso a implementar DESCRIBE ALL");
 		break;
-	case DR:
+	case DROP:
 		printf("Caso a implementar DROP");
 		break;
-	case RU:
+	case RUN:
 		printf("Caso a implementar RUN");
 		break;
-	case JO:
+	case JOURNAL:
 		printf("Caso a implementar JOURNAL");
 		break;
-	case AD:
+	case ADD:
+		printf("Caso a implementar ADD");
+		break;
+	case METRICS:
 		printf("Caso a implementar ADD");
 		break;
 	default:
