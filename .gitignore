@@ -51,6 +51,8 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-LFS/.settings/language.settings.xml
+.cproject
 
+LFS/.settings/language.settings.xml
 pruebasPropias/
+

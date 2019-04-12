@@ -10,6 +10,7 @@
 
 #include<stdio.h>
 
+void api();
 
 typedef enum{
 	IN,
@@ -22,10 +23,14 @@ typedef enum{
 	AD
 
 }casos;
+int main(){
+	return 0;
+}
 
-int main()
+
+void api() //Cada aso deberia verse para luego implementarse
 {
-	casos CASO;
+	casos CASO; //Deberia de inicializarse?
 	switch(CASO){
 	case IN:
 		printf("Caso a implementar INSERT");
@@ -55,5 +60,7 @@ int main()
 		break;
 
 	}
-	return 0;
+}
+void roundRobinQuantumModificable(int quantum){
+
 }
