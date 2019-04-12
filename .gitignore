@@ -53,6 +53,7 @@ dkms.conf
 
 .cproject
 Kernel/.settings/language.settings.xml
+Kernel/.cproject
 LFS/.settings/language.settings.xml
 pruebasPropias/
 
