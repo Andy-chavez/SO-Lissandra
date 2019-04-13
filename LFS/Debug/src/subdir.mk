@@ -4,16 +4,13 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../src/lisandra_file_system.c \
-../src/servidor.c 
+../src/lisandra_file_system.c 
 
 OBJS += \
-./src/lisandra_file_system.o \
-./src/servidor.o 
+./src/lisandra_file_system.o 
 
 C_DEPS += \
-./src/lisandra_file_system.d \
-./src/servidor.d 
+./src/lisandra_file_system.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
