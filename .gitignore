@@ -51,6 +51,7 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+.project
 Kernel/.settings/language.settings.xml
 Kernel/.cproject
 Kernel/.project
