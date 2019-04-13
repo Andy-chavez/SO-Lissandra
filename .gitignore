@@ -54,7 +54,10 @@ dkms.conf
 Kernel/.settings/language.settings.xml
 Kernel/.cproject
 LFS/.settings/language.settings.xml
+LFS/.cproject
 memoria/.settings/language.settings.xml
 memoria/.cproject
+conexiones/.settings/language.settings.xml
+conexiones/.cproject
 pruebasPropias/
 
