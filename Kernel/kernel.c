@@ -32,6 +32,11 @@ typedef struct{
 	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
 }criterio;
 
+typedef struct{
+	char* nombreDeTabla;
+	criterios criterioDeTabla;
+}tabla; //ver si es necesario agregar algo mas
+
 typedef enum {
 	INSERT,
 	CREATE,
@@ -107,7 +112,6 @@ criterio *inicializarCriterios(){
 
 int main(int argc, char *argv[]){
 	criterio *criterios;
-	printf("hello \n");
 	criterios = inicializarCriterios();
 	return 0;
 }
