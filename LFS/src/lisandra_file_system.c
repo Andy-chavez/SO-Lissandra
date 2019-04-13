@@ -39,6 +39,7 @@ typedef struct {
 } registro;
 
 typedef struct {
+	int numeroParticion; // para saber que keys estan ahi,por el modulo
 	registro *registros;
 } particion;
 
@@ -47,7 +48,7 @@ typedef struct {
 	int cantParticiones;
 	int tiempoCompactacion;
 } metadata;
-
+// estas dos estructuras no se envian, son archivos, para que definir struct?
 typedef struct {
 	int blockSize;
 	int blocks;
@@ -56,7 +57,7 @@ typedef struct {
 
 typedef struct {
 	char* nombre;
-	metadata* metadataAsociada;
+	//metadata* metadataAsociada;
 	particion particiones[CANTPARTICIONES];
 } tabla;
 
