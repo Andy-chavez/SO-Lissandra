@@ -9,9 +9,13 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
 #include<readline/readline.h>
+#include <time.h>
+#include <commons/string.h>
+
+#define CANTPARTICIONES 5 // esto esta en el metadata
 
 typedef enum{
 	SELECT, //Select
@@ -22,25 +26,59 @@ typedef enum{
 	DROP //Drop
 }casos;
 
-void ipa(casos caso){
+typedef enum {
+	SC,
+	SH,
+	EC
+}consistencia;
+
+typedef struct {
+	time_t timestamp;
+	u_int16_t key;
+	void* value;  //no seria siempre un char*?
+} registro;
+
+typedef struct {
+	registro *registros;
+} particion;
+
+typedef struct {
+	consistencia tipoConsistencia;
+	int cantParticiones;
+	int tiempoCompactacion;
+} metadata;
+
+typedef struct {
+	int blockSize;
+	int blocks;
+	char* magicNumber; //es siempre string lisandra?
+} metadataFS;
+
+typedef struct {
+	char* nombre;
+	metadata* metadataAsociada;
+	particion particiones[CANTPARTICIONES];
+} tabla;
+
+void api(casos caso){
 	//leerConsola();
 	switch (caso){
-		case SE:
+		case SELECT:
 			//Select
 			break;
-		case IN:
+		case INSERT:
 			//Insert
 			break;
-		case CR:
+		case CREATE:
 			//Create
 			break;
-		case DA:
+		case DESCRIBEALL:
 			//Describe todas las tablas(All)
 			break;
-		case DT:
+		case DESCRIBETABLE:
 			//Describe una tabla
 			break;
-		case DR:
+		case DROP:
 			//Drop table
 			break;
 		default:
@@ -50,7 +88,7 @@ void ipa(casos caso){
 }
 
 int main(int argc, char* argv[]) {
-	
+
 	return EXIT_SUCCESS;
 }
 
