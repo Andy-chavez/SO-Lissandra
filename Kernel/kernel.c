@@ -45,14 +45,8 @@ typedef enum {
 	ADD
 }caso;
 
-void interfaz();
-void inicializarCriterios();
-
-int main(int argc, char *argv[]){
-	printf("hello");
-//	inicializarCriterios();
-	return 0;
-}
+void interfaz(caso UN_CASO);
+criterio *inicializarCriterios();
 
 void interfaz(caso UN_CASO) //Cada aso deberia verse para luego implementarse
 {
@@ -93,17 +87,27 @@ void interfaz(caso UN_CASO) //Cada aso deberia verse para luego implementarse
 	}
 }
 
-/*void inicializarCriterios(){
-	criterio *datos = calloc(3,sizeof(criterio));
+/*
+void roundRobinQuantumModificable(int quantum){
+
+}
+*/
+
+criterio *inicializarCriterios(){
+	criterio *datos = malloc(3*sizeof(criterio));
 	datos[STRONG].unCriterio = SC; //Strong
 	datos[HASH].unCriterio = SH; //Hash
 	datos[EVENTUAL].unCriterio = EC; //Eventual
 	for(int iter=0; iter <= CANTIDADCRITERIOS; iter++){
-		*(datos+iter)->memoriasAsociadas=);
-		printf("Criterio: %d \n Memoria: %d \n",*(datos+iter), *(datos+iter)->memoriasAsociadas );
+		datos[iter].memoriasAsociadas = malloc(sizeof(int));
+		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
 	}
+	return datos;
 }
-*/
-void roundRobinQuantumModificable(int quantum){
 
+int main(int argc, char *argv[]){
+	criterio *criterios;
+	printf("hello \n");
+	criterios = inicializarCriterios();
+	return 0;
 }
