@@ -12,21 +12,17 @@
 #include "conexiones.h"
 #include <unistd.h>
 #include <stdlib.h>
-#include <commons/log.h>
 
 // crea un socket para la comunicacion con un servidor (Dado IP y puerto).
 int crearSocketCliente(char *ip, char *puerto) {
-	t_log* logger = log_create("conexiones.h", "log_conexiones.log", 1, LOG_LEVEL_ERROR);
-
 	int conexionSocket, intentarConexion;
 	struct addrinfo hints, *infoDireccion, *iterLista;
-
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
 	if(getaddrinfo(ip, puerto, &hints, &infoDireccion)){
-		log_error(logger, "Hubo un problema con la obtencion de datos del servidor.");
+		printf("Hubo un problema con la obtencion de datos del servidor.");
 		return -1;
 	}
 
@@ -39,29 +35,28 @@ int crearSocketCliente(char *ip, char *puerto) {
 
 	//Chequear errores
 	if(conexionSocket == -1) {
-		log_error(logger, "Hubo un error en la creacion del socket");
+		printf("Hubo un error en la creacion del socket");
 		freeaddrinfo(infoDireccion);
 		return -1;
 	} else if(intentarConexion == -1) {
-		log_error(logger, "Hubo un error en la conexion del socket");
+		printf("Hubo un error en la conexion del socket");
 		freeaddrinfo(infoDireccion);
 		return -1;
 	}
 
-	log_destroy(logger);
 	freeaddrinfo(infoDireccion);
 	return conexionSocket;
 }
 
 //crea un servidor que se comunicara con los clientes que se conecten a el (dado IP y puerto)
 int crearSocketServidor(char *ip, char *puerto) {
-	t_log* logger = log_create("conexiones.h", "log_conexiones.log", 1, LOG_LEVEL_ERROR);
 
 	int socketServidor, intentarBindeo;
 	struct addrinfo hints, *infoDireccionServidor, *lista;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE; // Este flag no esta al pedo??
 
 	getaddrinfo(ip, puerto, &hints, &infoDireccionServidor);
 
@@ -73,38 +68,33 @@ int crearSocketServidor(char *ip, char *puerto) {
 		}
 
 	if(socketServidor == -1) {
-		log_error(logger, "Hubo un error en la creacion del socket");
+		printf("Hubo un error en la creacion del socket");
 		freeaddrinfo(infoDireccionServidor);
 		return -1;
 	} else if(intentarBindeo == -1) {
-		log_error(logger, "Hubo un error en el bindeo del socket");
+		printf("Hubo un error en el bindeo del socket");
 		freeaddrinfo(infoDireccionServidor);
 		return -1;
 	}
 
 	listen(socketServidor, SOMAXCONN);
-	log_info(logger, "El servidor esta listo para escuchar al cliente");
-
-	log_destroy(logger);
 	freeaddrinfo(infoDireccionServidor);
+	printf("El servidor esta listo para escuchar al cliente");
 	return socketServidor;
 }
 
-// acepta un cliente
 int aceptarCliente(int unSocketDeServidor) {
-	t_log* logger = log_create("conexiones.h", "log_conexiones.log", 1, LOG_LEVEL_ERROR);
+	// si bien no vamos a estar trabajando con esto, puede ser que mas adelante lo usemos. el segundo parametro podria ser NULL tranquilamente.
 	struct sockaddr_in direccionCliente;
 	int tamanioDireccion = sizeof(struct sockaddr_in);
 
 	int socketDelCliente = accept(unSocketDeServidor, (void*) &direccionCliente, &tamanioDireccion);
 
-	log_info(logger, "Se acepto la conexion de un cliente");
+	printf("Se Conecto cliente");
 
-	log_destroy(logger);
 	return socketDelCliente;
 }
 
-// cierra una conexion
 int cerrarConexion(int unSocket) {
 	return close(unSocket);
 }

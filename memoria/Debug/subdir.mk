@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../conexiones.c \
 ../memoria.c 
 
 OBJS += \
+./conexiones.o \
 ./memoria.o 
 
 C_DEPS += \
+./conexiones.d \
 ./memoria.d 
 
 
