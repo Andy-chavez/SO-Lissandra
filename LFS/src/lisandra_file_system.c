@@ -35,7 +35,7 @@ typedef enum {
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
-	void* value;  //no seria siempre un char*?
+	char* value;  //no seria siempre un char*?
 } registro;
 
 typedef struct {
@@ -44,21 +44,11 @@ typedef struct {
 } particion;
 
 typedef struct {
-	consistencia tipoConsistencia;
-	int cantParticiones;
-	int tiempoCompactacion;
-} metadata;
-// estas dos estructuras no se envian, son archivos, para que definir struct?
-typedef struct {
-	int blockSize;
-	int blocks;
-	char* magicNumber; //es siempre string lisandra?
-} metadataFS;
-
-typedef struct {
 	char* nombre;
-	//metadata* metadataAsociada;
-	particion particiones[CANTPARTICIONES];
+	int cantParticiones;
+	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
+	consistencia tipoDeConsistencia;
+	int tiempoDeCompactacion;
 } tabla;
 
 void api(casos caso){
@@ -86,6 +76,10 @@ void api(casos caso){
 			printf("Error del header");
 			//agregar al archivo de log
 	}
+}
+
+void agregarRegistro(tabla unaTabla,registro unRegistro){
+
 }
 
 int main(int argc, char* argv[]) {
