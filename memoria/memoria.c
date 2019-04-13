@@ -69,6 +69,7 @@ void interface(operacion unaOperacion) {
 	case JOURNAL:
 		break;
 	default:
+		printf("JAJAJA");
 		break;
 	}
 }
