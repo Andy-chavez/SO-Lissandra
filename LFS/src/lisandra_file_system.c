@@ -15,6 +15,7 @@
 #include <time.h>
 #include <commons/string.h>
 
+
 #define CANTPARTICIONES 5 // esto esta en el metadata
 
 typedef enum{
@@ -39,8 +40,16 @@ typedef struct {
 } registro;
 
 typedef struct {
+	int numeroBloque;
+	int sizeDeBloque;
+
+} bloque;
+
+typedef struct {
+	int size;
 	int numeroParticion; // para saber que keys estan ahi,por el modulo
 	registro *registros;
+	bloque block[/*CANTIDADBLOQUES*/];
 } particion;
 
 typedef struct {
