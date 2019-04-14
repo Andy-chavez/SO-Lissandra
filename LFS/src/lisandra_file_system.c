@@ -15,6 +15,7 @@
 #include <time.h>
 #include <commons/string.h>
 
+
 #define CANTPARTICIONES 5 // esto esta en el metadata
 
 typedef enum{
@@ -35,29 +36,28 @@ typedef enum {
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
-	void* value;  //no seria siempre un char*?
+	char* value;  //no seria siempre un char*?
 } registro;
 
 typedef struct {
+	int numeroBloque;
+	int sizeDeBloque;
+
+} bloque;
+
+typedef struct {
+	int size;
+	int numeroParticion; // para saber que keys estan ahi,por el modulo
 	registro *registros;
+	bloque block[/*CANTIDADBLOQUES*/];
 } particion;
 
 typedef struct {
-	consistencia tipoConsistencia;
-	int cantParticiones;
-	int tiempoCompactacion;
-} metadata;
-
-typedef struct {
-	int blockSize;
-	int blocks;
-	char* magicNumber; //es siempre string lisandra?
-} metadataFS;
-
-typedef struct {
 	char* nombre;
-	metadata* metadataAsociada;
-	particion particiones[CANTPARTICIONES];
+	int cantParticiones;
+	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
+	consistencia tipoDeConsistencia;
+	int tiempoDeCompactacion;
 } tabla;
 
 void api(casos caso){
@@ -85,6 +85,10 @@ void api(casos caso){
 			printf("Error del header");
 			//agregar al archivo de log
 	}
+}
+
+void agregarRegistro(tabla unaTabla,registro unRegistro){
+
 }
 
 int main(int argc, char* argv[]) {
