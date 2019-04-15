@@ -1,8 +1,8 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<time.h>
-#include<stdint.h>
-#include<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
+#include <string.h>
 
 typedef struct {
 	time_t timestamp;
@@ -11,18 +11,61 @@ typedef struct {
 } registro;
 
 typedef enum {
+	SC,
+	SH,
+	EC
+}consistencia;
+
+typedef enum {
 	OPERACIONLQL,
-	PAQUETEREGISTROS
-} operacionesProtocolo;
+	PAQUETEREGISTROS,
+	METADATA
+} operacionProtocolo;
+
+typedef struct {
+	consistencia tipoConsistencia;
+	int cantParticiones;
+	int tiempoCompactacion;
+} metadata;
+
+registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
+	int desplazamiento = 0;
+	registro* unRegistro = malloc(sizeof(registro));
+	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
+
+	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
+	desplazamiento+= sizeof(char)*largoDeNombreTabla;
+
+	memcpy(tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
+	desplazamiento+= sizeof(int);
+
+	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp);
+	desplazamiento+= tamanioTimestamp;
+
+	memcpy(bufferRegistro + desplazamiento, &tamanioKey, tamanioKey);
+	desplazamiento+= sizeof(int);
+
+	memcpy(bufferRegistro + desplazamiento, &(unRegistro->key), sizeof(u_int16_t));
+	desplazamiento+= tamanioKey;
+
+	memcpy(bufferRegistro + desplazamiento, &largoDeValue, largoDeValue);
+	desplazamiento+= sizeof(int);
+
+	memcpy(bufferRegistro + desplazamiento, &(unRegistro->value), sizeof(char)*largoDeValue);
+	desplazamiento+= sizeof(char)*largoDeValue;
+
+	return unRegistro;
+}
+
 /*
  * Serializa un registro. Toma dos parametros:
  * unRegistro: El registro a serializar.
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  */
-
-
-void* serializarRegistro(registro* unRegistro,char* nombreTabla)
-{
+void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	int desplazamiento = 0;
 	int largoDeNombreTabla = strlen(nombreTabla) + 1;
 	int largoDeValue = strlen(unRegistro->value) + 1;
@@ -41,7 +84,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla)
 	memcpy(bufferRegistro + desplazamiento, &tamanioTimeStamp, tamanioTimeStamp);
 	desplazamiento+= sizeof(int);
 	//Nombre de timestamp
-	memcpy(bufferRegistro + desplazamiento, &(unRegistro->timestamp), sizeof(time_t));
+	memcpy(bufferRegistro + desplazamiento, &(unRegistro->timestamp), tamanioTimeStamp);
 	desplazamiento+= tamanioTimeStamp;
 	//Tamaño de key
 	memcpy(bufferRegistro + desplazamiento, &tamanioKey, tamanioKey);
@@ -59,7 +102,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla)
 }
 
 /*
- *
+ * Serializa una operacion LQL.
  */
 void* serializarOperacion(int unaOperacion, char* stringDeValores) {
 	int desplazamiento = 0;
@@ -95,32 +138,39 @@ void* serializarOperacion(int unaOperacion, char* stringDeValores) {
 	Serializa una metadata. Toma un parametro:
 	unaMetadata: La metadata a serializar
 */
-void* serializarMetadata(metadata* unaMetadata)
-{
+void* serializarMetadata(metadata* unaMetadata) {
 	int desplazamiento = 0;
 	int tamanioDelTipoDeConsistencia = sizeof(int);
 	int tamanioDeCantidadDeParticiones = sizeof(int);
 	int tamanioDelTiempoDeCompactacion = sizeof(int);
+	int tamanioProtocolo = sizeof(int);
+	operacionProtocolo protocolo = METADATA;
 	int tamanioTotalDelBuffer = tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion;
 	void *bufferMetadata= malloc(tamanioTotalDelBuffer);
 
+	//Tamaño de operacion Protocolo
+	memcpy(bufferMetadata + desplazamiento, &tamanioProtocolo, sizeof(int));
+	desplazamiento += sizeof(int);
+	//Operacion de Protocolo
+	memcpy(bufferMetadata + desplazamiento, &protocolo, sizeof(int));
+	desplazamiento+= sizeof(int);
 	//Tamaño del tipo de consistencia
-	memcpy(bufferRegistro + desplazamiento, &tamanioDelTipoDeConsistencia, tamanioDelTipoDeConsistencia);
+	memcpy(bufferMetadata + desplazamiento, &tamanioDelTipoDeConsistencia, tamanioDelTipoDeConsistencia);
 	desplazamiento+= tamanioDelTipoDeConsistencia;
 	//Tipo de consistencia
-	memcpy(bufferRegistro + desplazamiento, &(unaMetadata->tipoConsistencia), tamanioDelTipoDeConsistencia);
+	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->tipoConsistencia), tamanioDelTipoDeConsistencia);
 	desplazamiento+= tamanioDelTipoDeConsistencia;
 	//Tamaño de la cantidad de particiones
-	memcpy(bufferRegistro + desplazamiento, &tamanioDeCantidadDeParticiones, tamanioDeCantidadDeParticiones);
+	memcpy(bufferMetadata + desplazamiento, &tamanioDeCantidadDeParticiones, tamanioDeCantidadDeParticiones);
 	desplazamiento+= tamanioDeCantidadDeParticiones;
 	//Cantidad de particiones
-	memcpy(bufferRegistro + desplazamiento, &(unaMetadata->cantParticiones), tamanioDeCantidadDeParticiones);
+	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->cantParticiones), tamanioDeCantidadDeParticiones);
 	desplazamiento+= tamanioDeCantidadDeParticiones;
 	//Tamaño del tiempoDeCompactacion
-	memcpy(bufferRegistro + desplazamiento, &tamanioDelTiempoDeCompactacion, tamanioDelTiempoDeCompactacion);
+	memcpy(bufferMetadata + desplazamiento, &tamanioDelTiempoDeCompactacion, tamanioDelTiempoDeCompactacion);
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 	//Tiempo de compactacion
-	memcpy(bufferRegistro + desplazamiento, &(unaMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
+	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 
 	return bufferMetadata;
