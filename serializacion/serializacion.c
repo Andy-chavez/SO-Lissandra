@@ -17,10 +17,29 @@ typedef enum {
 }consistencia;
 
 typedef enum {
+	INSERT,
+	CREATE,
+	DESCRIBETABLE,
+	DESCRIBEALL,
+	DROP,
+	JOURNAL,
+	SELECT,
+	RUN,
+	METRICS,
+	ADD
+}caso;
+
+typedef enum {
 	OPERACIONLQL,
 	PAQUETEREGISTROS,
 	METADATA
 } operacionProtocolo;
+
+typedef struct {
+	operacionProtocolo protocolo;
+	caso casoDeOperacion;
+	char* stringDeValores;
+}operacion;
 
 typedef struct {
 	consistencia tipoConsistencia;
@@ -36,16 +55,16 @@ registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
 	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	memcpy(&nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
+	memcpy(nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
 	desplazamiento+= sizeof(char)*largoDeNombreTabla;
 
 	memcpy(tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
-	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp);
+	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp); //nos parece con el magic que el tamanioTimestamp esta mal
 	desplazamiento+= tamanioTimestamp;
 
-	memcpy(bufferRegistro + desplazamiento, &tamanioKey, tamanioKey);
+	memcpy(bufferRegistro + desplazamiento , &tamanioKey, tamanioKey);
 	desplazamiento+= sizeof(int);
 
 	memcpy(bufferRegistro + desplazamiento, &(unRegistro->key), sizeof(u_int16_t));
@@ -101,6 +120,29 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	return bufferRegistro;
 }
 
+//void *memcpy(void *dest, const void *src, size_t n);
+
+operacion* deserializarOperacion(void* bufferOperacion, int operacionDeProtocolo){
+	int desplazamiento = 0;
+	int tamanioOperacion,largoStringValue;
+	operacion unaOperacion = sizeof(operacion);
+
+	//deserialice desde el enum al string de valores
+
+	memcpy(&tamanioOperacion,bufferOperacion + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&(unaOperacion-> casoDeOperacion),bufferOperacion + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&largoStringValue,bufferOperacion + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&(unaOperacion-> stringDeValores),bufferOperacion + desplazamiento, sizeof(char)*largoStringValue);
+	desplazamiento += sizeof(int);
+	return unaOperacion;
+}
+
 /*
  * Serializa una operacion LQL.
  */
@@ -134,11 +176,12 @@ void* serializarOperacion(int unaOperacion, char* stringDeValores) {
 	return bufferOperacion;
 }
 
+
 /*
 	Serializa una metadata. Toma un parametro:
 	unaMetadata: La metadata a serializar
 */
-void* serializarMetadata(metadata* unaMetadata) {
+void* serializarMetadata(metadata* unMetadata) {
 	int desplazamiento = 0;
 	int tamanioDelTipoDeConsistencia = sizeof(int);
 	int tamanioDeCantidadDeParticiones = sizeof(int);
@@ -174,6 +217,32 @@ void* serializarMetadata(metadata* unaMetadata) {
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 
 	return bufferMetadata;
+}
+
+metadata* deserializarMetadata(void* bufferMetadata) {
+	int desplazamiento = 0;
+	metadata* unMetadata = malloc(sizeof(metadata));
+	int tamanioDelTipoDeConsistencia,tamanioDeCantidadDeParticiones,tamanioDelTiempoDeCompactacion;
+
+	memcpy(&tamanioDelTipoDeConsistencia, bufferMetadata + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&(unMetadata->tipoConsistencia), bufferRegistro + desplazamiento, sizeof(int));
+	desplazamiento+= sizeof(int);
+
+	memcpy(&tamanioDeCantidadDeParticiones, bufferMetadata + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&(unMetadata->cantParticiones), bufferRegistro + desplazamiento, sizeof(int));
+	desplazamiento+= sizeof(int);
+
+	memcpy(&tamanioDelTiempoDeCompactacion, bufferMetadata + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy(&(unMetadata->tiempoCompactacion), bufferRegistro + desplazamiento, sizeof(int));
+	desplazamiento+= sizeof(int);
+
+	return unMetadata;
 }
 
 
