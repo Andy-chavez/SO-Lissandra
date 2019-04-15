@@ -58,23 +58,22 @@ registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
 	memcpy(nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
 	desplazamiento+= sizeof(char)*largoDeNombreTabla;
 
-	memcpy(tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
+	memcpy(&tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
 	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp); //nos parece con el magic que el tamanioTimestamp esta mal
 	desplazamiento+= tamanioTimestamp;
 
-	memcpy(bufferRegistro + desplazamiento , &tamanioKey, tamanioKey);
+	memcpy(&tamanioKey, bufferRegistro + desplazamiento , tamanioKey);
 	desplazamiento+= sizeof(int);
 
-	memcpy(bufferRegistro + desplazamiento, &(unRegistro->key), sizeof(u_int16_t));
+	memcpy(&(unRegistro->key), bufferRegistro + desplazamiento, tamanioKey);
 	desplazamiento+= tamanioKey;
 
-	memcpy(bufferRegistro + desplazamiento, &largoDeValue, largoDeValue);
+	memcpy(&largoDeValue, bufferRegistro + desplazamiento, largoDeValue);
 	desplazamiento+= sizeof(int);
 
-	memcpy(bufferRegistro + desplazamiento, &(unRegistro->value), sizeof(char)*largoDeValue);
-	desplazamiento+= sizeof(char)*largoDeValue;
+	memcpy(&(unRegistro->value), bufferRegistro + desplazamiento, sizeof(char)*largoDeValue);
 
 	return unRegistro;
 }
