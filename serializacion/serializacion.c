@@ -19,6 +19,8 @@ typedef enum {
  * unRegistro: El registro a serializar.
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  */
+
+
 void* serializarRegistro(registro* unRegistro,char* nombreTabla)
 {
 	int desplazamiento = 0;
@@ -88,5 +90,41 @@ void* serializarOperacion(int unaOperacion, char* stringDeValores) {
 	desplazamiento+= sizeof(char)*largoDeStringValue;
 	return bufferOperacion;
 }
+
+/*
+	Serializa una metadata. Toma un parametro:
+	unaMetadata: La metadata a serializar
+*/
+void* serializarMetadata(metadata* unaMetadata)
+{
+	int desplazamiento = 0;
+	int tamanioDelTipoDeConsistencia = sizeof(int);
+	int tamanioDeCantidadDeParticiones = sizeof(int);
+	int tamanioDelTiempoDeCompactacion = sizeof(int);
+	int tamanioTotalDelBuffer = tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion;
+	void *bufferMetadata= malloc(tamanioTotalDelBuffer);
+
+	//Tamaño del tipo de consistencia
+	memcpy(bufferRegistro + desplazamiento, &tamanioDelTipoDeConsistencia, tamanioDelTipoDeConsistencia);
+	desplazamiento+= tamanioDelTipoDeConsistencia;
+	//Tipo de consistencia
+	memcpy(bufferRegistro + desplazamiento, &(unaMetadata->tipoConsistencia), tamanioDelTipoDeConsistencia);
+	desplazamiento+= tamanioDelTipoDeConsistencia;
+	//Tamaño de la cantidad de particiones
+	memcpy(bufferRegistro + desplazamiento, &tamanioDeCantidadDeParticiones, tamanioDeCantidadDeParticiones);
+	desplazamiento+= tamanioDeCantidadDeParticiones;
+	//Cantidad de particiones
+	memcpy(bufferRegistro + desplazamiento, &(unaMetadata->cantParticiones), tamanioDeCantidadDeParticiones);
+	desplazamiento+= tamanioDeCantidadDeParticiones;
+	//Tamaño del tiempoDeCompactacion
+	memcpy(bufferRegistro + desplazamiento, &tamanioDelTiempoDeCompactacion, tamanioDelTiempoDeCompactacion);
+	desplazamiento+= tamanioDelTiempoDeCompactacion;
+	//Tiempo de compactacion
+	memcpy(bufferRegistro + desplazamiento, &(unaMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
+	desplazamiento+= tamanioDelTiempoDeCompactacion;
+
+	return bufferMetadata;
+}
+
 
 int main(){ return 0;}
