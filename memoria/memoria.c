@@ -12,6 +12,7 @@
 #include "parser.h"
 #include <readline/readline.h>
 #include <stdio.h>
+#include <pthread.h>
 #define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config
 
 typedef enum {
@@ -74,8 +75,24 @@ void interface(operacion unaOperacion) {
 	}
 }
 
-int main() {
+void* servidorMemoria(){
+	char* IpMemoria = "192.168.1.2"; //numeros de prueba
+	char* PuertoMemoria = "8001";
+	int socketServidorMemoria = crearSocketServidor(IpMemoria,PuertoMemoria);
 
+	while(1){
+		int socketKernel = aceptarCliente(socketServidorMemoria);
+		// interface( deserializarOperacion( recibir(socketKernel) , 1 ) )   Seguro que con los cambios de struct cambie,pero es para dar una idea. De donde saca el protocolo?
+
+		cerrarConexion(socketKernel);
+	}
 }
+
+int main() {
+	pthread_t threadServer;
+	pthread_create(&threadServer,NULL,servidorMemoria,NULL);
+	pthread_detach(threadServer);
+}
+
 
 
