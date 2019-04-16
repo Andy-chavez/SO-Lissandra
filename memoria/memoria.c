@@ -6,6 +6,8 @@
  */
 
 #include <commons/string.h>
+#include <commons/config.h>
+#include <commons/log.h>
 #include <time.h>
 #include "conexiones.h"
 #include <inttypes.h>
@@ -76,16 +78,23 @@ void interface(operacion unaOperacion) {
 }
 
 void* servidorMemoria(){
-	char* IpMemoria = "192.168.1.2"; //numeros de prueba
-	char* PuertoMemoria = "8001";
-	int socketServidorMemoria = crearSocketServidor(IpMemoria,PuertoMemoria);
+	char* ipMemoria = "192.168.1.2";
+	char* puertoMemoria;
+	t_config* configArchivo = config_create("memoria.config");
+	puertoMemoria = config_get_string_value(configArchivo, "PUERTO");
+	int socketServidorMemoria = crearSocketServidor(ipMemoria,puertoMemoria);
 
 	while(1){
 		int socketKernel = aceptarCliente(socketServidorMemoria);
-		// interface( deserializarOperacion( recibir(socketKernel) , 1 ) )   Seguro que con los cambios de struct cambie,pero es para dar una idea. De donde saca el protocolo?
+		void* buffer = recibir(socketKernel);
+
+		// interface( deserializarOperacion( recibir(socketKernel) , 1 ) )
 
 		cerrarConexion(socketKernel);
+		free(buffer);
 	}
+	config_destroy(configArchivo);
+	pthread_exit(0);
 }
 
 int main() {
