@@ -96,7 +96,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	memcpy(bufferRegistro + desplazamiento, &largoDeNombreTabla, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Nombre de tabla
-	memcpy(bufferRegistro + desplazamiento, &nombreTabla, sizeof(char)*largoDeNombreTabla);
+	memcpy(bufferRegistro + desplazamiento, nombreTabla, sizeof(char)*largoDeNombreTabla);
 	desplazamiento+= sizeof(char)*largoDeNombreTabla;
 	//Tamaño de timestamp
 	memcpy(bufferRegistro + desplazamiento, &tamanioTimeStamp, tamanioTimeStamp);
@@ -170,7 +170,7 @@ void* serializarOperacion(int unaOperacion, char* stringDeValores) {
 	memcpy(bufferOperacion + desplazamiento, &largoDeStringValue, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//String de valores
-	memcpy(bufferOperacion + desplazamiento, &stringDeValores, sizeof(char)*largoDeStringValue);
+	memcpy(bufferOperacion + desplazamiento, stringDeValores, sizeof(char)*largoDeStringValue);
 	desplazamiento+= sizeof(char)*largoDeStringValue;
 	return bufferOperacion;
 }
