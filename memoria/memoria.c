@@ -84,6 +84,8 @@ void interface(operacion unaOperacion) {
 	}
 }
 
+
+
 char* pruebaDeRecepcion(void* buffer) {
 	int tamanioMensaje;
 	char* mensaje;
@@ -97,6 +99,20 @@ char* pruebaDeRecepcion(void* buffer) {
 	return mensaje;
 }
 
+void* envioDePrueba(char* mensajeAEnviar) {
+
+	int tamanioMensajeAEnviar = strlen(mensajeAEnviar) + 1;
+	int desplazamiento = 0;
+	void *bufferDePrueba = malloc(sizeof(int) + tamanioMensajeAEnviar*sizeof(char));
+
+	memcpy(bufferDePrueba + desplazamiento, &tamanioMensajeAEnviar, sizeof(int));
+	desplazamiento += sizeof(int);
+	memcpy(bufferDePrueba + desplazamiento, mensajeAEnviar, tamanioMensajeAEnviar*sizeof(char));
+	return bufferDePrueba;
+}
+
+
+
 void liberarConfigYLogs(configYLogs *archivos) {
 	log_destroy(archivos->logger);
 	config_destroy(archivos->config);
@@ -105,7 +121,8 @@ void liberarConfigYLogs(configYLogs *archivos) {
 
 void* servidorMemoria(void *arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-	char* ipMemoria = "198.168.0.1";
+	//char* ipMemoria = "198.168.0.1";
+	char* ipMemoria = "127.0.0.1";
 	char* puertoMemoria;
 	puertoMemoria = config_get_string_value(archivosDeConfigYLog->config, "PUERTO");
 	int socketServidorMemoria = crearSocketServidor(ipMemoria,puertoMemoria);
@@ -127,7 +144,7 @@ void* servidorMemoria(void *arg){
 		}
 
 		void* buffer = recibir(socketKernel);
-
+		//void* buffer = envioDePrueba("hola");
 		char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
 
 		log_info(archivosDeConfigYLog->logger, "Recibi: %s", mensaje);
