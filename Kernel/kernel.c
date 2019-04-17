@@ -13,6 +13,7 @@
 #include "conexiones.h"
 #include <commons/config.h>
 #include <pthread.h>
+#include <string.h>
 
 #define CANTIDADCRITERIOS 2 //0-2
 #define STRONG 0
@@ -135,8 +136,10 @@ void* pruebaCliente(){
 	 char* IpMemoria = config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
 	 char* PuertoMemoria = config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
 	 */
-	 int socketClienteKernel = crearSocketCliente("192.168.0.30","8002");
-	 enviar(socketClienteKernel, "hola", 5);
+	 int socketClienteKernel = crearSocketCliente("192.168.0.33","8008");
+	 char* string ="Ornitorrinco";
+	 enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+	 cerrarConexion(socketClienteKernel);
  } //Hacerle el destroy dps
 
 int main(int argc, char *argv[]){
