@@ -6,6 +6,7 @@
  */
 
 #include <readline/readline.h>
+#include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include <inttypes.h>
@@ -87,28 +88,13 @@ void interface(operacion unaOperacion) {
 
 
 char* pruebaDeRecepcion(void* buffer) {
-	int tamanioMensaje;
-	char* mensaje;
-	int desplazamiento = 0;
-	memcpy(&tamanioMensaje, buffer, sizeof(int));
-	desplazamiento += sizeof(int);
-
-	mensaje = malloc(tamanioMensaje*sizeof(char));
-
-	memcpy(mensaje, buffer+desplazamiento, tamanioMensaje*sizeof(char));
-	return mensaje;
+	return (char*) buffer;
 }
 
-void* envioDePrueba(char* mensajeAEnviar) {
+void envioDePrueba(int socketServidor, char* mensajeAEnviar) {
 
 	int tamanioMensajeAEnviar = strlen(mensajeAEnviar) + 1;
-	int desplazamiento = 0;
-	void *bufferDePrueba = malloc(sizeof(int) + tamanioMensajeAEnviar*sizeof(char));
-
-	memcpy(bufferDePrueba + desplazamiento, &tamanioMensajeAEnviar, sizeof(int));
-	desplazamiento += sizeof(int);
-	memcpy(bufferDePrueba + desplazamiento, mensajeAEnviar, tamanioMensajeAEnviar*sizeof(char));
-	return bufferDePrueba;
+	enviar(socketServidor, (void*) mensajeAEnviar, tamanioMensajeAEnviar);
 }
 
 
@@ -119,36 +105,44 @@ void liberarConfigYLogs(configYLogs *archivos) {
 	free(archivos);
 }
 
-void* servidorMemoria(void *arg){
-	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-	char* puertoMemoria;
-	puertoMemoria = config_get_string_value(archivosDeConfigYLog->config, "PUERTO");
-	int socketServidorMemoria = crearSocketServidor(puertoMemoria);
+void *clienteLFS(void* arg) {
+	int socketClienteKernel = crearSocketCliente("192.168.0.34","5008");
+	char* mensaje = (char*) arg;
+	enviar(socketClienteKernel, mensaje, (strlen(mensaje)+1)*sizeof(char));
+	cerrarConexion(socketClienteKernel);
+}
 
-	free(puertoMemoria);
+void *servidorMemoria(void* arg){
+	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+
+	//configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+
+	int socketServidorMemoria = crearSocketServidor("8008");
 
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
 		pthread_exit(0);
 	}
 
+	log_info(archivosDeConfigYLog->logger, "Servidor Memoria en linea");
+
 	while(1){
 		int socketKernel = aceptarCliente(socketServidorMemoria);
 
 		if(socketKernel == -1) {
-			log_error(archivosDeConfigYLog->logger, "Socket Defectuoso");
+			log_info(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			continue;
 		}
 
-		void* buffer = recibir(socketKernel);
 		//void* buffer = envioDePrueba("hola");
-		char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
+		char* mensaje = (char*) recibir(socketKernel); // interface( deserializarOperacion( buffer , 1 ) )
+
+		clienteLFS((void*) mensaje);
 
 		log_info(archivosDeConfigYLog->logger, "Recibi: %s", mensaje);
 
 		free(mensaje);
 		cerrarConexion(socketKernel);
-		free(buffer);
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -160,20 +154,19 @@ int main() {
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
 	archivosDeConfigYLog->config = config_create("memoria.config");
-	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_ERROR);
+	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 
-	servidorMemoria(archivosDeConfigYLog);
-	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
+	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
 	//pthread_create(&threadCliente, NULL, clienteKernel, archivosDeConfigYLog);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, archivosDeConfigYLog);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, archivosDeConfigYLog);
 
-	//pthread_detach(threadServer);
+	pthread_join(threadServer, NULL);
 	//pthread_detach(threadCliente);
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
 
-	liberarConfigYLogs(archivosDeConfigYLog);
+	//liberarConfigYLogs(archivosDeConfigYLog); Esta dando segfault
 	return 0;
 }
 

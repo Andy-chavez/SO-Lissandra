@@ -63,7 +63,6 @@ int crearSocketServidor(char *puerto) {
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-
 	getaddrinfo(NULL, puerto, &hints, &infoDireccionServidor);
 
 		for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next) {
