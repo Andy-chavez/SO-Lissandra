@@ -17,35 +17,28 @@ typedef enum {
 }consistencia;
 
 typedef enum {
-	INSERT,
-	CREATE,
-	DESCRIBETABLE,
-	DESCRIBEALL,
-	DROP,
-	JOURNAL,
-	SELECT,
-	RUN,
-	METRICS,
-	ADD
-}caso;
-
-typedef enum {
 	OPERACIONLQL,
 	PAQUETEREGISTROS,
 	METADATA
 } operacionProtocolo;
 
 typedef struct {
-	operacionProtocolo protocolo;
-	caso casoDeOperacion;
-	char* stringDeValores;
-}operacion;
+  char* operacion;
+  int cantidadParametros;
+  char** parametros; // Hay que alojar memoria dependiendo de la operación!!!
+} operacionLQL
 
 typedef struct {
 	consistencia tipoConsistencia;
 	int cantParticiones;
 	int tiempoCompactacion;
 } metadata;
+
+operacionProtocolo empezarDeserializacion(void *buffer) {
+	operacionProtocolo protocolo;
+	memcpy(&protocolo, buffer, sizeof(int));
+	return protocolo;
+}
 
 registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
 	int desplazamiento = 0;
@@ -120,58 +113,66 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 }
 
 //void *memcpy(void *dest, const void *src, size_t n);
-
-operacion* deserializarOperacion(void* bufferOperacion, int operacionDeProtocolo){
+operacion* deserializarOperacionLQL(void* bufferOperacion){
 	int desplazamiento = 0;
-	int tamanioOperacion,largoStringValue;
-	operacion unaOperacion = sizeof(operacion);
+	int tamanioOperacion,largoParametros,tamanioCantParametros;
+	operacionLQL unaOperacion;
 
 	//deserialice desde el enum al string de valores
+
+	//Agregar memcpy del tamanioCantParametros y Cant Parametros;
 
 	memcpy(&tamanioOperacion,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	memcpy(&(unaOperacion-> casoDeOperacion),bufferOperacion + desplazamiento, sizeof(int));
+	memcpy((unaOperacion-> operacion),bufferOperacion + desplazamiento, sizeof(char)*tamanioOperacion);
+	desplazamiento += sizeof(char)*tamanioOperacion;
+
+	memcpy(&largoDeParametros ,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	memcpy(&largoStringValue,bufferOperacion + desplazamiento, sizeof(int));
-	desplazamiento += sizeof(int);
-
-	memcpy(&(unaOperacion-> stringDeValores),bufferOperacion + desplazamiento, sizeof(char)*largoStringValue);
-	desplazamiento += sizeof(int);
+	memcpy(&(unaOperacion-> parametros),bufferOperacion + desplazamiento, sizeof(char)*largoParametros);
+	desplazamiento += sizeof(char)*largoParametros;
 	return unaOperacion;
 }
 
 /*
  * Serializa una operacion LQL.
  */
-void* serializarOperacion(int unaOperacion, char* stringDeValores) {
+void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	int desplazamiento = 0;
-	int largoDeStringValue = strlen(stringDeValores) + 1;
-	int tamanioOperacion = sizeof(int);
+	int largoParametros = strlen(operacionLQL->parametros) + 1; //Arreglar esto pls
+	int tamanioOperacion = strlen(operacionLQL->operacion) + 1);
+	int tamanioProtocolo = sizeof(int);
+	int tamanioCantidadParametros = sizeof(int);
 	operacionProtocolo protocolo = OPERACIONLQL;
-	int tamanioTotalBuffer = 5*sizeof(int) + sizeof(char)*largoDeStringValue;
+	int tamanioTotalBuffer = 2*sizeof(int) + sizeof(char)*(largoParametros+tamanioOperacion);
 	void *bufferOperacion= malloc(tamanioTotalBuffer);
 
 
 	//Tamaño de operacion Protocolo
-	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, tamanioOperacion);
+	memcpy(bufferOperacion + desplazamiento, &tamanioProtocolo, sizeof(int));
 	desplazamiento += sizeof(int);
 	//Operacion de Protocolo
-	memcpy(bufferOperacion + desplazamiento, &protocolo, tamanioOperacion);
+	memcpy(bufferOperacion + desplazamiento, &protocolo, sizeof(int));
 	desplazamiento+= sizeof(int);
+	//Tamaño de Cantidad de Parametros
+	memcpy(bufferOperacion + desplazamiento, &tamanioCantidadParametros, sizeof(int));
+	desplazamiento+= sizeof(int);
+	//Cantidad de Parametros
+	memcpy(bufferOperacion + desplazamiento, (operacionLQL->cantidadParametros), sizeof(int);
 	//Tamaño de operacion LQL(enum)
-	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, tamanioOperacion);
+	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//enum de operacion LQL
-	memcpy(bufferOperacion + desplazamiento, &unaOperacion, sizeof(int));
+	memcpy(bufferOperacion + desplazamiento, (operacionLQL->operacion), sizeof(char)*tamanioOperacion);
+	desplazamiento+= sizeof(char)*tamanioOperacion;
+	//Tamaño de Parametros
+	memcpy(bufferOperacion + desplazamiento, &largoParametros, sizeof(int));
 	desplazamiento+= sizeof(int);
-	//Tamaño de String de valores
-	memcpy(bufferOperacion + desplazamiento, &largoDeStringValue, sizeof(int));
-	desplazamiento+= sizeof(int);
-	//String de valores
-	memcpy(bufferOperacion + desplazamiento, stringDeValores, sizeof(char)*largoDeStringValue);
-	desplazamiento+= sizeof(char)*largoDeStringValue;
+	//Parametros
+	memcpy(bufferOperacion + desplazamiento, &(operacionLQL->parametros), sizeof(char)*largoParametros);  //Arreglar esto pls
+	desplazamiento+= sizeof(char)*sizeof(char)*largoParametros;
 	return bufferOperacion;
 }
 
