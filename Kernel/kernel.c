@@ -112,7 +112,7 @@ criterio *inicializarCriterios(){
 	}
 	return datos;
 }
-
+/*
 void* pruebaServidor(){
 	 t_config *CONFIG_KERNEL;
 	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
@@ -126,12 +126,25 @@ void* pruebaServidor(){
 		 cerrarConexion(socketCliente);
 	 }
  } //Hacerle el destroy dps
+*/
+
+void* pruebaCliente(){
+	// t_config *CONFIG_KERNEL;
+	 /*
+	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
+	 char* IpMemoria = config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
+	 char* PuertoMemoria = config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
+	 */
+	 int socketClienteKernel = crearSocketCliente("192.168.0.30","8002");
+	 enviar(socketClienteKernel, "hola", 5);
+ } //Hacerle el destroy dps
+
 int main(int argc, char *argv[]){
 	criterio *criterios;
 	criterios = inicializarCriterios();
-	pthread_t threadServer;
-	pthread_create(&threadServer, NULL,pruebaServidor, NULL);
-	pthread_detach(threadServer);
+	pthread_t threadCliente;
+	pthread_create(&threadCliente, NULL,pruebaCliente, NULL);
+	pthread_join(threadCliente, NULL);
 
 	return 0;
 }

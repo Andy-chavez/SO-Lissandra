@@ -9,7 +9,7 @@
 #define CONEXIONES_H_
 
 int crearSocketCliente(char *ip,char *puerto);
-int crearSocketServidor(char *ip, char *puerto);
+int crearSocketServidor(char *puerto);
 int aceptarCliente(int unSocket);
 int cerrarConexion(int unSocket);
 void enviar(int unSocket, void* algoAEnviar, int tamanioAEnviar);
