@@ -16,7 +16,7 @@
 
 // crea un socket para la comunicacion con un servidor (Dado IP y puerto).
 int crearSocketCliente(char *ip, char *puerto) {
-	t_log* logger = log_create("conexiones.h", "log_conexiones.log", 1, LOG_LEVEL_ERROR);
+	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
 
 	int conexionSocket, intentarConexion;
 	struct addrinfo hints, *infoDireccion, *iterLista;
@@ -55,7 +55,7 @@ int crearSocketCliente(char *ip, char *puerto) {
 
 //crea un servidor que se comunicara con los clientes que se conecten a el (dado IP y puerto)
 int crearSocketServidor(char *ip, char *puerto) {
-	t_log* logger = log_create("conexiones.h", "log_conexiones.log", 1, LOG_LEVEL_ERROR);
+	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
 
 	int socketServidor, intentarBindeo;
 	struct addrinfo hints, *infoDireccionServidor, *lista;
@@ -92,7 +92,7 @@ int crearSocketServidor(char *ip, char *puerto) {
 
 // acepta un cliente
 int aceptarCliente(int unSocketDeServidor) {
-	t_log* logger = log_create("conexiones.h", "log_conexiones.log", 1, LOG_LEVEL_ERROR);
+	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
 	struct sockaddr_in direccionCliente;
 	int tamanioDireccion = sizeof(struct sockaddr_in);
 
