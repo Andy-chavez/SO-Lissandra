@@ -15,7 +15,7 @@ typedef enum {
 	SELECT
 } operacion;
 
-operacion parser(char* operacionAParsear) {
+operacion parserGeneral(char* operacionAParsear) {
 	if(string_starts_with(operacionAParsear, "INSERT")) {
 		return INSERT;
 	}
