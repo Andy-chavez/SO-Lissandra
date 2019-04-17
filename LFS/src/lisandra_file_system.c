@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
 
 	pthread_create(&threadServer, NULL, servidorLisandra, (void*) archivosDeConfigYLog);
 
-	pthread_join(threadServer);
+	pthread_join(threadServer,NULL);
 	//servidorLisandra(archivosDeConfigYLog);
 
 	liberarConfigYLogs(archivosDeConfigYLog);
