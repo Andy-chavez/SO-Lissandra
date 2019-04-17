@@ -121,13 +121,10 @@ void liberarConfigYLogs(configYLogs *archivos) {
 
 void* servidorMemoria(void *arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-	//char* ipMemoria = "198.168.0.1";
-	char* ipMemoria = "127.0.0.1";
 	char* puertoMemoria;
 	puertoMemoria = config_get_string_value(archivosDeConfigYLog->config, "PUERTO");
-	int socketServidorMemoria = crearSocketServidor(ipMemoria,puertoMemoria);
+	int socketServidorMemoria = crearSocketServidor(puertoMemoria);
 
-	free(ipMemoria);
 	free(puertoMemoria);
 
 	if(socketServidorMemoria == -1) {
@@ -165,12 +162,13 @@ int main() {
 	archivosDeConfigYLog->config = config_create("memoria.config");
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_ERROR);
 
-	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
+	servidorMemoria(archivosDeConfigYLog);
+	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
 	//pthread_create(&threadCliente, NULL, clienteKernel, archivosDeConfigYLog);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, archivosDeConfigYLog);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, archivosDeConfigYLog);
 
-	pthread_detach(threadServer);
+	//pthread_detach(threadServer);
 	//pthread_detach(threadCliente);
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
