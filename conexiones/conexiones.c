@@ -53,8 +53,8 @@ int crearSocketCliente(char *ip, char *puerto) {
 	return conexionSocket;
 }
 
-//crea un servidor que se comunicara con los clientes que se conecten a el (dado IP y puerto)
-int crearSocketServidor(char *ip, char *puerto) {
+//crea un servidor que se comunicara con los clientes que se conecten a el (puerto)
+int crearSocketServidor(char *puerto) {
 	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
 
 	int socketServidor, intentarBindeo;
@@ -62,8 +62,9 @@ int crearSocketServidor(char *ip, char *puerto) {
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(ip, puerto, &hints, &infoDireccionServidor);
+	getaddrinfo(NULL, puerto, &hints, &infoDireccionServidor);
 
 		for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next) {
 			//errores de conexion
