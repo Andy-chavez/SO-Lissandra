@@ -1,0 +1,21 @@
+EJEMPLO metadata de tabla
+	TIPO_CONSISTENCIA = SC/SH/EC
+	NUMERO_PARTICIONES = 3
+	COMPACTION_TIME =6000
+
+EJEMPLO METADATA DE FS
+	BLOCK_SIZE = 64
+	BLOCKS = 5192
+	MAGIC_NUMBER = "LFS"
+
+typedef struct {
+	consistencia tipoConsistencia;
+	int cantParticiones;
+	int tiempoCompactacion;
+} metadata;
+// estas dos estructuras no se envian, son archivos, para que definir struct?
+typedef struct {
+	int blockSize;
+	int blocks;
+	char* magicNumber; //es siempre string lisandra?
+} metadataFS;*/

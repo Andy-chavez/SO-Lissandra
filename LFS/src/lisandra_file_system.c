@@ -14,6 +14,11 @@
 #include<readline/readline.h>
 #include <time.h>
 #include <commons/string.h>
+#include <pthread.h>
+#include <commons/config.h>
+#include <commons/log.h>
+#include "conexiones.h"
+
 
 #define CANTPARTICIONES 5 // esto esta en el metadata
 
@@ -35,11 +40,27 @@ typedef enum {
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
-	void* value;  //no seria siempre un char*?
+	char* value;  //no seria siempre un char*?
+	struct registro *sigRegistro;
+} registroLisandra;
+
+typedef struct {
+	time_t timestamp;
+	u_int16_t key;
+	char* value;  //no seria siempre un char*?
 } registro;
 
 typedef struct {
-	registro *registros;
+	int numeroBloque;
+	int sizeDeBloque;
+
+} bloque;
+
+typedef struct {
+	int size;
+	int numeroParticion; // para saber que keys estan ahi,por el modulo
+	registroLisandra *registros;
+	bloque block[/*CANTIDADBLOQUES*/];
 } particion;
 
 typedef struct {
@@ -49,15 +70,10 @@ typedef struct {
 } metadata;
 
 typedef struct {
-	int blockSize;
-	int blocks;
-	char* magicNumber; //es siempre string lisandra?
-} metadataFS;
-
-typedef struct {
 	char* nombre;
-	metadata* metadataAsociada;
-	particion particiones[CANTPARTICIONES];
+	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
+	consistencia tipoDeConsistencia;
+	metadata *metadataAsociada;
 } tabla;
 
 void api(casos caso){
@@ -87,8 +103,42 @@ void api(casos caso){
 	}
 }
 
+
+
+void agregarRegistro(tabla unaTabla,registro unRegistro){
+
+}
+
+void* pruebaServidor(){
+	 t_config *CONFIG_LISANDRA;
+	 CONFIG_LISANDRA = config_create("ejemploConfig");//A modificar esto dependiendo del config que se quiera usar
+	 char* IpLisandra;
+	 IpLisandra= config_get_string_value(CONFIG_LISANDRA ,"IP_LISANDRA");
+	 char* PuertoLisandra;
+	 PuertoLisandra= config_get_string_value(CONFIG_LISANDRA ,"PUERTO_ESCUCHA");
+	 int socketServidor = crearSocketServidor(IpLisandra,PuertoLisandra);
+	 while(1){
+		 int socketCliente = aceptarCliente(socketServidor);
+		 cerrarConexion(socketCliente);
+	 }
+	 //config_destroy(CONFIG_LISANDRA);
+
+}
+
+void iniciar_logger(void)
+{
+	t_log *loggerLisandra;
+	loggerLisandra = log_create("tp0.log","tp0.c",1,LOG_LEVEL_INFO);
+	log_info(loggerLisandra,"el mensaje");
+}
+
 int main(int argc, char* argv[]) {
 
+	iniciar_logger();
+	pthread_t threadServer;
+	pthread_create(&threadServer, NULL,pruebaServidor, NULL);
+	pthread_detach(threadServer);
+	//destruirLogYConfig();
 	return EXIT_SUCCESS;
 }
 
