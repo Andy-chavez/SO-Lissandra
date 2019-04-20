@@ -51,6 +51,11 @@ typedef struct {
 } registro;
 
 typedef struct {
+	t_config* config;
+	t_log* logger;
+} configYLogs;
+
+typedef struct {
 	int numeroBloque;
 	int sizeDeBloque;
 
@@ -105,40 +110,75 @@ void api(casos caso){
 
 
 
-void agregarRegistro(tabla unaTabla,registro unRegistro){
+//void agregarRegistro(tabla unaTabla,registro unRegistro){
+//
+//}
+
+void* servidorLisandra(void *arg){
+	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+	char* puertoLisandra = "5008";
+	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
+	//char* ipLisandra = config_get_string_value(archivosDeConfigYLog->config, "IP_LISANDRA");
+	int socketServidorLisandra = crearSocketServidor(puertoLisandra);
+
+//	free(ipMemoria);
+//	free(puertoMemoria);
+	if(socketServidorLisandra == -1) {
+		cerrarConexion(socketServidorLisandra);
+		pthread_exit(0);
+	}
+
+	while(1){
+		int socketMemoria = aceptarCliente(socketServidorLisandra);
+
+		if(socketMemoria == -1) {
+			log_error(archivosDeConfigYLog->logger, "Socket Defectuoso");
+			continue;
+		}
+
+		char* buffer = (char*)recibir(socketMemoria);
+
+		//char* mensaje = "hola";
+
+		//int tamanio = strlen(mensaje) + 1;
+
+		//enviar(socketMemoria,(void*) mensaje,tamanio);
+		//char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
+
+		log_info(archivosDeConfigYLog->logger, "Recibi: %s", buffer);
+
+		free(buffer);
+		cerrarConexion(socketMemoria);
+	}
+
+	cerrarConexion(socketServidorLisandra);
 
 }
 
-void* pruebaServidor(){
-	 t_config *CONFIG_LISANDRA;
-	 CONFIG_LISANDRA = config_create("ejemploConfig");//A modificar esto dependiendo del config que se quiera usar
-	 char* IpLisandra;
-	 IpLisandra= config_get_string_value(CONFIG_LISANDRA ,"IP_LISANDRA");
-	 char* PuertoLisandra;
-	 PuertoLisandra= config_get_string_value(CONFIG_LISANDRA ,"PUERTO_ESCUCHA");
-	 int socketServidor = crearSocketServidor(IpLisandra,PuertoLisandra);
-	 while(1){
-		 int socketCliente = aceptarCliente(socketServidor);
-		 cerrarConexion(socketCliente);
-	 }
-	 //config_destroy(CONFIG_LISANDRA);
-
+void liberarConfigYLogs(configYLogs *archivos) {
+	log_destroy(archivos->logger);
+	config_destroy(archivos->config);
+	free(archivos);
 }
 
-void iniciar_logger(void)
-{
-	t_log *loggerLisandra;
-	loggerLisandra = log_create("tp0.log","tp0.c",1,LOG_LEVEL_INFO);
-	log_info(loggerLisandra,"el mensaje");
-}
 
 int main(int argc, char* argv[]) {
 
-	iniciar_logger();
+//	iniciar_logger();
 	pthread_t threadServer;
-	pthread_create(&threadServer, NULL,pruebaServidor, NULL);
-	pthread_detach(threadServer);
-	//destruirLogYConfig();
+//	pthread_detach(threadServer);
+	//pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
+	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
+
+	archivosDeConfigYLog->config = config_create("LISANDRA.CONFIG");
+	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+
+	pthread_create(&threadServer, NULL, servidorLisandra, (void*) archivosDeConfigYLog);
+
+	pthread_join(threadServer,NULL);
+	//servidorLisandra(archivosDeConfigYLog);
+
+	liberarConfigYLogs(archivosDeConfigYLog);
 	return EXIT_SUCCESS;
 }
 
