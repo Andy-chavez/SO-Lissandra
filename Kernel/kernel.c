@@ -13,6 +13,7 @@
 #include "conexiones.h"
 #include <commons/config.h>
 #include <pthread.h>
+#include <string.h>
 
 #define CANTIDADCRITERIOS 2 //0-2
 #define STRONG 0
@@ -112,7 +113,7 @@ criterio *inicializarCriterios(){
 	}
 	return datos;
 }
-
+/*
 void* pruebaServidor(){
 	 t_config *CONFIG_KERNEL;
 	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
@@ -126,12 +127,27 @@ void* pruebaServidor(){
 		 cerrarConexion(socketCliente);
 	 }
  } //Hacerle el destroy dps
+*/
+
+void* pruebaCliente(){
+	// t_config *CONFIG_KERNEL;
+	 /*
+	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
+	 char* IpMemoria = config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
+	 char* PuertoMemoria = config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
+	 */
+	 int socketClienteKernel = crearSocketCliente("192.168.0.33","8008");
+	 char* string ="Ornitorrinco";
+	 enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+	 cerrarConexion(socketClienteKernel);
+ } //Hacerle el destroy dps
+
 int main(int argc, char *argv[]){
 	criterio *criterios;
 	criterios = inicializarCriterios();
-	pthread_t threadServer;
-	pthread_create(&threadServer, NULL,pruebaServidor, NULL);
-	pthread_detach(threadServer);
+	pthread_t threadCliente;
+	pthread_create(&threadCliente, NULL,pruebaCliente, NULL);
+	pthread_join(threadCliente, NULL);
 
 	return 0;
 }
