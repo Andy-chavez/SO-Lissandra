@@ -115,6 +115,7 @@ void *clienteLFS(void* arg) {
 void *servidorMemoria(void* arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 
+
 	//configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 
 	int socketServidorMemoria = crearSocketServidor("8008");
@@ -134,10 +135,12 @@ void *servidorMemoria(void* arg){
 			continue;
 		}
 
+
 		//void* buffer = envioDePrueba("hola");
 		char* mensaje = (char*) recibir(socketKernel); // interface( deserializarOperacion( buffer , 1 ) )
 
 		clienteLFS((void*) mensaje);
+
 
 		log_info(archivosDeConfigYLog->logger, "Recibi: %s", mensaje);
 
