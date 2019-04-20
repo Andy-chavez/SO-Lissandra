@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <string.h>
 
+
 #define CANTIDADCRITERIOS 2 //0-2
 #define STRONG 0
 #define HASH 1
@@ -142,6 +143,19 @@ void* pruebaCliente(){
 	 cerrarConexion(socketClienteKernel);
  } //Hacerle el destroy dps
 
+void* pruebaServidor(){
+	 t_config *CONFIG_KERNEL;
+	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
+	 char* IpKernel;
+	 IpKernel= config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
+	 char* PuertoKernel;
+	 PuertoKernel= config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
+	 int socketServidorKernel = crearSocketServidor(IpKernel,PuertoKernel);
+	 while(1){
+		 int socketCliente = aceptarCliente(socketServidorKernel);
+		 cerrarConexion(socketCliente);
+	 }
+ } //Hacerle el destroy dps
 int main(int argc, char *argv[]){
 	criterio *criterios;
 	criterios = inicializarCriterios();

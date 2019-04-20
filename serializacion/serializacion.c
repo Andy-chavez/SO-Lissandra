@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
+
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
@@ -76,7 +77,9 @@ registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
  * unRegistro: El registro a serializar.
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  */
+
 void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
+
 	int desplazamiento = 0;
 	int largoDeNombreTabla = strlen(nombreTabla) + 1;
 	int largoDeValue = strlen(unRegistro->value) + 1;
@@ -147,6 +150,7 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	int tamanioCantidadParametros = sizeof(int);
 	operacionProtocolo protocolo = OPERACIONLQL;
 	int tamanioTotalBuffer = 2*sizeof(int) + sizeof(char)*(largoParametros+tamanioOperacion);
+
 	void *bufferOperacion= malloc(tamanioTotalBuffer);
 
 
@@ -182,10 +186,12 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	unaMetadata: La metadata a serializar
 */
 void* serializarMetadata(metadata* unMetadata) {
+
 	int desplazamiento = 0;
 	int tamanioDelTipoDeConsistencia = sizeof(int);
 	int tamanioDeCantidadDeParticiones = sizeof(int);
 	int tamanioDelTiempoDeCompactacion = sizeof(int);
+
 	int tamanioProtocolo = sizeof(int);
 	operacionProtocolo protocolo = METADATA;
 	int tamanioTotalDelBuffer = tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion;
@@ -214,6 +220,7 @@ void* serializarMetadata(metadata* unMetadata) {
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 	//Tiempo de compactacion
 	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
+
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 
 	return bufferMetadata;

@@ -39,7 +39,6 @@ int crearSocketCliente(char *ip, char *puerto) {
 
 	//Chequear errores
 	if(conexionSocket == -1) {
-		printf("%s", strerror(errno));
 		log_error(logger, "Hubo un error en la creacion del socket");
 		freeaddrinfo(infoDireccion);
 		return -1;
@@ -59,6 +58,7 @@ int crearSocketCliente(char *ip, char *puerto) {
 int crearSocketServidor(char *puerto) {
 	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
 
+
 	int socketServidor, intentarBindeo;
 	struct addrinfo hints, *infoDireccionServidor, *lista;
 	memset(&hints, 0, sizeof(hints));
@@ -67,6 +67,7 @@ int crearSocketServidor(char *puerto) {
 	hints.ai_flags = AI_PASSIVE;
 
 	getaddrinfo(NULL, puerto, &hints, &infoDireccionServidor);
+
 
 		for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next) {
 			//errores de conexion
