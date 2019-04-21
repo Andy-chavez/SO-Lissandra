@@ -15,8 +15,8 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include "conexiones.h"
-#include "parser.h"
 #include <pthread.h>
+#include "api.h"
 
 #define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config
 
@@ -63,29 +63,6 @@ typedef struct {
 	t_log* logger;
 } configYLogs;
 
-void interface(operacion unaOperacion) {
-	switch(unaOperacion){
-	case INSERT:
-		break;
-	case CREATE:
-		break;
-	case DESCRIBETABLE:
-		break;
-	case DESCRIBEALL:
-		break;
-	case DROP:
-		break;
-	case SELECT:
-		break;
-	case JOURNAL:
-		break;
-	default:
-		printf("JAJAJA");
-		break;
-	}
-}
-
-
 
 char* pruebaDeRecepcion(void* buffer) {
 	return (char*) buffer;
@@ -114,9 +91,6 @@ void *clienteLFS(void* arg) {
 
 void *servidorMemoria(void* arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-
-
-	//configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 
 	int socketServidorMemoria = crearSocketServidor("8008");
 
@@ -156,7 +130,7 @@ int main() {
 	pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
-	archivosDeConfigYLog->config = config_create("memoria.config");
+	archivosDeConfigYLog->config = config_create("../memoria.config");
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 
 	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
