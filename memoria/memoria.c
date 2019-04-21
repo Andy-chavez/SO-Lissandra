@@ -83,16 +83,23 @@ void liberarConfigYLogs(configYLogs *archivos) {
 }
 
 void *clienteLFS(void* arg) {
-	int socketClienteKernel = crearSocketCliente("192.168.0.34","5008");
+	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+
+	char* fileSystemIP = config_get_string_value(archivosDeConfigYLog->config, "IPFILESYSTEM");
+	char* fileSystemPuerto = config_get_string_value(archivosDeConfigYLog->config, "PUERTOFILESYSTEM");
+
+	int socketClienteKernel = crearSocketCliente(fileSystemIP,fileSystemPuerto);
+
 	char* mensaje = (char*) arg;
 	enviar(socketClienteKernel, mensaje, (strlen(mensaje)+1)*sizeof(char));
+
 	cerrarConexion(socketClienteKernel);
 }
 
 void *servidorMemoria(void* arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 
-	int socketServidorMemoria = crearSocketServidor("8008");
+	int socketServidorMemoria = crearSocketServidor(config_get_string_value(archivosDeConfigYLog->config, "PUERTO"));
 
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
@@ -103,7 +110,7 @@ void *servidorMemoria(void* arg){
 
 	while(1){
 		int socketKernel = aceptarCliente(socketServidorMemoria);
-
+//
 		if(socketKernel == -1) {
 			log_info(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			continue;
