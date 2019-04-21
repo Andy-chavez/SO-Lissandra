@@ -25,7 +25,7 @@ typedef enum {
 typedef struct {
   char* operacion;
   int cantidadParametros;
-  char** parametros; // Hay que alojar memoria dependiendo de la operación!!!
+  char** parametros;
 } operacionLQL
 
 typedef struct {
@@ -120,7 +120,11 @@ operacion* deserializarOperacionLQL(void* bufferOperacion){
 
 	//deserialice desde el enum al string de valores
 
-	//Agregar memcpy del tamanioCantParametros y Cant Parametros;
+	memcpy(&tamanioCantParametros,bufferOperacion + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	memcpy((unaOperacion-> cantidadParametros),bufferOperacion + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
 
 	memcpy(&tamanioOperacion,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
@@ -136,17 +140,28 @@ operacion* deserializarOperacionLQL(void* bufferOperacion){
 	return unaOperacion;
 }
 
+int* longitudParametros(operacionLQL*operacionLQL){
+	int longitud = 0;
+	char** parametros = operacionLQL->parametros;
+	for (int i=0; i<(operacionLQL->cantidadParametros); i++){
+		longitud += strlen(parametros);			 //Calcula hasta el primer '\0'
+		parametros += ( strlen(parametros)+1 ) ; //Suma incluyendo el '\0' para poder leer denuevo
+	}
+	return longitud;
+}
+
 /*
  * Serializa una operacion LQL.
  */
+
 void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	int desplazamiento = 0;
-	int largoParametros = strlen(operacionLQL->parametros) + 1; //Arreglar esto pls
-	int tamanioOperacion = strlen(operacionLQL->operacion) + 1);
+	int largoParametros = longitudParametros(operacionLQL) + operacionLQL->cantidadParametros;
+	int tamanioOperacion = strlen(operacionLQL->operacion) + 1;
 	int tamanioProtocolo = sizeof(int);
 	int tamanioCantidadParametros = sizeof(int);
 	operacionProtocolo protocolo = OPERACIONLQL;
-	int tamanioTotalBuffer = 2*sizeof(int) + sizeof(char)*(largoParametros+tamanioOperacion);
+	int tamanioTotalBuffer = 4*sizeof(int) + sizeof(char)*(largoParametros+tamanioOperacion);
 	void *bufferOperacion= malloc(tamanioTotalBuffer);
 
 
@@ -156,11 +171,13 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	//Operacion de Protocolo
 	memcpy(bufferOperacion + desplazamiento, &protocolo, sizeof(int));
 	desplazamiento+= sizeof(int);
+
 	//Tamaño de Cantidad de Parametros
 	memcpy(bufferOperacion + desplazamiento, &tamanioCantidadParametros, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Cantidad de Parametros
 	memcpy(bufferOperacion + desplazamiento, (operacionLQL->cantidadParametros), sizeof(int);
+	desplazamiento+= sizeof(int);
 	//Tamaño de operacion LQL(enum)
 	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, sizeof(int));
 	desplazamiento+= sizeof(int);
@@ -171,8 +188,8 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	memcpy(bufferOperacion + desplazamiento, &largoParametros, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Parametros
-	memcpy(bufferOperacion + desplazamiento, &(operacionLQL->parametros), sizeof(char)*largoParametros);  //Arreglar esto pls
-	desplazamiento+= sizeof(char)*sizeof(char)*largoParametros;
+	memcpy(bufferOperacion + desplazamiento, &(operacionLQL->parametros), sizeof(char)*largoParametros);
+	desplazamiento+= sizeof(char)*largoParametros;
 	return bufferOperacion;
 }
 
