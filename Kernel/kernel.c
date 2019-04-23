@@ -142,7 +142,7 @@ void* pruebaCliente(){
 	 enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
 	 cerrarConexion(socketClienteKernel);
  } //Hacerle el destroy dps
-
+/*
 void* pruebaServidor(){
 	 t_config *CONFIG_KERNEL;
 	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
@@ -156,6 +156,7 @@ void* pruebaServidor(){
 		 cerrarConexion(socketCliente);
 	 }
  } //Hacerle el destroy dps
+ */
 int main(int argc, char *argv[]){
 	criterio *criterios;
 	criterios = inicializarCriterios();
