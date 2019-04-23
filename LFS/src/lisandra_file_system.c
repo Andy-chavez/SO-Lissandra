@@ -8,6 +8,7 @@
  ============================================================================
  */
 
+
 #include <stdio.h>
 #include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
@@ -18,18 +19,9 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include "conexiones.h"
-
+#include "parser.h"
 
 #define CANTPARTICIONES 5 // esto esta en el metadata
-
-typedef enum{
-	SELECT, //Select
-	INSERT, //Insert
-	CREATE, //Create
-	DESCRIBEALL, //Describe All
-	DESCRIBETABLE, //Describe Table
-	DROP //Drop
-}casos;
 
 typedef enum {
 	SC,
@@ -81,33 +73,17 @@ typedef struct {
 	metadata *metadataAsociada;
 } tabla;
 
-void api(casos caso){
-	//leerConsola();
-	switch (caso){
-		case SELECT:
-			//Select
-			break;
-		case INSERT:
-			//Insert
-			break;
-		case CREATE:
-			//Create
-			break;
-		case DESCRIBEALL:
-			//Describe todas las tablas(All)
-			break;
-		case DESCRIBETABLE:
-			//Describe una tabla
-			break;
-		case DROP:
-			//Drop table
-			break;
-		default:
-			printf("Error del header");
-			//agregar al archivo de log
-	}
-}
-
+/* SELECT: FACU , INSERT: PABLO
+ * verificarExistencia(char* nombreTabla); //select e insert. FACU
+ * metadata obtenerMetadata(char* nombreTabla); //select e insert. PABLO
+ * int calcularParticion(int cantidadParticiones, int key); //select e insert. key hay que pasarlo a int. FACU
+ * int leerRegistro(int particion, char* nombreTabla); //te devuelve el key. FACU
+ * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
+ * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
+ * registro devolverRegistroDelFileSystem(int key); //select e insert FACU
+ * Fijarse que te devuelva el timestamp con epoch unix
+ * No olvidar de hacer la comparacion final
+*/
 
 
 //void agregarRegistro(tabla unaTabla,registro unRegistro){
@@ -161,8 +137,30 @@ void liberarConfigYLogs(configYLogs *archivos) {
 	free(archivos);
 }
 
+void* leerConsola() {
+
+	char *linea = NULL;  // forces getline to allocate with malloc
+	    size_t len = 0;     // ignored when line = NULL
+	    ssize_t leerConsola;
+
+	    printf ("Ingresa operacion\n");
+
+	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){
+	    parserGeneral(linea);
+	    }
+
+	    free (linea);  // free memory allocated by getline
+
+
+}
+
 
 int main(int argc, char* argv[]) {
+
+	pthread_t threadLeerConsola;
+    pthread_create(&threadLeerConsola, NULL, leerConsola, NULL);
+    pthread_join(threadLeerConsola,NULL);
+
 
 //	iniciar_logger();
 	pthread_t threadServer;
