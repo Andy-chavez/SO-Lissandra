@@ -56,7 +56,7 @@ void kernel_api(char* operacionAParsear, char* argumentos)
 				printf("JOURNAL\n");
 		}
 		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
-				printf("RUN\n");
+				printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
 			}
 		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
 				printf("METRICS\n");
