@@ -7,98 +7,59 @@
  Description :
  ============================================================================
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "conexiones.h"
 #include <commons/config.h>
+#include <commons/string.h>
 #include <pthread.h>
 #include <string.h>
-
+#include "structs-basicos.h"
 
 #define CANTIDADCRITERIOS 2 //0-2
 #define STRONG 0
 #define HASH 1
 #define EVENTUAL 2
 
-typedef enum {
-	SC, // UNA
-	SH, // MUCHAS
-	EC  // MUCHAS
-}criterios;
-
-typedef struct{
-	int numeroDeMemoria;
-	criterios *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
-}memoria;
-
-typedef struct{
-	criterios unCriterio;
-	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
-}criterio;
-
-typedef struct{
-	char* nombreDeTabla;
-	criterios criterioDeTabla;
-}tabla; //ver si es necesario agregar algo mas
-
-typedef enum {
-	INSERT,
-	CREATE,
-	DESCRIBETABLE,
-	DESCRIBEALL,
-	DROP,
-	JOURNAL,
-	SELECT,
-	RUN,
-	METRICS,
-	ADD
-}caso;
-
-void interfaz(caso UN_CASO);
+void kernel_api(char*);
 criterio *inicializarCriterios();
 
-void interfaz(caso UN_CASO) //Cada aso deberia verse para luego implementarse
+void kernel_api(char* operacionAParsear)
 {
-	switch(UN_CASO){
-	case SELECT:
-		printf("Caso a implementar INSERT");
-		break;
-	case INSERT:
-		printf("Caso a implementar INSERT");
-		break;
-	case CREATE:
-		printf("Caso a implementar CREATE");
-		break;
-	case DESCRIBETABLE:
-		printf("Caso a implementar DESCRIBE TABLE");
-		break;
-	case DESCRIBEALL:
-		printf("Caso a implementar DESCRIBE ALL");
-		break;
-	case DROP:
-		printf("Caso a implementar DROP");
-		break;
-	case RUN:
-		printf("Caso a implementar RUN");
-		break;
-	case JOURNAL:
-		printf("Caso a implementar JOURNAL");
-		break;
-	case ADD:
-		printf("Caso a implementar ADD");
-		break;
-	case METRICS:
-		printf("Caso a implementar ADD");
-		break;
-	default:
-		break;
-
-	}
+	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+			printf("INSERT\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+			printf("SELECT\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
+			printf("DESCRIBE\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
+			printf("CREATE\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
+			printf("DROP\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "JOURNAL")) {
+				printf("JOURNAL\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
+				printf("RUN\n");
+			}
+		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
+				printf("METRICS\n");
+			}
+		else if (string_equals_ignore_case(operacionAParsear, "ADD")) {
+				printf("ADD\n");
+			}
+		else {
+			printf("No pude entender la operacion");
+		}
 }
 
 /*
-void roundRobinQuantumModificable(int quantum){
+void kernel_planificador(int quantum){
 
 }
 */
@@ -114,54 +75,23 @@ criterio *inicializarCriterios(){
 	}
 	return datos;
 }
-/*
-void* pruebaServidor(){
-	 t_config *CONFIG_KERNEL;
-	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
-	 char* IpKernel;
-	 IpKernel= config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
-	 char* PuertoKernel;
-	 PuertoKernel= config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
-	 int socketServidorKernel = crearSocketServidor(IpKernel,PuertoKernel);
-	 while(1){
-		 int socketCliente = aceptarCliente(socketServidorKernel);
-		 cerrarConexion(socketCliente);
-	 }
- } //Hacerle el destroy dps
-*/
 
-void* pruebaCliente(){
-	// t_config *CONFIG_KERNEL;
-	 /*
-	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
-	 char* IpMemoria = config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
-	 char* PuertoMemoria = config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
-	 */
-	 int socketClienteKernel = crearSocketCliente("192.168.0.33","8008");
-	 char* string ="Ornitorrinco";
-	 enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
-	 cerrarConexion(socketClienteKernel);
- } //Hacerle el destroy dps
-/*
-void* pruebaServidor(){
-	 t_config *CONFIG_KERNEL;
-	 CONFIG_KERNEL = config_create("KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
-	 char* IpKernel;
-	 IpKernel= config_get_string_value(CONFIG_KERNEL ,"IP_KERNEL");
-	 char* PuertoKernel;
-	 PuertoKernel= config_get_string_value(CONFIG_KERNEL ,"PUERTO_KERNEL");
-	 int socketServidorKernel = crearSocketServidor(IpKernel,PuertoKernel);
-	 while(1){
-		 int socketCliente = aceptarCliente(socketServidorKernel);
-		 cerrarConexion(socketCliente);
-	 }
- } //Hacerle el destroy dps
- */
+void* kernel_cliente(){
+	t_config *CONFIG_KERNEL;
+	 CONFIG_KERNEL = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
+	 char* IpMemoria = config_get_string_value(CONFIG_KERNEL ,"IP_MEMORIA");
+	 char* PuertoMemoria = config_get_string_value(CONFIG_KERNEL ,"PUERTO_MEMORIA");
+	 int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+	 //aca tengo dudas de si dejar ese enviar o si puedo salir de la funcion
+	 //enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+	 cerrarConexion(socketClienteKernel); //Deberia de cerrar conexion?
+ }
+
 int main(int argc, char *argv[]){
-	criterio *criterios;
-	criterios = inicializarCriterios();
+//	criterio *criterios;
+//	criterios = inicializarCriterios();
 	pthread_t threadCliente;
-	pthread_create(&threadCliente, NULL,pruebaCliente, NULL);
+	pthread_create(&threadCliente, NULL,kernel_cliente, NULL);
 	pthread_join(threadCliente, NULL);
 
 	return 0;
