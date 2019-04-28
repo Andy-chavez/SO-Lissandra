@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
+#include <unistd.h> //mirar clave ACCESS para verificar existencia
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -63,7 +64,7 @@ typedef struct {
 
 typedef struct {
 	char* nombre;
-	char* rutaTabla; //de la forma Punto_Montaje/Tables/Nombre_tabla
+	char* rutaTabla; //de la forma Punto_Montaje/Tables/Nombre_tabla, quizas es sin punto_montaje que lo deberias asignar despues
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
 	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
@@ -81,6 +82,7 @@ metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta
 
 
 int verificarExistenciaTabla(char* rutaTabla){
+	char* puntoMontaje= config_get_string_value(g_config,"PUNTO_MONTAJE");
 
 }
 
