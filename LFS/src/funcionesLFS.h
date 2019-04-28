@@ -89,7 +89,7 @@ int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg){
 	//char* puntoMontaje = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/";
 	char* rutaDirectorio= string_new();
 	//puts("estoy por salir");
-	string_append(&rutaDirectorio,puntoMontaje);
+	string_append(&rutaDirectorio,puntoMontaje); //OJO ACA HAY QUE VER QUE EN EL CONFIG NO TE VENGA CON "" EL PUNTO DE MONTAJE
 	string_append(&rutaDirectorio,rutaTabla);
 	printf("%s\n",rutaDirectorio);
 	struct stat sb;
