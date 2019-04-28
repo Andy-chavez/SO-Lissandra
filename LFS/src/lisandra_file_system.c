@@ -115,6 +115,8 @@ metadata obtenerMetadata(char* nombreTabla){
 	unaMetadata.tipoConsistencia = tipoConsistencia;
 	unaMetadata.tiempoCompactacion = tiempoCompactacion;
 
+	free(ruta);
+
 	return unaMetadata;
 
 
