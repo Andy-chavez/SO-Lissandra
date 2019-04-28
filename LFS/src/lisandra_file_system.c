@@ -90,6 +90,37 @@ typedef struct {
 //
 //}
 
+metadata obtenerMetadata(char* nombreTabla){
+	t_config* configMetadata;
+	int cantParticiones;
+	int tiempoCompactacion;
+	consistencia tipoConsistencia;
+	metadata unaMetadata;
+	char* str1 = "../src/Directorio/";
+	char* str2 = "/metadata";
+
+	char* ruta = (char *) malloc(1 + strlen(str1) + strlen(str2) + strlen(nombreTabla));
+	strcpy(ruta, str1);
+	strcat(ruta, nombreTabla);
+	strcat(ruta, str2);
+
+	configMetadata = config_create(ruta);
+
+	cantParticiones = atoi(config_get_string_value(configMetadata, "PARTITIONS"));
+	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
+	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY"));
+	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTACION_TIME"));
+
+	unaMetadata.cantParticiones = cantParticiones;
+	unaMetadata.tipoConsistencia = tipoConsistencia;
+	unaMetadata.tiempoCompactacion = tiempoCompactacion;
+
+	return unaMetadata;
+
+
+}
+
+
 void* servidorLisandra(void *arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 	char* puertoLisandra = "5008";
@@ -139,23 +170,25 @@ void liberarConfigYLogs(configYLogs *archivos) {
 
 void* leerConsola() {
 
-	char *linea = NULL;  // forces getline to allocate with malloc
+		char *linea = NULL;  // forces getline to allocate with malloc
 	    size_t len = 0;     // ignored when line = NULL
 	    ssize_t leerConsola;
 
 	    printf ("Ingresa operacion\n");
 
-	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){
+	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
 	    parserGeneral(linea);
 	    }
 
 	    free (linea);  // free memory allocated by getline
-
-
 }
 
 
 int main(int argc, char* argv[]) {
+
+	obtenerMetadata("tablaA");
+	leerConsola();
+
 
 	pthread_t threadLeerConsola;
     pthread_create(&threadLeerConsola, NULL, leerConsola, NULL);
@@ -163,9 +196,13 @@ int main(int argc, char* argv[]) {
 
 
 //	iniciar_logger();
+
+	/*
 	pthread_t threadServer;
 //	pthread_detach(threadServer);
 	//pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
+
+
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
 	archivosDeConfigYLog->config = config_create("LISANDRA.CONFIG");
@@ -177,6 +214,8 @@ int main(int argc, char* argv[]) {
 	//servidorLisandra(archivosDeConfigYLog);
 
 	liberarConfigYLogs(archivosDeConfigYLog);
+
+	*/
 	return EXIT_SUCCESS;
 }
 
