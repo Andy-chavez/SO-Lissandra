@@ -63,19 +63,24 @@ typedef struct {
 
 typedef struct {
 	char* nombre;
-	char* rutaTabla;
+	char* rutaTabla; //de la forma Punto_Montaje/Tables/Nombre_tabla
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
-	metadata *metadataAsociada;
+	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
 } tabla;
 
+t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+t_config* g_config= config_create("LISANDRA.CONFIG"); //Por ahora lo dejo global deberiamos ver despues
 
+
+//Funciones
 
 int verificarExistenciaTabla(char* rutaTabla);
-metadata obtenerMetadata(char* nombreTabla);
+metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi busca el metadata
+											// Punto_Montaje/Tables/Nombre_tabla/Metadata
 
 
-int verificarExistenciaTabla(char* nombreTabla){
+int verificarExistenciaTabla(char* rutaTabla){
 
 }
 
