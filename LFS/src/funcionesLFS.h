@@ -19,12 +19,17 @@
  * No olvidar de hacer la comparacion final
 */
 #define CANTPARTICIONES 5 // esto esta en el metadata
-
+pthread_mutex_t mutexLog;
 typedef enum {
 	SC,
 	SH,
 	EC
 }consistencia;
+
+typedef struct {
+	t_config* config;
+	t_log* logger;
+} configYLogs;
 
 typedef struct {
 	time_t timestamp;
@@ -61,9 +66,9 @@ typedef struct {
 typedef struct {
 	char* nombre;
 	char* rutaTabla; //de la forma Tables/Nombre_tabla, quizas es sin punto_montaje que lo deberias asignar despues
-	//particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
-	//consistencia tipoDeConsistencia;
-	//metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
+	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
+	consistencia tipoDeConsistencia;
+	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
 } tabla;
 
 //t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
@@ -72,33 +77,38 @@ typedef struct {
 
 //Funciones
 
-int verificarExistenciaDirectorioTabla(char* rutaTabla);
+int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi busca el metadata
 											// Punto_Montaje/Tables/Nombre_tabla/Metadata
 
 
-int verificarExistenciaDirectorioTabla(char* rutaTabla){
+int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg){
 	int validacion;
-	//char* puntoMontaje= config_get_string_value(g_config,"PUNTO_MONTAJE");
-	char* puntoMontaje = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/";
+	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
+	//char* puntoMontaje = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/";
 	char* rutaDirectorio= string_new();
+	//puts("estoy por salir");
 	string_append(&rutaDirectorio,puntoMontaje);
 	string_append(&rutaDirectorio,rutaTabla);
+	printf("%s\n",rutaDirectorio);
 	struct stat sb;
+	//pthread_mutex_lock(&mutexLog);
+	log_info(archivosDeConfigYLog->logger,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
 	    if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
 	    {
+	    	log_info(archivosDeConfigYLog->logger,"La tabla existe en el FS");
+	    	//pthread_mutex_unlock(&mutexLog); revisar tema semaforos creo que me esta quedando muy grande la region critica,nose si son tan necesarios en este caso
 	    	printf("existe la tabla en la direccion");
 	    	validacion=1;
-	    	return validacion;
-	    	//log_info(g_logger,"La tabla existe en el FS");
 	    }
 	    else
 	    {
-	    	validacion =0;
-	    	printf("No se ha encontrado el directorio de la tabla en la ruta %s",rutaDirectorio);
-	    	//log_info(g_logger,"La tabla existe en el FS");
+	    	log_info(archivosDeConfigYLog->logger,"Error no existe tabla en ruta indicada %s",rutaDirectorio);
+	    	//pthread_mutex_unlock(&mutexLog);
+	    	validacion=0;
+	    	printf("No se ha encontrado el directorio de la tabla en la ruta: %s",rutaDirectorio);
 	    }
-	//log_info(g_logger,"Verificando existencia de la tabla en la ruta %s",rutaFinal);
 	free(rutaDirectorio);
 	return validacion;
 }

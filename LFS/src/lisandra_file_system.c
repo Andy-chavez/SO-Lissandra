@@ -43,10 +43,10 @@
 //	char* value;  //no seria siempre un char*?
 //} registro;
 //
-typedef struct {
-	t_config* config;
-	t_log* logger;
-} configYLogs;
+//typedef struct {
+//	t_config* config;
+//	t_log* logger;
+//} configYLogs;
 
 //
 //typedef struct {
@@ -155,12 +155,20 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 	//obtenerMetadata("tablaA");
+	pthread_mutex_init(&mutexLog,NULL);
 	char* rutaTabla="Tables/Tabla1";
-	verificarExistenciaDirectorioTabla(rutaTabla);
-	pthread_t threadLeerConsola;
-    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
-    pthread_join(threadLeerConsola,NULL);
+	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
+	archivosDeConfigYLog->config = config_create("../lisandra.config");
+	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+
+	int existeTabla= verificarExistenciaDirectorioTabla(rutaTabla,archivosDeConfigYLog); //devuelve un int
+//	pthread_t threadLeerConsola;
+//    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
+//    pthread_join(threadLeerConsola,NULL);
+//
+//    pthread_mutex_destroy(&mutexLog);
+//    liberarConfigYLogs(archivosDeConfigYLog);
 	/*
 	pthread_t threadServer ; //habria que ver tambien thread dumping.
 
