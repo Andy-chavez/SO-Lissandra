@@ -20,58 +20,60 @@
 #include <commons/log.h>
 #include "conexiones.h"
 #include "parser.h"
+#include "funcionesLFS.h"
 
-#define CANTPARTICIONES 5 // esto esta en el metadata
-
-typedef enum {
-	SC,
-	SH,
-	EC
-}consistencia;
-
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;  //no seria siempre un char*?
-	struct registro *sigRegistro;
-} registroLisandra;
-
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;  //no seria siempre un char*?
-} registro;
-
+//#define CANTPARTICIONES 5 // esto esta en el metadata
+//
+//typedef enum {
+//	SC,
+//	SH,
+//	EC
+//}consistencia;
+//
+//typedef struct {
+//	time_t timestamp;
+//	u_int16_t key;
+//	char* value;  //no seria siempre un char*?
+//	struct registro *sigRegistro;
+//} registroLisandra;
+//
+//typedef struct {
+//	time_t timestamp;
+//	u_int16_t key;
+//	char* value;  //no seria siempre un char*?
+//} registro;
+//
 typedef struct {
 	t_config* config;
 	t_log* logger;
 } configYLogs;
 
-typedef struct {
-	int numeroBloque;
-	int sizeDeBloque;
-
-} bloque;
-
-typedef struct {
-	int size;
-	int numeroParticion; // para saber que keys estan ahi,por el modulo
-	registroLisandra *registros;
-	bloque block[/*CANTIDADBLOQUES*/];
-} particion;
-
-typedef struct {
-	consistencia tipoConsistencia;
-	int cantParticiones;
-	int tiempoCompactacion;
-} metadata;
-
-typedef struct {
-	char* nombre;
-	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
-	consistencia tipoDeConsistencia;
-	metadata *metadataAsociada;
-} tabla;
+//
+//typedef struct {
+//	int numeroBloque;
+//	int sizeDeBloque;
+//
+//} bloque;
+//
+//typedef struct {
+//	int size;
+//	int numeroParticion; // para saber que keys estan ahi,por el modulo
+//	registroLisandra *registros;
+//	bloque block[/*CANTIDADBLOQUES*/];
+//} particion;
+//
+//typedef struct {
+//	consistencia tipoConsistencia;
+//	int cantParticiones;
+//	int tiempoCompactacion;
+//} metadata;
+//
+//typedef struct {
+//	char* nombre;
+//	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
+//	consistencia tipoDeConsistencia;
+//	metadata *metadataAsociada;
+//} tabla;
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -85,42 +87,6 @@ typedef struct {
  * No olvidar de hacer la comparacion final
 */
 
-
-//void agregarRegistro(tabla unaTabla,registro unRegistro){
-//
-//}
-
-metadata obtenerMetadata(char* nombreTabla){
-	t_config* configMetadata;
-	int cantParticiones;
-	int tiempoCompactacion;
-	consistencia tipoConsistencia;
-	metadata unaMetadata;
-	char* str1 = "../src/Directorio/";
-	char* str2 = "/metadata";
-
-	char* ruta = (char *) malloc(1 + strlen(str1) + strlen(str2) + strlen(nombreTabla));
-	strcpy(ruta, str1);
-	strcat(ruta, nombreTabla);
-	strcat(ruta, str2);
-
-	configMetadata = config_create(ruta);
-
-	cantParticiones = atoi(config_get_string_value(configMetadata, "PARTITIONS"));
-	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
-	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY"));
-	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTACION_TIME"));
-
-	unaMetadata.cantParticiones = cantParticiones;
-	unaMetadata.tipoConsistencia = tipoConsistencia;
-	unaMetadata.tiempoCompactacion = tiempoCompactacion;
-
-	free(ruta);
-
-	return unaMetadata;
-
-
-}
 
 
 void* servidorLisandra(void *arg){
@@ -188,14 +154,13 @@ void* leerConsola() {
 
 int main(int argc, char* argv[]) {
 
-	obtenerMetadata("tablaA");
-	leerConsola();
-
-
+	//obtenerMetadata("tablaA");
+	//leerConsola();
+//	char* rutaTabla="Tables/Tabla1";
+//	verificarExistenciaDirectorioTabla(rutaTabla);
 	pthread_t threadLeerConsola;
     pthread_create(&threadLeerConsola, NULL, leerConsola, NULL);
     pthread_join(threadLeerConsola,NULL);
-
 
 //	iniciar_logger();
 

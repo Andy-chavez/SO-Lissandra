@@ -5,6 +5,7 @@
 #include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
 #include <unistd.h> //mirar clave ACCESS para verificar existencia
+#include <sys/stat.h> //para ver si existe un directorio
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -39,11 +40,6 @@ typedef struct {
 } registro;
 
 typedef struct {
-	t_config* config;
-	t_log* logger;
-} configYLogs;
-
-typedef struct {
 	int numeroBloque;
 	int sizeDeBloque;
 
@@ -64,26 +60,47 @@ typedef struct {
 
 typedef struct {
 	char* nombre;
-	char* rutaTabla; //de la forma Punto_Montaje/Tables/Nombre_tabla, quizas es sin punto_montaje que lo deberias asignar despues
+	char* rutaTabla; //de la forma Tables/Nombre_tabla, quizas es sin punto_montaje que lo deberias asignar despues
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
 	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
 } tabla;
 
-t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
-t_config* g_config= config_create("LISANDRA.CONFIG"); //Por ahora lo dejo global deberiamos ver despues
+//t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+//t_config* g_config= config_create("LISANDRA.CONFIG"); //Por ahora lo dejo global deberiamos ver despues, y habria que liberarlos
 
 
 //Funciones
 
-int verificarExistenciaTabla(char* rutaTabla);
+int verificarExistenciaDirectorioTabla(char* rutaTabla);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi busca el metadata
 											// Punto_Montaje/Tables/Nombre_tabla/Metadata
 
 
-int verificarExistenciaTabla(char* rutaTabla){
-	char* puntoMontaje= config_get_string_value(g_config,"PUNTO_MONTAJE");
-
+int verificarExistenciaDirectorioTabla(char* rutaTabla){
+	int validacion;
+	//char* puntoMontaje= config_get_string_value(g_config,"PUNTO_MONTAJE");
+	char* puntoMontaje = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/";
+	char* rutaDirectorio= string_new();
+	string_append(&rutaDirectorio,puntoMontaje);
+	string_append(&rutaDirectorio,rutaTabla);
+	struct stat sb;
+	    if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
+	    {
+	    	printf("existe la tabla en la direccion");
+	    	validacion=1;
+	    	return validacion;
+	    	//log_info(g_logger,"La tabla existe en el FS");
+	    }
+	    else
+	    {
+	    	validacion =0;
+	    	printf("No se ha encontrado el directorio de la tabla en la ruta %s",rutaDirectorio);
+	    	//log_info(g_logger,"La tabla existe en el FS");
+	    }
+	//log_info(g_logger,"Verificando existencia de la tabla en la ruta %s",rutaFinal);
+	free(rutaDirectorio);
+	return validacion;
 }
 
 metadata obtenerMetadata(char* nombreTabla){
