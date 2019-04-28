@@ -136,7 +136,7 @@ void liberarConfigYLogs(configYLogs *archivos) {
 	free(archivos);
 }
 
-void* leerConsola() {
+void leerConsola() {
 
 		char *linea = NULL;  // forces getline to allocate with malloc
 	    size_t len = 0;     // ignored when line = NULL
@@ -155,19 +155,14 @@ void* leerConsola() {
 int main(int argc, char* argv[]) {
 
 	//obtenerMetadata("tablaA");
-	//leerConsola();
-//	char* rutaTabla="Tables/Tabla1";
-//	verificarExistenciaDirectorioTabla(rutaTabla);
+	char* rutaTabla="Tables/Tabla1";
+	verificarExistenciaDirectorioTabla(rutaTabla);
 	pthread_t threadLeerConsola;
-    pthread_create(&threadLeerConsola, NULL, leerConsola, NULL);
+    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
     pthread_join(threadLeerConsola,NULL);
 
-//	iniciar_logger();
-
 	/*
-	pthread_t threadServer;
-//	pthread_detach(threadServer);
-	//pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
+	pthread_t threadServer ; //habria que ver tambien thread dumping.
 
 
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
