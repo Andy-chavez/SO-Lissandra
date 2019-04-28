@@ -93,10 +93,10 @@ metadata obtenerMetadata(char* nombreTabla){
 	char* str1 = "../src/Directorio/";
 	char* str2 = "/metadata";
 
-	char* ruta = (char *) malloc(1 + strlen(str1) + strlen(str2) + strlen(nombreTabla));
-	strcpy(ruta, str1);
-	strcat(ruta, nombreTabla);
-	strcat(ruta, str2); //revisar magic string_append y string_new esto parece medio feo
+	char* ruta = string_new();
+	string_append(&ruta, str1);
+	string_append(&ruta,nombreTabla);
+	string_append(&ruta,str2); //revisar magic string_append y string_new esto parece medio feo
 
 	configMetadata = config_create(ruta); //tengo duda aca si lo estas creando cuando en realidad tenes que fijarte que exista...
 
