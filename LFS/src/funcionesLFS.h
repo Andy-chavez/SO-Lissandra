@@ -79,6 +79,7 @@ typedef struct {
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
+registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
@@ -117,6 +118,12 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 int calcularParticion(int key,int cantidadParticiones){
 	int particion= key%cantidadParticiones;
 	return particion;
+}
+
+registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla){
+	registro registroBuscado = (registro*) malloc(sizeof(registro));
+
+	return registroBuscado;
 }
 
 metadata obtenerMetadata(char* nombreTabla){
