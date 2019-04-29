@@ -77,12 +77,12 @@ typedef struct {
 
 //Funciones
 
-int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg);
+int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi busca el metadata
 											// Punto_Montaje/Tables/Nombre_tabla/Metadata
 
 
-int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg){
+int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 	int validacion;
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
@@ -90,7 +90,8 @@ int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg){
 	char* rutaDirectorio= string_new();
 	//puts("estoy por salir");
 	string_append(&rutaDirectorio,puntoMontaje); //OJO ACA HAY QUE VER QUE EN EL CONFIG NO TE VENGA CON "" EL PUNTO DE MONTAJE
-	string_append(&rutaDirectorio,rutaTabla);
+	string_append(&rutaDirectorio,"Tables/"); //habria que ver esto, es lo mejor que se me ocurrio porque en el select solo te dan el nombre
+	string_append(&rutaDirectorio,nombreTabla);
 	printf("%s\n",rutaDirectorio);
 	struct stat sb;
 	//pthread_mutex_lock(&mutexLog);
@@ -104,10 +105,11 @@ int verificarExistenciaDirectorioTabla(char* rutaTabla,void* arg){
 	    }
 	    else
 	    {
-	    	log_info(archivosDeConfigYLog->logger,"Error no existe tabla en ruta indicada %s",rutaDirectorio);
+	    	log_info(archivosDeConfigYLog->logger,"Error no existe tabla en ruta indicada %s \n",rutaDirectorio);
 	    	//pthread_mutex_unlock(&mutexLog);
+	    	puts("no entro\n");
 	    	validacion=0;
-	    	printf("No se ha encontrado el directorio de la tabla en la ruta: %s",rutaDirectorio);
+	    	printf("No se ha encontrado el directorio de la tabla en la ruta: %s \n",rutaDirectorio);
 	    }
 	free(rutaDirectorio);
 	return validacion;
