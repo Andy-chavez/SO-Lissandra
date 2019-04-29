@@ -155,12 +155,15 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 	//obtenerMetadata("tablaA");
+	//int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
 	pthread_mutex_init(&mutexLog,NULL);
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
 	archivosDeConfigYLog->config = config_create("../lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+
+
 
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
 //	pthread_t threadLeerConsola;

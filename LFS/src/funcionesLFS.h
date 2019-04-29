@@ -77,8 +77,8 @@ typedef struct {
 //Funciones
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
-metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi busca el metadata
-											// Punto_Montaje/Tables/Nombre_tabla/Metadata
+metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
+int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
@@ -112,6 +112,11 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 	    }
 	free(rutaDirectorio);
 	return validacion;
+}
+
+int calcularParticion(int key,int cantidadParticiones){
+	int particion= key%cantidadParticiones;
+	return particion;
 }
 
 metadata obtenerMetadata(char* nombreTabla){
