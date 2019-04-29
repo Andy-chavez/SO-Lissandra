@@ -65,7 +65,6 @@ typedef struct {
 
 typedef struct {
 	char* nombre;
-	char* rutaTabla; //de la forma Tables/Nombre_tabla, quizas es sin punto_montaje que lo deberias asignar despues
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
 	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
