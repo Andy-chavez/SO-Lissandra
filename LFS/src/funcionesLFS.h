@@ -10,8 +10,8 @@
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
  * metadata obtenerMetadata(char* nombreTabla); //select e insert. PABLO
- * int calcularParticion(int cantidadParticiones, int key); //select e insert. key hay que pasarlo a int. FACU
- * int leerRegistro(int particion, char* nombreTabla); //te devuelve el key. FACU
+ * int calcularParticion(int cantidadParticiones, int key); //select e insert. key y la cantDeParticiones hay que pasarlo a int. FACU
+ * int leerRegistro(int particion, char* nombreTabla,int key); //te devuelve el registro. FACU (che creo que esto no es necesario hacer)
  * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
  * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
  * registro devolverRegistroDelFileSystem(int key); //select e insert FACU
@@ -34,14 +34,14 @@ typedef struct {
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
-	char* value;  //no seria siempre un char*?
+	char* value;
 	struct registro *sigRegistro;
 } registroLisandra;
 
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
-	char* value;  //no seria siempre un char*?
+	char* value;
 } registro;
 
 typedef struct {
