@@ -17,8 +17,7 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "conexiones.h"
-
+#include <commonsPropias/conexiones.h>
 
 #define CANTPARTICIONES 5 // esto esta en el metadata
 
