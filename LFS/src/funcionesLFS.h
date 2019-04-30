@@ -11,12 +11,14 @@
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
  * metadata obtenerMetadata(char* nombreTabla); //select e insert. PABLO
  * int calcularParticion(int cantidadParticiones, int key); //select e insert. key y la cantDeParticiones hay que pasarlo a int. FACU
- * int leerRegistro(int particion, char* nombreTabla,int key); //te devuelve el registro. FACU (che creo que esto no es necesario hacer)
  * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
  * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
  * registro devolverRegistroDelFileSystem(int key); //select e insert FACU
+ * dumpear() PABLO
+ * registro devolverRegistroArchivoTemporal() PENDIENTE
  * Fijarse que te devuelva el timestamp con epoch unix
- * No olvidar de hacer la comparacion final
+ * No olvidar de hacer la comparacion final, entre memtable,archivo temporal y FS
+ *
 */
 #define CANTPARTICIONES 5 // esto esta en el metadata
 pthread_mutex_t mutexLog;
@@ -67,7 +69,7 @@ typedef struct {
 	char* nombre;
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
-	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura
+	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura, preguntar A memoria
 } tabla;
 
 //t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
@@ -120,9 +122,9 @@ int calcularParticion(int key,int cantidadParticiones){
 	return particion;
 }
 
-registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla){
+registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla){ //devolver registro completo por el timestamp
 	registro registroBuscado = (registro*) malloc(sizeof(registro));
-
+	//ir particion, sacar bloques,
 	return registroBuscado;
 }
 
@@ -140,11 +142,11 @@ metadata obtenerMetadata(char* nombreTabla){
 	string_append(&ruta,nombreTabla);
 	string_append(&ruta,str2); //revisar magic string_append y string_new esto parece medio feo
 
-	configMetadata = config_create(ruta); //tengo duda aca si lo estas creando cuando en realidad tenes que fijarte que exista...
+	configMetadata = config_create(ruta);
 
 	cantParticiones = atoi(config_get_string_value(configMetadata, "PARTITIONS"));
 	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
-	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY"));
+	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY")); //delegar a funcion con strcmp
 	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTACION_TIME"));
 
 	unaMetadata.cantParticiones = cantParticiones;
