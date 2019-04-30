@@ -25,14 +25,11 @@ endif
 # All Target
 all: lisandra_file_system
 
-dependents:
-	-cd /home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug && $(MAKE) all
-
 # Tool invocations
-lisandra_file_system: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug/libcommonsPropias.so
+lisandra_file_system: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug" -o "lisandra_file_system" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "lisandra_file_system" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -42,6 +39,5 @@ clean:
 	-@echo ' '
 
 .PHONY: all clean dependents
-/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug/libcommonsPropias.so:
 
 -include ../makefile.targets
