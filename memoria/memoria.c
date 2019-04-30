@@ -14,8 +14,8 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "conexiones.h"
-#include "parser.h"
+#include <commonsPropias/conexiones.h>
+#include <commonsPropias/parser.h>
 #include <pthread.h>
 
 #define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config

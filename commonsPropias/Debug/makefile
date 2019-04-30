@@ -8,6 +8,7 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include commonsPropias/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -22,19 +23,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: conexiones
+all: libcommonsPropias.so
 
 # Tool invocations
-conexiones: $(OBJS) $(USER_OBJS)
+libcommonsPropias.so: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "conexiones" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -shared -o "libcommonsPropias.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) conexiones
+	-$(RM) $(LIBRARIES)$(OBJS)$(C_DEPS) libcommonsPropias.so
 	-@echo ' '
 
 .PHONY: all clean dependents
