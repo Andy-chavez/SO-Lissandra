@@ -8,9 +8,7 @@
  ============================================================================
  */
 #include <stdio.h>
-#include <stdlib.h>
 //#include <commonsPropias/conexiones.h>
-#include <commons/string.h>
 #include <pthread.h>
 #include <string.h>
 #include "conexiones.h"
@@ -23,8 +21,7 @@
 #define HASH 1
 #define EVENTUAL 2
 
-void kernel_api(char*,char*);
-criterio *inicializarCriterios();
+//criterio *inicializarCriterios();
 void kernel_consola();
 
 void kernel_consola(){
@@ -34,39 +31,6 @@ void kernel_consola(){
 	char** opYArg;
 	opYArg = string_n_split(linea,2," ");
 	kernel_api(*opYArg,*(opYArg+1));
-}
-void kernel_api(char* operacionAParsear, char* argumentos)
-{
-	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
-			printf("INSERT\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
-			printf("SELECT\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
-			printf("DESCRIBE\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
-			printf("CREATE\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
-			printf("DROP\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "JOURNAL")) {
-				printf("JOURNAL\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
-				printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
-			}
-		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
-				printf("METRICS\n");
-			}
-		else if (string_equals_ignore_case(operacionAParsear, "ADD")) {
-				printf("ADD\n");
-			}
-		else {
-			printf("Mi no entender esa operacion");
-		}
 }
 
 /*
