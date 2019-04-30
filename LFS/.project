@@ -3,6 +3,7 @@
 	<name>lisandra_file_system</name>
 	<comment></comment>
 	<projects>
+		<project>commonsPropias</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

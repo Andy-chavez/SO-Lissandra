@@ -18,6 +18,9 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
+<<<<<<< HEAD
+#include <commonsPropias/conexiones.h>
+=======
 #include "conexiones.h"
 #include "parser.h"
 #include "funcionesLFS.h"
@@ -47,6 +50,7 @@
 //	t_config* config;
 //	t_log* logger;
 //} configYLogs;
+>>>>>>> lisandraFS
 
 //
 //typedef struct {

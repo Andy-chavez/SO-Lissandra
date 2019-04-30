@@ -24,11 +24,14 @@ endif
 # All Target
 all: memoria
 
+dependents:
+	-cd /home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug && $(MAKE) all
+
 # Tool invocations
-memoria: $(OBJS) $(USER_OBJS)
+memoria: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug/libcommonsPropias.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "memoria" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug" -o "memoria" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -38,5 +41,6 @@ clean:
 	-@echo ' '
 
 .PHONY: all clean dependents
+/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Debug/libcommonsPropias.so:
 
 -include ../makefile.targets
