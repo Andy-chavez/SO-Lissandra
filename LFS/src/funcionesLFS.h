@@ -49,7 +49,6 @@ typedef struct {
 typedef struct {
 	int numeroBloque;
 	int sizeDeBloque;
-
 } bloque;
 
 typedef struct {
@@ -70,7 +69,12 @@ typedef struct {
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
 	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura, preguntar A memoria
-} tabla;
+} tabla; //probable solo para serializar
+
+typedef struct {
+	char* nombre;
+	registro* sigRegistro;
+} tablaMem;
 
 //t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
 //t_config* g_config= config_create("LISANDRA.CONFIG"); //Por ahora lo dejo global deberiamos ver despues, y habria que liberarlos
@@ -82,7 +86,22 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
+registro buscarEnBloque(int key,char* numeroDeBloque,void* arg);
 
+//registro buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
+//	char* rutaBloque = string_new();
+//	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+//	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
+//	string_append(&rutaBloque,puntoMontaje);
+//	string_append(&rutaBloque,"Bloques/");
+//	string_append(&rutaBloque,numeroDeBloque);
+//	string_append(&rutaBloque,".bin");
+//	FILE* archivo = fopen(rutaBloque,"rb");
+//	char* value=config_get_string_value(archivo,key);
+//
+//	fclose(archivo);
+//
+//}
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 	int validacion;
@@ -122,11 +141,12 @@ int calcularParticion(int key,int cantidadParticiones){
 	return particion;
 }
 
-registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla){ //devolver registro completo por el timestamp
-	registro registroBuscado = (registro*) malloc(sizeof(registro));
-	//ir particion, sacar bloques,
-	return registroBuscado;
-}
+//registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla){ //devolver registro completo por el timestamp
+//	registro registroBuscado = (registro*) malloc(sizeof(registro));
+//	ir particion, sacar bloques,
+//	return registroBuscado;
+//}
+
 
 metadata obtenerMetadata(char* nombreTabla){
 	t_config* configMetadata;

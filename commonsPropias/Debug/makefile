@@ -25,11 +25,14 @@ endif
 # All Target
 all: libcommonsPropias.so
 
+dependents:
+	-cd /home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Release && $(MAKE) all
+
 # Tool invocations
-libcommonsPropias.so: $(OBJS) $(USER_OBJS)
+libcommonsPropias.so: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Release/libcommonsPropias.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -shared -o "libcommonsPropias.so" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Release" -shared -o "libcommonsPropias.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -39,5 +42,6 @@ clean:
 	-@echo ' '
 
 .PHONY: all clean dependents
+/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/commonsPropias/Release/libcommonsPropias.so:
 
 -include ../makefile.targets
