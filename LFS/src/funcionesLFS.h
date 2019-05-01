@@ -1,6 +1,7 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commons/string.h>
+#include <commons/collections/list.h>
 #include <stdio.h>
 #include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
@@ -10,7 +11,6 @@
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
  * metadata obtenerMetadata(char* nombreTabla); //select e insert. PABLO
- * int calcularParticion(int cantidadParticiones, int key); //select e insert. key y la cantDeParticiones hay que pasarlo a int. FACU
  * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
  * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
  * registro devolverRegistroDelFileSystem(int key); //select e insert FACU
@@ -66,14 +66,14 @@ typedef struct {
 
 typedef struct {
 	char* nombre;
-	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
+	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMOelemento.nombre HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
 	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura, preguntar A memoria
 } tabla; //probable solo para serializar
 
 typedef struct {
 	char* nombre;
-	registro* sigRegistro;
+	registroLisandra* sigRegistro;
 } tablaMem;
 
 //t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
@@ -148,6 +148,38 @@ int calcularParticion(int key,int cantidadParticiones){
 //}
 
 
+bool esIgualAlNombre(char* nombreTabla,void * elemento){
+		tablaMem* varAuxiliar = elemento;
+
+		return string_equals_ignore_case(varAuxiliar->nombre, nombreTabla);
+}
+
+
+//Guarda un registro en la memtable
+void guardarRegistro(/*registro unRegistro,*/ char* nombreTabla) {
+
+	bool tieneElNombre(void *elemento){
+		return esIgualAlNombre(nombreTabla, elemento);
+	}
+
+	t_list* memtable = list_create();
+
+	/* de prueba junto con lo que esta en el main
+	 list_add(memtable, tablaDePrueba);
+*/
+
+	 tablaMem* tablaEncontrada = list_find(memtable, tieneElNombre);
+
+	 //Queda ver como sacar el numero de un elemento en la lista, no encontre por ahora una common que lo haga..
+	 /*
+		tablaEncontrada.sigRegistro = unRegistro;
+		list_replace(memTable, ..., varEncontrada);
+*/
+}
+
+
+
+
 metadata obtenerMetadata(char* nombreTabla){
 	t_config* configMetadata;
 	int cantParticiones;
@@ -179,3 +211,23 @@ metadata obtenerMetadata(char* nombreTabla){
 
 
 }
+
+int main(){
+	/*
+	registroLisandra* registroDePrueba = malloc(sizeof(registroLisandra));
+		registroDePrueba -> key = 13;
+		registroDePrueba -> value= "aloo";
+		registroDePrueba -> timestamp = 8000;
+		registroDePrueba -> sigRegistro = NULL;
+
+		tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
+		tablaDePrueba-> nombre = "alo?";
+		tablaDePrueba-> sigRegistro = registroDePrueba;
+
+		guardarRegistro("alo?");
+
+		return 0;
+*/
+	return 0;
+}
+
