@@ -82,6 +82,8 @@ typedef struct {
 
 //Funciones
 
+
+
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
@@ -161,12 +163,12 @@ void guardarRegistro(/*registro unRegistro,*/ char* nombreTabla) {
 	bool tieneElNombre(void *elemento){
 		return esIgualAlNombre(nombreTabla, elemento);
 	}
+//OJO, la memtable tiene que ser una variable global, pero no me deja eclipse pq me dice que no es una constante
 
 	t_list* memtable = list_create();
 
-	/* de prueba junto con lo que esta en el main
-	 list_add(memtable, tablaDePrueba);
-*/
+	// de prueba junto con lo que esta en el main
+//list_add(memtable, tablaDePrueba);
 
 	 tablaMem* tablaEncontrada = list_find(memtable, tieneElNombre);
 
@@ -177,7 +179,34 @@ void guardarRegistro(/*registro unRegistro,*/ char* nombreTabla) {
 */
 }
 
+//en realidad si un registro tiene un siguiente registro que tiene un siguiente registro y asi..
+//no creo que esto vaya a funcar para esos casos, porque deberias decir sig registro sig registro key
+//hay alguna funcion que recorra una lista linkeada? usando eso, y manteniendo esta funcion de orden superior
+//deberia funcar calculo
 
+bool estaLaKey(int key,void * elemento){
+		tablaMem* varAuxiliar = elemento;
+
+		return (varAuxiliar->sigRegistro->key == key);
+}
+
+registroLisandra* devolverRegistroDeLaMemtable(int key){
+
+	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
+
+	bool encontrarLaKey(void *elemento){
+			return estaLaKey(key, elemento);
+		}
+
+	t_list* memtable = list_create();
+
+	//list_add(memtable, tablaDePrueba);
+
+	tablaMem* tablaEncontrada = list_find(memtable, encontrarLaKey);
+
+	return tablaEncontrada->sigRegistro;
+
+}
 
 
 metadata obtenerMetadata(char* nombreTabla){
@@ -212,21 +241,23 @@ metadata obtenerMetadata(char* nombreTabla){
 
 }
 
+//main para hacer pruebas
 int main(){
+
 	/*
 	registroLisandra* registroDePrueba = malloc(sizeof(registroLisandra));
-		registroDePrueba -> key = 13;
-		registroDePrueba -> value= "aloo";
-		registroDePrueba -> timestamp = 8000;
-		registroDePrueba -> sigRegistro = NULL;
+			registroDePrueba -> key = 13;
+			registroDePrueba -> value= "aloo";
+			registroDePrueba -> timestamp = 8000;
+			registroDePrueba -> sigRegistro = NULL;
 
-		tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-		tablaDePrueba-> nombre = "alo?";
-		tablaDePrueba-> sigRegistro = registroDePrueba;
+			tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
+			tablaDePrueba-> nombre = "alo?";
+			tablaDePrueba-> sigRegistro = registroDePrueba;
 
+		devolverRegistroDeLaMemtable(13);
 		guardarRegistro("alo?");
 
-		return 0;
 */
 	return 0;
 }
