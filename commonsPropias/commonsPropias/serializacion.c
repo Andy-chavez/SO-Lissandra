@@ -135,6 +135,7 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 
 	memcpy(&(unaOperacion->parametros),bufferOperacion + desplazamiento, sizeof(char)*largoDeParametros);
 	desplazamiento += sizeof(char)*largoDeParametros;
+
 	return unaOperacion;
 }
 

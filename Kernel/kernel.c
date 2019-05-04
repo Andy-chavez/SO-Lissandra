@@ -9,7 +9,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "conexiones.h"
+#include <commonsPropias/conexiones.h>
 #include <commons/config.h>
 #include <commons/string.h>
 #include <pthread.h>

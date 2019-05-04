@@ -15,7 +15,6 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commonsPropias/conexiones.h>
-#include "parser.h"
 #include <pthread.h>
 
 #define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config
@@ -62,30 +61,6 @@ typedef struct {
 	t_config* config;
 	t_log* logger;
 } configYLogs;
-
-void interface(operacion unaOperacion) {
-	switch(unaOperacion){
-	case INSERT:
-		break;
-	case CREATE:
-		break;
-	case DESCRIBETABLE:
-		break;
-	case DESCRIBEALL:
-		break;
-	case DROP:
-		break;
-	case SELECT:
-		break;
-	case JOURNAL:
-		break;
-	default:
-		printf("JAJAJA");
-		break;
-	}
-}
-
-
 
 char* pruebaDeRecepcion(void* buffer) {
 	return (char*) buffer;
