@@ -27,7 +27,7 @@ typedef struct {
   char* operacion;
   int cantidadParametros;
   char** parametros; // Hay que alojar memoria dependiendo de la operación!!!
-} operacionLQL;
+} operacionLQL
 
 typedef struct {
 	consistencia tipoConsistencia;
@@ -116,7 +116,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 }
 
 //void *memcpy(void *dest, const void *src, size_t n);
-operacionLQL deserializarOperacionLQL(void* bufferOperacion){
+operacion* deserializarOperacionLQL(void* bufferOperacion){
 	int desplazamiento = 0;
 	int tamanioOperacion,largoParametros,tamanioCantParametros;
 	operacionLQL unaOperacion;
@@ -128,13 +128,13 @@ operacionLQL deserializarOperacionLQL(void* bufferOperacion){
 	memcpy(&tamanioOperacion,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	//memcpy((unaOperacion->operacion),bufferOperacion + desplazamiento, sizeof(char)*tamanioOperacion);
+	memcpy((unaOperacion-> operacion),bufferOperacion + desplazamiento, sizeof(char)*tamanioOperacion);
 	desplazamiento += sizeof(char)*tamanioOperacion;
 
-	memcpy(&largoParametros ,bufferOperacion + desplazamiento, sizeof(int));
+	memcpy(&largoDeParametros ,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	//memcpy(&(unaOperacion->parametros),bufferOperacion + desplazamiento, sizeof(char)*largoParametros);
+	memcpy(&(unaOperacion-> parametros),bufferOperacion + desplazamiento, sizeof(char)*largoParametros);
 	desplazamiento += sizeof(char)*largoParametros;
 	return unaOperacion;
 }
@@ -145,7 +145,7 @@ operacionLQL deserializarOperacionLQL(void* bufferOperacion){
 void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	int desplazamiento = 0;
 	int largoParametros = strlen(operacionLQL->parametros) + 1; //Arreglar esto pls
-	int tamanioOperacion = strlen(operacionLQL->operacion) + 1;
+	int tamanioOperacion = strlen(operacionLQL->operacion) + 1);
 	int tamanioProtocolo = sizeof(int);
 	int tamanioCantidadParametros = sizeof(int);
 	operacionProtocolo protocolo = OPERACIONLQL;
@@ -164,7 +164,7 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	memcpy(bufferOperacion + desplazamiento, &tamanioCantidadParametros, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Cantidad de Parametros
-	memcpy(bufferOperacion + desplazamiento, (operacionLQL->cantidadParametros), sizeof(int));
+	memcpy(bufferOperacion + desplazamiento, (operacionLQL->cantidadParametros), sizeof(int);
 	//Tamaño de operacion LQL(enum)
 	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, sizeof(int));
 	desplazamiento+= sizeof(int);
@@ -207,19 +207,19 @@ void* serializarMetadata(metadata* unMetadata) {
 	memcpy(bufferMetadata + desplazamiento, &tamanioDelTipoDeConsistencia, tamanioDelTipoDeConsistencia);
 	desplazamiento+= tamanioDelTipoDeConsistencia;
 	//Tipo de consistencia
-	memcpy(bufferMetadata + desplazamiento, &(unMetadata->tipoConsistencia), tamanioDelTipoDeConsistencia);
+	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->tipoConsistencia), tamanioDelTipoDeConsistencia);
 	desplazamiento+= tamanioDelTipoDeConsistencia;
 	//Tamaño de la cantidad de particiones
 	memcpy(bufferMetadata + desplazamiento, &tamanioDeCantidadDeParticiones, tamanioDeCantidadDeParticiones);
 	desplazamiento+= tamanioDeCantidadDeParticiones;
 	//Cantidad de particiones
-	memcpy(bufferMetadata + desplazamiento, &(unMetadata->cantParticiones), tamanioDeCantidadDeParticiones);
+	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->cantParticiones), tamanioDeCantidadDeParticiones);
 	desplazamiento+= tamanioDeCantidadDeParticiones;
 	//Tamaño del tiempoDeCompactacion
 	memcpy(bufferMetadata + desplazamiento, &tamanioDelTiempoDeCompactacion, tamanioDelTiempoDeCompactacion);
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 	//Tiempo de compactacion
-	memcpy(bufferMetadata + desplazamiento, &(unMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
+	memcpy(bufferMetadata + desplazamiento, &(unaMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
 
 	desplazamiento+= tamanioDelTiempoDeCompactacion;
 
@@ -234,20 +234,23 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	memcpy(&tamanioDelTipoDeConsistencia, bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	memcpy(&(unMetadata->tipoConsistencia), bufferMetadata + desplazamiento, sizeof(int));
+	memcpy(&(unMetadata->tipoConsistencia), bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
 	memcpy(&tamanioDeCantidadDeParticiones, bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	memcpy(&(unMetadata->cantParticiones), bufferMetadata + desplazamiento, sizeof(int));
+	memcpy(&(unMetadata->cantParticiones), bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
 	memcpy(&tamanioDelTiempoDeCompactacion, bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
 
-	memcpy(&(unMetadata->tiempoCompactacion), bufferMetadata + desplazamiento, sizeof(int));
+	memcpy(&(unMetadata->tiempoCompactacion), bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
 	return unMetadata;
 }
+
+
+int main(){ return 0;}
