@@ -213,27 +213,32 @@ void guardarRegistro(registro unRegistro, char* nombreTabla) {
 //no creo que esto vaya a funcar para esos casos, porque deberias decir sig registro sig registro key
 //hay alguna funcion que recorra una lista linkeada? usando eso, y manteniendo esta funcion de orden superior
 //deberia funcar calculo
-
 bool estaLaKey(int key,void* elemento){
 	registro* unRegistro = elemento;
 
 		return (unRegistro->key == key);
 }
 
+//encontrar el nombre de la tabla, la tabla
+//find y encontras la key
 
-registro* devolverRegistroDeLaMemtable(int key){
+bool esIgualAlNombre(char* nombreTabla,void * elemento){
+		tablaMem* tabla = elemento;
+
+		return string_equals_ignore_case(tabla->nombre, nombreTabla);
+}
+
+registro* devolverRegistroDeLaMemtable(char* nombreTabla, int key){
 
 	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
 
-	bool contieneLaKey(void *elemento){
+	bool encontrarLaKey(void *elemento){
 		return estaLaKey(key, elemento);
 	}
 
-	bool encontrarLaKey(void *elemento){
-		tablaMem* tabla = elemento;
-		t_list* listaDeRegistros = tabla->lista;
-			return list_find(listaDeRegistros,contieneLaKey);
-		}
+	bool tieneElNombre(void *elemento){
+		return esIgualAlNombre(nombreTabla, elemento);
+	}
 
 	t_list* memtable = list_create();
 
@@ -257,12 +262,17 @@ registro* devolverRegistroDeLaMemtable(int key){
 	list_add(memtable, tablaDePrueba);
 	list_add(memtable, tablaDePrueba2);
 
-	registro* registroEncontrado = list_find(memtable, encontrarLaKey);
+	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
+
+	registro* registroEncontrado = list_find(encuentraLista->lista, encontrarLaKey);
+
+
 	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
 
 	return registroEncontrado;
 
 }
+
 
 
 metadata obtenerMetadata(char* nombreTabla){
