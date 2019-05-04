@@ -18,11 +18,11 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
-<<<<<<< HEAD
+
+//#include "parser.h"
+
 #include <commonsPropias/conexiones.h>
-=======
-#include "conexiones.h"
-#include "parser.h"
+#include <commonsPropias/parser.h>
 #include "funcionesLFS.h"
 
 //#define CANTPARTICIONES 5 // esto esta en el metadata
@@ -50,7 +50,6 @@
 //	t_config* config;
 //	t_log* logger;
 //} configYLogs;
->>>>>>> master
 
 //
 //typedef struct {
@@ -160,7 +159,7 @@ int main(int argc, char* argv[]) {
 
 	//obtenerMetadata("tablaA");
 	//int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
-	pthread_mutex_init(&mutexLog,NULL);
+	//pthread_mutex_init(&mutexLog,NULL);
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
@@ -168,7 +167,7 @@ int main(int argc, char* argv[]) {
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
 
 
-
+	//buscarEnBloque(54,"1",archivosDeConfigYLog);
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
 //	pthread_t threadLeerConsola;
 //    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
