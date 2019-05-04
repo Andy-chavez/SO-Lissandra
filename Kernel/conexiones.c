@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <commons/log.h>
-
+#include <errno.h>
 // crea un socket para la comunicacion con un servidor (Dado IP y puerto).
 int crearSocketCliente(char *ip, char *puerto) {
 	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
@@ -43,6 +43,7 @@ int crearSocketCliente(char *ip, char *puerto) {
 		freeaddrinfo(infoDireccion);
 		return -1;
 	} else if(intentarConexion == -1) {
+		printf("%s", strerror(errno));
 		log_error(logger, "Hubo un error en la conexion del socket");
 		freeaddrinfo(infoDireccion);
 		return -1;
@@ -57,6 +58,7 @@ int crearSocketCliente(char *ip, char *puerto) {
 int crearSocketServidor(char *puerto) {
 	t_log* logger = log_create("conexiones.log", "CONEXIONES", 1, LOG_LEVEL_ERROR);
 
+
 	int socketServidor, intentarBindeo;
 	struct addrinfo hints, *infoDireccionServidor, *lista;
 	memset(&hints, 0, sizeof(hints));
@@ -65,6 +67,7 @@ int crearSocketServidor(char *puerto) {
 	hints.ai_flags = AI_PASSIVE;
 
 	getaddrinfo(NULL, puerto, &hints, &infoDireccionServidor);
+
 
 		for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next) {
 			//errores de conexion

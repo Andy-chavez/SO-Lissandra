@@ -9,8 +9,6 @@
 #define STRUCTS_BASICOS_H_
 #include <commons/log.h>
 #include <commons/config.h>
-#include <stdlib.h>
-#include <commons/string.h>
 
 typedef enum {
 	SC, // UNA
@@ -53,6 +51,5 @@ typedef struct {
 
 /************************************************************************/
 void liberarConfigYLogs(configYLogs *archivos);
-void kernel_api(char*,char*);
 
 #endif /* STRUCTS_BASICOS_H_ */

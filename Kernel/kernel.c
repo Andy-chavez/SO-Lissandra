@@ -8,20 +8,23 @@
  ============================================================================
  */
 #include <stdio.h>
-//#include <commonsPropias/conexiones.h>
+#include <stdlib.h>
+#include "conexiones.h"
+#include <commons/config.h>
+#include <commons/string.h>
 #include <pthread.h>
 #include <string.h>
-#include "conexiones.h"
+#include "structs-basicos.h"
 #include <readline/readline.h>
 #include <readline/history.h>
-#include "structs-basicos.h"
 
 #define CANTIDADCRITERIOS 2 //0-2
 #define STRONG 0
 #define HASH 1
 #define EVENTUAL 2
 
-//criterio *inicializarCriterios();
+void kernel_api(char*,char*);
+criterio *inicializarCriterios();
 void kernel_consola();
 
 void kernel_consola(){
@@ -32,6 +35,39 @@ void kernel_consola(){
 	opYArg = string_n_split(linea,2," ");
 	kernel_api(*opYArg,*(opYArg+1));
 }
+void kernel_api(char* operacionAParsear, char* argumentos)
+{
+	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+			printf("INSERT\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+			printf("SELECT\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
+			printf("DESCRIBE\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
+			printf("CREATE\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
+			printf("DROP\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "JOURNAL")) {
+				printf("JOURNAL\n");
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
+				printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
+			}
+		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
+				printf("METRICS\n");
+			}
+		else if (string_equals_ignore_case(operacionAParsear, "ADD")) {
+				printf("ADD\n");
+			}
+		else {
+			printf("Mi no entender esa operacion");
+		}
+}
 
 /*
 void kernel_planificador(int quantum){
@@ -39,17 +75,17 @@ void kernel_planificador(int quantum){
 }
 */
 
-//criterio *inicializarCriterios(){
-//	criterio *datos = malloc(3*sizeof(criterio));
-//	datos[STRONG].unCriterio = SC; //Strong
-//	datos[HASH].unCriterio = SH; //Hash
-//	datos[EVENTUAL].unCriterio = EC; //Eventual
-//	for(int iter=0; iter <= CANTIDADCRITERIOS; iter++){
-//		datos[iter].memoriasAsociadas = malloc(sizeof(int));
-//		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
-//	}
-//	return datos;
-//}
+criterio *inicializarCriterios(){
+	criterio *datos = malloc(3*sizeof(criterio));
+	datos[STRONG].unCriterio = SC; //Strong
+	datos[HASH].unCriterio = SH; //Hash
+	datos[EVENTUAL].unCriterio = EC; //Eventual
+	for(int iter=0; iter <= CANTIDADCRITERIOS; iter++){
+		datos[iter].memoriasAsociadas = malloc(sizeof(int));
+		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
+	}
+	return datos;
+}
 
 void* kernel_cliente(void *archivo){
 	configYLogs *kernel_configYLog = (configYLogs*) archivo;;
