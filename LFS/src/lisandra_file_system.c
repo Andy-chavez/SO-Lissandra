@@ -18,12 +18,11 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
+
 //#include "parser.h"
-//#include "conexiones.h"
+
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/parser.h>
-//#include <commonsPropias/serializacion.h>
-
 #include "funcionesLFS.h"
 
 //#define CANTPARTICIONES 5 // esto esta en el metadata
