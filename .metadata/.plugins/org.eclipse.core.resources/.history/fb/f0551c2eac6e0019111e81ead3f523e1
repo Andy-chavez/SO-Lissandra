@@ -98,7 +98,13 @@ int main() {
 	pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
+<<<<<<< HEAD
+
 	archivosDeConfigYLog->config = config_create("../memoria.config");
+=======
+	archivosDeConfigYLog->config = config_create("memoria.config");
+
+>>>>>>> master
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 
 	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
