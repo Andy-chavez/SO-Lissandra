@@ -14,55 +14,16 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "conexiones.h"
+#include <commonsPropias/conexiones.h>
 #include <pthread.h>
-#include "api.h"
+
 
 #define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config
-
-typedef enum {
-	NO,
-	SI
-} flagModificado;
-
-typedef struct {
-	time_t timestamp;
-	uint16_t key;
-	void* value;
-} registro;
-
-typedef struct {
-	int numeroPagina;
-	registro *unaPagina;
-	flagModificado flag;
-} pagina;
-
-typedef struct {
-	pagina *paginas;
-} tablaPaginas;
-
-typedef struct {
-	char *nombreTabla;
-	pagina paginas[];
-} segmento;
-
-typedef struct {
-	segmento *segmentosEnMemoria;
-} tablaSegmentos;
-
-typedef struct {
-	tablaSegmentos segmentos;
-	tablaPaginas paginas;
-	void *base;
-	void *limite;
-	int *seeds;
-} memoria;
 
 typedef struct {
 	t_config* config;
 	t_log* logger;
 } configYLogs;
-
 
 char* pruebaDeRecepcion(void* buffer) {
 	return (char*) buffer;
@@ -136,6 +97,7 @@ void *servidorMemoria(void* arg){
 int main() {
 	pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
+
 
 	archivosDeConfigYLog->config = config_create("../memoria.config");
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
