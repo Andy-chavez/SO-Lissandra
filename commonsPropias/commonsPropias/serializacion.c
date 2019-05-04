@@ -23,14 +23,9 @@ typedef enum {
 	METADATA
 } operacionProtocolo;
 
-typedef struct parametros {
-	char* unParametro;
-	struct parametros *siguienteParametro;
-} parametros;
-
 typedef struct {
   char* operacion;
-  parametros* parametros;
+  char* parametros;
 } operacionLQL;
 
 typedef struct {
@@ -148,46 +143,33 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
  */
 void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 
-	int obtenerTamanioTotalParametros(parametros *unParametro, int contador) {
-		contador += sizeof(char)*(strlen(unParametro->unParametro)+1);
-		return contador;
-	}
-
-
 	int desplazamiento = 0;
-	int tamanioOperacion = strlen((operacionLQL->operacion) + 1);
+	int tamanioOperacion = strlen(operacionLQL->operacion) + 1;
 	int tamanioProtocolo = sizeof(int);
 	operacionProtocolo protocolo = OPERACIONLQL;
-	int tamanioTotalParametros = 0;
-	int tamanioTotalBuffer = list_size(operacionLQL->parametros)*3*sizeof(int) + sizeof(char)*(tamanioOperacion) + (int) list_fold(operacionLQL->parametros,(void*) tamanioTotalParametros, (void*) obtenerTamanioTotalParametros);
+	int tamanioParametros = strlen(operacionLQL->parametros) + 1;
+	int tamanioTotalBuffer = 4*sizeof(int) + sizeof(char)*(tamanioOperacion + tamanioParametros);
 
 	void *bufferOperacion= malloc(tamanioTotalBuffer);
 
-	void agregarParametroAlBuffer(parametros *parametro) {
-		int tamanioParametro = sizeof(char)*strlen((parametro->unParametro) + 1);
-		// tamanio parametro
-		memcpy(bufferOperacion + desplazamiento, &tamanioParametro, sizeof(int));
-		desplazamiento += sizeof(int);
-
-		// parametro
-		memcpy(bufferOperacion + desplazamiento, parametro->unParametro, tamanioParametro);
-		desplazamiento += tamanioParametro;
-
-	}
-
-	//Tamaño de operacion Protocolo
+	// Tamaño de operacion Protocolo
 	memcpy(bufferOperacion + desplazamiento, &tamanioProtocolo, sizeof(int));
 	desplazamiento += sizeof(int);
-	//Operacion de Protocolo
+	// Operacion de Protocolo
 	memcpy(bufferOperacion + desplazamiento, &protocolo, sizeof(int));
 	desplazamiento+= sizeof(int);
-	//Tamaño de operacion LQL(enum)
+	// Tamaño de operacion LQL
 	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, sizeof(int));
 	desplazamiento+= sizeof(int);
-	//operacion LQL
+	// operacion LQL
 	memcpy(bufferOperacion + desplazamiento, (operacionLQL->operacion), sizeof(char)*tamanioOperacion);
 	desplazamiento+= sizeof(char)*tamanioOperacion;
-	list_iterate(operacionLQL->parametros, agregarParametroAlBuffer);
+	// Tamaño de parametros
+	memcpy(bufferOperacion + desplazamiento, &tamanioParametros, sizeof(int));
+	desplazamiento+= sizeof(int);
+	// parametros
+	memcpy(bufferOperacion + desplazamiento, (operacionLQL->parametros), sizeof(char)*tamanioParametros);
+	desplazamiento+= sizeof(char)*tamanioOperacion;
 }
 
 

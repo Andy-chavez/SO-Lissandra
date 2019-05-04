@@ -14,7 +14,7 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "conexiones.h"
+#include <commonsPropias/conexiones.h>
 #include "parser.h"
 #include <pthread.h>
 
@@ -157,6 +157,7 @@ int main() {
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
 	archivosDeConfigYLog->config = config_create("memoria.config");
+
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 
 	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
