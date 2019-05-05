@@ -1,81 +1,49 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <stdint.h>
 #include <string.h>
 #include <commons/collections/list.h>
+#include "serializacion.h"
 
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
-
-typedef enum {
-	SC,
-	SH,
-	EC
-}consistencia;
-
-typedef enum {
-	OPERACIONLQL,
-	PAQUETEREGISTROS,
-	METADATA
-} operacionProtocolo;
-
-typedef struct {
-  char* operacion;
-  char* parametros;
-} operacionLQL;
-
-typedef struct {
-	consistencia tipoConsistencia;
-	int cantParticiones;
-	int tiempoCompactacion;
-} metadata;
-
-operacionProtocolo empezarDeserializacion(void *buffer) {
+operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
-	memcpy(&protocolo, buffer, sizeof(int));
+	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
+	*buffer += 4;
 	return protocolo;
 }
 
-registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
+registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
 	int desplazamiento = 0;
 	registro* unRegistro = malloc(sizeof(registro));
 	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
 
 	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
+	*nombreTabla = malloc(largoDeNombreTabla);
 
-	memcpy(nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
-	desplazamiento+= sizeof(char)*largoDeNombreTabla;
+	memcpy(*nombreTabla, bufferRegistro + desplazamiento, largoDeNombreTabla);
+	desplazamiento+= largoDeNombreTabla;
 
 	memcpy(&tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
-	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp); //nos parece con el magic que el tamanioTimestamp esta mal
+	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp);
 	desplazamiento+= tamanioTimestamp;
 
-	memcpy(&tamanioKey, bufferRegistro + desplazamiento , tamanioKey);
+	memcpy(&tamanioKey, bufferRegistro + desplazamiento , sizeof(int));
 	desplazamiento+= sizeof(int);
 
 	memcpy(&(unRegistro->key), bufferRegistro + desplazamiento, tamanioKey);
 	desplazamiento+= tamanioKey;
 
-	memcpy(&largoDeValue, bufferRegistro + desplazamiento, largoDeValue);
+	memcpy(&largoDeValue, desplazamiento + bufferRegistro, sizeof(int));
 	desplazamiento+= sizeof(int);
+	unRegistro->value = malloc(largoDeValue);
 
-	memcpy(&(unRegistro->value), bufferRegistro + desplazamiento, sizeof(char)*largoDeValue);
+	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
 
 	return unRegistro;
 }
-
-/*
- * Serializa un registro. Toma dos parametros:
- * unRegistro: El registro a serializar.
- * nombreTabla: La tabla a la cual pertenece este Registro!!!
- */
 
 void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 
@@ -84,7 +52,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	int largoDeValue = strlen(unRegistro->value) + 1;
 	int tamanioKey = sizeof(u_int16_t);
 	int tamanioTimeStamp = sizeof(time_t);
-	int tamanioTotalBuffer = 4*sizeof(int) + largoDeNombreTabla + sizeof(char)*largoDeNombreTabla + tamanioKey + tamanioTimeStamp;
+	int tamanioTotalBuffer = 4*sizeof(int) + largoDeNombreTabla + largoDeValue + tamanioKey + tamanioTimeStamp;
 	void *bufferRegistro= malloc(tamanioTotalBuffer);
 
 	//Tamaño de nombre de tabla
@@ -109,32 +77,30 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	memcpy(bufferRegistro + desplazamiento, &largoDeValue, largoDeValue);
 	desplazamiento+= sizeof(int);
 	//Nombre de value
-	memcpy(bufferRegistro + desplazamiento, &(unRegistro->value), sizeof(char)*largoDeValue);
-	desplazamiento+= sizeof(char)*largoDeValue;
+	memcpy(bufferRegistro + desplazamiento, unRegistro->value, largoDeValue);
+	desplazamiento+= largoDeValue;
 	return bufferRegistro;
 }
 
 //void *memcpy(void *dest, const void *src, size_t n);
 operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 	int desplazamiento = 0;
-	int tamanioOperacion,largoDeParametros,tamanioCantParametros;
-	operacionLQL* unaOperacion;
-
-	//deserialice desde el enum al string de valores
-
-	//Agregar memcpy del tamanioCantParametros y Cant Parametros;
+	int tamanioOperacion,largoDeParametros;
+	operacionLQL* unaOperacion = malloc(sizeof(operacionLQL));
 
 	memcpy(&tamanioOperacion,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
+	unaOperacion->operacion = malloc(tamanioOperacion);
 
-	memcpy((unaOperacion->operacion),bufferOperacion + desplazamiento, sizeof(char)*tamanioOperacion);
-	desplazamiento += sizeof(char)*tamanioOperacion;
+	memcpy((unaOperacion->operacion),bufferOperacion + desplazamiento, tamanioOperacion);
+	desplazamiento += tamanioOperacion;
 
 	memcpy(&largoDeParametros ,bufferOperacion + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
+	unaOperacion->parametros = malloc(largoDeParametros);
 
-	memcpy(&(unaOperacion->parametros),bufferOperacion + desplazamiento, sizeof(char)*largoDeParametros);
-	desplazamiento += sizeof(char)*largoDeParametros;
+	memcpy(unaOperacion->parametros,bufferOperacion + desplazamiento, largoDeParametros);
+	desplazamiento += largoDeParametros;
 
 	return unaOperacion;
 }
@@ -146,16 +112,12 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 
 	int desplazamiento = 0;
 	int tamanioOperacion = strlen(operacionLQL->operacion) + 1;
-	int tamanioProtocolo = sizeof(int);
 	operacionProtocolo protocolo = OPERACIONLQL;
 	int tamanioParametros = strlen(operacionLQL->parametros) + 1;
-	int tamanioTotalBuffer = 4*sizeof(int) + sizeof(char)*(tamanioOperacion + tamanioParametros);
+	int tamanioTotalBuffer = 3*sizeof(int) + tamanioOperacion + tamanioParametros;
 
 	void *bufferOperacion= malloc(tamanioTotalBuffer);
 
-	// Tamaño de operacion Protocolo
-	memcpy(bufferOperacion + desplazamiento, &tamanioProtocolo, sizeof(int));
-	desplazamiento += sizeof(int);
 	// Operacion de Protocolo
 	memcpy(bufferOperacion + desplazamiento, &protocolo, sizeof(int));
 	desplazamiento+= sizeof(int);
@@ -163,14 +125,16 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	memcpy(bufferOperacion + desplazamiento, &tamanioOperacion, sizeof(int));
 	desplazamiento+= sizeof(int);
 	// operacion LQL
-	memcpy(bufferOperacion + desplazamiento, (operacionLQL->operacion), sizeof(char)*tamanioOperacion);
+	memcpy(bufferOperacion + desplazamiento, (operacionLQL->operacion), tamanioOperacion);
 	desplazamiento+= sizeof(char)*tamanioOperacion;
 	// Tamaño de parametros
 	memcpy(bufferOperacion + desplazamiento, &tamanioParametros, sizeof(int));
 	desplazamiento+= sizeof(int);
 	// parametros
-	memcpy(bufferOperacion + desplazamiento, (operacionLQL->parametros), sizeof(char)*tamanioParametros);
-	desplazamiento+= sizeof(char)*tamanioOperacion;
+	memcpy(bufferOperacion + desplazamiento, (operacionLQL->parametros), tamanioParametros);
+	desplazamiento+= tamanioParametros;
+
+	return bufferOperacion;
 }
 
 
@@ -244,6 +208,3 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 
 	return unMetadata;
 }
-
-
-int main(){ return 0;}
