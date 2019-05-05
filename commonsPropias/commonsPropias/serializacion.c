@@ -5,7 +5,6 @@
 #include <commons/collections/list.h>
 #include "serializacion.h"
 
-
 operacionProtocolo empezarDeserializacion(void *buffer) {
 	operacionProtocolo protocolo;
 	memcpy(&protocolo, buffer, sizeof(operacionProtocolo));
@@ -19,6 +18,7 @@ registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
 
 	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
+	nombreTabla = malloc(largoDeNombreTabla);
 
 	memcpy(nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
 	desplazamiento+= sizeof(char)*largoDeNombreTabla;
@@ -40,6 +40,7 @@ registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
 
 	memcpy(&(unRegistro->value), bufferRegistro + desplazamiento, sizeof(char)*largoDeValue);
 
+	free(bufferRegistro);
 	return unRegistro;
 }
 
@@ -106,6 +107,7 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 	memcpy(unaOperacion->parametros,bufferOperacion + desplazamiento, largoDeParametros);
 	desplazamiento += largoDeParametros;
 
+	free(bufferOperacion);
 	return unaOperacion;
 }
 
@@ -210,5 +212,6 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	memcpy(&(unMetadata->tiempoCompactacion), bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
+	free(bufferMetadata);
 	return unMetadata;
 }

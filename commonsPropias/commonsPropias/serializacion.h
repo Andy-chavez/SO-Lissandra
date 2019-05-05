@@ -40,6 +40,9 @@ typedef struct {
 	int tiempoCompactacion;
 } metadata;
 
+operacionProtocolo empezarDeserializacion(void *buffer);
+registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla);
+metadata* deserializarMetadata(void* bufferMetadata);
 void* serializarRegistro(registro* unRegistro,char* nombreTabla);
 void* serializarOperacion(int unaOperacion, char* stringDeValores);
 void* serializarMetadata(metadata* unaMetadata);
