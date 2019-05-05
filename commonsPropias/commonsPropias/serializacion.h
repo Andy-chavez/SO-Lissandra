@@ -44,8 +44,11 @@ typedef struct {
  * Para saber que es lo que me estan mandando, utilizar
  * esta funcion. Devuelve la descripcion de lo que me enviaron
  * (enum de operacionProtocolo).
+ *
+ * NOTA = pasar por referencia al buffer, ya que va a modificar
+ * el puntero del buffer hacia lo que se debe deserializar.
  */
-operacionProtocolo empezarDeserializacion(void *buffer);
+operacionProtocolo empezarDeserializacion(void **buffer);
 
 /*
  * deserializa un registro y el nombre de la tabla

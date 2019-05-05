@@ -5,9 +5,10 @@
 #include <commons/collections/list.h>
 #include "serializacion.h"
 
-operacionProtocolo empezarDeserializacion(void *buffer) {
+operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
-	memcpy(&protocolo, buffer, sizeof(operacionProtocolo));
+	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
+	*buffer += 4;
 	return protocolo;
 }
 
