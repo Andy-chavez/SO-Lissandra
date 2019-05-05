@@ -41,7 +41,7 @@ typedef struct {
 } metadata;
 
 operacionProtocolo empezarDeserializacion(void *buffer);
-registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla);
+registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla);
 metadata* deserializarMetadata(void* bufferMetadata);
 void* serializarRegistro(registro* unRegistro,char* nombreTabla);
 void* serializarOperacion(int unaOperacion, char* stringDeValores);

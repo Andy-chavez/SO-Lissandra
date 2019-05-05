@@ -11,34 +11,35 @@ operacionProtocolo empezarDeserializacion(void *buffer) {
 	return protocolo;
 }
 
-registro* deserializarRegistro(void* bufferRegistro, char* nombreTabla) {
+registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
 	int desplazamiento = 0;
 	registro* unRegistro = malloc(sizeof(registro));
 	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
 
 	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
-	nombreTabla = malloc(largoDeNombreTabla);
+	*nombreTabla = malloc(largoDeNombreTabla);
 
-	memcpy(nombreTabla, bufferRegistro + desplazamiento, sizeof(char)*largoDeNombreTabla);
-	desplazamiento+= sizeof(char)*largoDeNombreTabla;
+	memcpy(*nombreTabla, bufferRegistro + desplazamiento, largoDeNombreTabla);
+	desplazamiento+= largoDeNombreTabla;
 
 	memcpy(&tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
-	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp); //nos parece con el magic que el tamanioTimestamp esta mal
+	memcpy( &(unRegistro->timestamp), bufferRegistro + desplazamiento, tamanioTimestamp);
 	desplazamiento+= tamanioTimestamp;
 
-	memcpy(&tamanioKey, bufferRegistro + desplazamiento , tamanioKey);
+	memcpy(&tamanioKey, bufferRegistro + desplazamiento , sizeof(int));
 	desplazamiento+= sizeof(int);
 
 	memcpy(&(unRegistro->key), bufferRegistro + desplazamiento, tamanioKey);
 	desplazamiento+= tamanioKey;
 
-	memcpy(&largoDeValue, bufferRegistro + desplazamiento, largoDeValue);
+	memcpy(&largoDeValue, desplazamiento + bufferRegistro, sizeof(int));
 	desplazamiento+= sizeof(int);
+	unRegistro->value = malloc(largoDeValue);
 
-	memcpy(&(unRegistro->value), bufferRegistro + desplazamiento, sizeof(char)*largoDeValue);
+	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
 
 	free(bufferRegistro);
 	return unRegistro;
@@ -57,7 +58,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	int largoDeValue = strlen(unRegistro->value) + 1;
 	int tamanioKey = sizeof(u_int16_t);
 	int tamanioTimeStamp = sizeof(time_t);
-	int tamanioTotalBuffer = 4*sizeof(int) + largoDeNombreTabla + sizeof(char)*largoDeNombreTabla + tamanioKey + tamanioTimeStamp;
+	int tamanioTotalBuffer = 4*sizeof(int) + largoDeNombreTabla + largoDeValue + tamanioKey + tamanioTimeStamp;
 	void *bufferRegistro= malloc(tamanioTotalBuffer);
 
 	//Tamaño de nombre de tabla
@@ -82,8 +83,8 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	memcpy(bufferRegistro + desplazamiento, &largoDeValue, largoDeValue);
 	desplazamiento+= sizeof(int);
 	//Nombre de value
-	memcpy(bufferRegistro + desplazamiento, &(unRegistro->value), sizeof(char)*largoDeValue);
-	desplazamiento+= sizeof(char)*largoDeValue;
+	memcpy(bufferRegistro + desplazamiento, unRegistro->value, largoDeValue);
+	desplazamiento+= largoDeValue;
 	return bufferRegistro;
 }
 
