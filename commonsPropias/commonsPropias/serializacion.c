@@ -41,15 +41,8 @@ registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
 
 	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
 
-	free(bufferRegistro);
 	return unRegistro;
 }
-
-/*
- * Serializa un registro. Toma dos parametros:
- * unRegistro: El registro a serializar.
- * nombreTabla: La tabla a la cual pertenece este Registro!!!
- */
 
 void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 
@@ -108,7 +101,6 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 	memcpy(unaOperacion->parametros,bufferOperacion + desplazamiento, largoDeParametros);
 	desplazamiento += largoDeParametros;
 
-	free(bufferOperacion);
 	return unaOperacion;
 }
 
@@ -213,6 +205,5 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	memcpy(&(unMetadata->tiempoCompactacion), bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
-	free(bufferMetadata);
 	return unMetadata;
 }
