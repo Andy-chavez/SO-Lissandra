@@ -33,36 +33,13 @@ typedef struct {
 	t_log* logger;
 } configYLogs;
 
-/*
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-	struct registro *sigRegistro;
-} registroLisandra;
 
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
 	char* value;
 } registro;
-*/
 
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
-/*
-typedef struct {
-	registro* unRegistro;
-	struct listaRegistros *sgte;
-} listaRegistros;
-*/
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
 typedef struct {
 	int numeroBloque;
@@ -87,18 +64,12 @@ typedef struct {
 	char* nombre;
 	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMOelemento.nombre HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
 	consistencia tipoDeConsistencia;
-	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura, preguntar A memoria
+	metadata *metadataAsociada;
 } tabla; //probable solo para serializar
 
 */
 
-/*
-typedef struct {
-	char* nombre;
-	registroLisandra* sigRegistro;
-} tablaMem;
-*/
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
 typedef struct {
 	char* nombre;
 	t_list* lista;
@@ -120,20 +91,24 @@ int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/N
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 registro buscarEnBloque(int key,char* numeroDeBloque,void* arg);
 
-//registro buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
-//	char* rutaBloque = string_new();
-//	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-//	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
-//	string_append(&rutaBloque,puntoMontaje);
-//	string_append(&rutaBloque,"Bloques/");
-//	string_append(&rutaBloque,numeroDeBloque);
-//	string_append(&rutaBloque,".bin");
-//	FILE* archivo = fopen(rutaBloque,"rb");
-//	char* value=config_get_string_value(archivo,key);
-//
-//	fclose(archivo);
-//
-//}
+registro buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
+	t_config* bloque;
+	char* rutaBloque = string_new();
+	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
+	string_append(&rutaBloque,puntoMontaje);
+	string_append(&rutaBloque,"Bloques/");
+	string_append(&rutaBloque,numeroDeBloque);
+	string_append(&rutaBloque,".bin");
+	//FILE* archivo = fopen(rutaBloque,"rb");
+	bloque = config_create(rutaBloque);
+	char* value=config_get_string_value(bloque,key);
+	int timestamp = config_get_int_value(bloque, char *key);
+
+
+	//fclose(archivo);
+
+}
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 	int validacion;

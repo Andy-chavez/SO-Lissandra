@@ -17,31 +17,7 @@ typedef enum {
 	JOURNAL,
 	SELECT
 } operacion;
-/*
-operacion parserGeneral(char* operacionAParsear) {
-	if(string_starts_with(operacionAParsear, "INSERT")) {
-		return INSERT;
-	}
-	else if (string_starts_with(operacionAParsear, "SELECT")) {
-		return SELECT;
-	}
-	else if (string_starts_with(operacionAParsear, "DESCRIBE")) {
-		return DESCRIBEALL;
-	}
-	else if (string_starts_with(operacionAParsear, "DESCRIBE ")) {
-		return DESCRIBETABLE;
-	}
-	else if (string_starts_with(operacionAParsear, "CREATE")) {
-		return CREATE;
-	}
-	else if (string_starts_with(operacionAParsear, "DROP")) {
-		return DROP;
-	}
-	else {
-		return -1;
-	}
-}
-*/
+
 //Ponemos la api y el parser todo en uno
 void parserGeneral(char* operacionAParsear) {
 	if(string_starts_with(operacionAParsear, "INSERT")) {
@@ -73,3 +49,5 @@ void parserGeneral(char* operacionAParsear) {
 		printf("no entendi xD");
 	}
 }
+
+#endif

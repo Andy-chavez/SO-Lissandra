@@ -20,59 +20,9 @@
 #include <commons/log.h>
 #include <commonsPropias/conexiones.h>
 #include "funcionesLFS.h"
+#include "parser.h"
 
-//#define CANTPARTICIONES 5 // esto esta en el metadata
-//
-//typedef enum {
-//	SC,
-//	SH,
-//	EC
-//}consistencia;
-//
-//typedef struct {
-//	time_t timestamp;
-//	u_int16_t key;
-//	char* value;  //no seria siempre un char*?
-//	struct registro *sigRegistro;
-//} registroLisandra;
-//
-//typedef struct {
-//	time_t timestamp;
-//	u_int16_t key;
-//	char* value;  //no seria siempre un char*?
-//} registro;
-//
-//typedef struct {
-//	t_config* config;
-//	t_log* logger;
-//} configYLogs;
 
-//
-//typedef struct {
-//	int numeroBloque;
-//	int sizeDeBloque;
-//
-//} bloque;
-//
-//typedef struct {
-//	int size;
-//	int numeroParticion; // para saber que keys estan ahi,por el modulo
-//	registroLisandra *registros;
-//	bloque block[/*CANTIDADBLOQUES*/];
-//} particion;
-//
-//typedef struct {
-//	consistencia tipoConsistencia;
-//	int cantParticiones;
-//	int tiempoCompactacion;
-//} metadata;
-//
-//typedef struct {
-//	char* nombre;
-//	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
-//	consistencia tipoDeConsistencia;
-//	metadata *metadataAsociada;
-//} tabla;
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -161,7 +111,7 @@ int main(int argc, char* argv[]) {
 
 	archivosDeConfigYLog->config = config_create("../lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
-
+	buscarEnBloque(4,1,archivosDeConfigYLog);
 
 	//buscarEnBloque(54,"1",archivosDeConfigYLog);
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
