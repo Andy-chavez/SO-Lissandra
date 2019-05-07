@@ -89,10 +89,9 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
-registro buscarEnBloque(int key,char* numeroDeBloque,void* arg);
+int buscarEnBloque(int key,char* numeroDeBloque,void* arg); //cambiar despues de nuevo a registro buscarEnBloque
 
-registro buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
-	t_config* bloque;
+int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
@@ -100,13 +99,26 @@ registro buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agreg
 	string_append(&rutaBloque,"Bloques/");
 	string_append(&rutaBloque,numeroDeBloque);
 	string_append(&rutaBloque,".bin");
-	//FILE* archivo = fopen(rutaBloque,"rb");
-	bloque = config_create(rutaBloque);
-	char* value=config_get_string_value(bloque,key);
-	int timestamp = config_get_int_value(bloque, char *key);
+	registro registroBloque;
 
+	FILE* archivo = fopen(rutaBloque,"r");
+	if (archivo == NULL)
+		{
+			log_info(archivosDeConfigYLog->logger,"No se pudo abrir el bloque %s",numeroDeBloque);
+			return -1;
+		}
+	while(!feof(archivo)){
+//		fread(&registroBloque.timestamp, sizeof(time_t), 1, archivo);
+//		fread(&registroBloque.key, sizeof(u_int16_t), 1, archivo);
+//		registroBloque.value = malloc(sizeof(char)*4);
+//		fread(&registroBloque.value, sizeof(char)*4, 1, archivo);
+		fread(&registroBloque, sizeof(registro), 1, archivo);
+		if(registroBloque.key== key) continue;
+	}
 
-	//fclose(archivo);
+	fclose(archivo);
+	free(rutaBloque);
+	return 1;
 
 }
 
@@ -114,9 +126,7 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 	int validacion;
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
-	//char* puntoMontaje = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/";
 	char* rutaDirectorio= string_new();
-	//puts("estoy por salir");
 	string_append(&rutaDirectorio,puntoMontaje); //OJO ACA HAY QUE VER QUE EN EL CONFIG NO TE VENGA CON "" EL PUNTO DE MONTAJE
 	string_append(&rutaDirectorio,"Tables/"); //habria que ver esto, es lo mejor que se me ocurrio porque en el select solo te dan el nombre
 	string_append(&rutaDirectorio,nombreTabla);

@@ -94,11 +94,21 @@ void leerConsola() {
 	    printf ("Ingresa operacion\n");
 
 	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
-	    parserGeneral(linea);
+	    parserGeneral(linea,"nada");
 	    }
 
 	    free (linea);  // free memory allocated by getline
 }
+
+//void lisandra_consola(){
+//	printf("Ingrese comando para lisandra con <OPERACION> seguido de los parametros");
+//	char* linea;
+//	linea = readline("");
+//	char** opYArg;
+//	opYArg = string_n_split(linea,2," ");
+//	parserGeneral(*opYArg,*(opYArg+1));
+//} magic veamos de hacer una cosa asi para la consola que nos va a ser mas facil tambien para cuando venga un describe solo
+
 
 
 int main(int argc, char* argv[]) {
@@ -109,12 +119,13 @@ int main(int argc, char* argv[]) {
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
-	archivosDeConfigYLog->config = config_create("../lisandra.config");
+	archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
-	buscarEnBloque(4,1,archivosDeConfigYLog);
+	buscarEnBloque(56,"1",archivosDeConfigYLog);
 
 	//buscarEnBloque(54,"1",archivosDeConfigYLog);
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
+	puts(existeTabla);
 //	pthread_t threadLeerConsola;
 //    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
 //    pthread_join(threadLeerConsola,NULL);

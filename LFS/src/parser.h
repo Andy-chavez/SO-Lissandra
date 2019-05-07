@@ -19,32 +19,22 @@ typedef enum {
 } operacion;
 
 //Ponemos la api y el parser todo en uno
-void parserGeneral(char* operacionAParsear) {
-	if(string_starts_with(operacionAParsear, "INSERT")) {
-	//empezar operacion insert
-		printf("empezar operacion insert: %s", operacionAParsear);
-		char** parametros = string_split(operacionAParsear," ");
-		printf("%s \n", *(parametros + 1));
-		printf("%s \n", *(parametros + 2));
-		printf("%s \n", *(parametros + 3));
-	}
-	else if (string_starts_with(operacionAParsear, "SELECT")) {
-	//empezar operacion select
-	}
-	else if (string_starts_with(operacionAParsear, "DESCRIBE")) {
-	printf("esto es un describe");
-	//empezar operacion describe
-	}
-	else if (string_starts_with(operacionAParsear, "DESCRIBE  ")) {
-	printf("esto es un describe all");
-	//empezar operacion describeAll
-	}
-	else if (string_starts_with(operacionAParsear, "CREATE")) {
-	//empezar operacion create
-	}
-	else if (string_starts_with(operacionAParsear, "DROP")) {
-    //empezar operacion drop
-	}
+void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
+	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+				printf("INSERT\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+				printf("SELECT\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
+				printf("DESCRIBE\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
+				printf("CREATE\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
+				printf("DROP\n");
+			}
 	else {
 		printf("no entendi xD");
 	}
