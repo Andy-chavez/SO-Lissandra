@@ -8,22 +8,11 @@
 #include <readline/readline.h>
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
-#include <inttypes.h>
-#include <stdlib.h>
-#include <commons/string.h>
-#include <commons/config.h>
-#include <commons/log.h>
 #include <commonsPropias/conexiones.h>
-#include <pthread.h>
-
+#include "operacionesMemoria.h"
 
 #define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config
 
-typedef struct {
-	t_config* config;
-	t_log* logger;
-} configYLogs;
 
 char* pruebaDeRecepcion(void* buffer) {
 	return (char*) buffer;
@@ -95,18 +84,18 @@ void *servidorMemoria(void* arg){
 }
 
 int main() {
-	pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
+	//pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
 	archivosDeConfigYLog->config = config_create("../memoria.config");
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 
-	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
+	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
 	//pthread_create(&threadCliente, NULL, clienteKernel, archivosDeConfigYLog);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, archivosDeConfigYLog);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, archivosDeConfigYLog);
 
-	pthread_join(threadServer, NULL);
+	//pthread_join(threadServer, NULL);
 	//pthread_detach(threadCliente);
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
