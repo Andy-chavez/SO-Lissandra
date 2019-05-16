@@ -106,6 +106,7 @@ int main(int argc, char *argv[]){
 	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
 */
+	cola_proc_nuevos = list_create();
 	kernel_consola();
 //	liberarConfigYLogs(archivosDeConfigYLog);
 	return 0;
