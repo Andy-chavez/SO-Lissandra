@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <commonsPropias/conexiones.h>
 #include <commons/config.h>
-#include <commons/string.h>
 #include <pthread.h>
 #include <string.h>
 #include <readline/readline.h>
