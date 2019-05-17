@@ -21,15 +21,23 @@ void kernel_run(char* path){
 		pcb_auxiliar->operacion = "RUN";
 		pcb_auxiliar->argumentos = path;
 		pcb_auxiliar->ejecutado = 1;
-		pcb_auxiliar->instrruccion_siguiente =list_create();
-		list_add(cola_proc_nuevos,pcb_auxiliar);
+		pcb_auxiliar->instrucciones =list_create();
 
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		char** operacion;
 		operacion = string_n_split(lineaLeida,2," ");
-		//TODO
-		//list_add()
+		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
+		instruccion_auxiliar->ejecutado= 0;
+		instruccion_auxiliar->operacion= malloc(sizeof(*operacion)); //necesario?
+		instruccion_auxiliar->argumentos= malloc(sizeof(*(operacion+1)));
+		instruccion_auxiliar->operacion= *operacion;
+		instruccion_auxiliar->argumentos= *(operacion+1);
+		list_add(pcb_auxiliar->instrucciones,instruccion_auxiliar);
+
+		free(instruccion_auxiliar);
+
 	}
+		list_add(cola_proc_nuevos,pcb_auxiliar);
 
 	free(pcb_auxiliar);
 	fclose(archivoALeer);

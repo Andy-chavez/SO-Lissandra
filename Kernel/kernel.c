@@ -39,10 +39,24 @@ void kernel_api(char* operacionAParsear, char* argumentos)
 	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
 			printf("INSERT\n");
 //TODO			kernel_insert();
+			/*
+			*en otra funcion* -> kernel_insert();
+			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+			hacer recibir para tener la rta
+			cerrarConexion(socketClienteKernel);
+			*/
 		}
 		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
 			printf("SELECT\n");
 //TODO			kernel_select();
+			/*
+			*en otra funcion* -> kernel_select();
+			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+			hacer recibir para tener la rta
+			cerrarConexion(socketClienteKernel);
+			*/
 		}
 		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
 			printf("DESCRIBE\n");

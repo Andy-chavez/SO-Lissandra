@@ -22,15 +22,15 @@ typedef struct{
 	char* operacion;
 	char* argumentos;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
-	t_list* instrruccion_siguiente;
-	t_list* pcb_siguiente;
+	t_list* instrucciones; //fila
+	//t_list* pcb_siguiente;  //columna
 	//TODO agregar mas campos 1
 }pcb;
 typedef struct{
 	char* operacion;
 	char* argumentos;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
-	t_list* instrruccion_siguiente;
+	//t_list* instruccion_siguiente;
 	//TODO agregar mas campos 2
 }instruccion;
 typedef enum {
