@@ -62,7 +62,7 @@ typedef struct {
 	struct listaRegistros *sgte;
 } listaRegistros;
 */
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
 
 typedef struct {
 	int numeroBloque;
@@ -102,7 +102,7 @@ typedef struct {
 	char* nombre;
 	t_list* lista;
 } tablaMem;
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
 
 
 //t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
@@ -117,22 +117,55 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
-registro buscarEnBloque(int key,char* numeroDeBloque,void* arg);
+int buscarEnBloque(int key,char* numeroDeBloque,void* arg); //cambiar despues de nuevo a registro buscarEnBloque
 
-//registro buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
-//	char* rutaBloque = string_new();
-//	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-//	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
-//	string_append(&rutaBloque,puntoMontaje);
-//	string_append(&rutaBloque,"Bloques/");
-//	string_append(&rutaBloque,numeroDeBloque);
-//	string_append(&rutaBloque,".bin");
-//	FILE* archivo = fopen(rutaBloque,"rb");
-//	char* value=config_get_string_value(archivo,key);
-//
-//	fclose(archivo);
-//
-//}
+int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
+	char* rutaBloque = string_new();
+	int pos=0;
+	char* buffer= malloc(sizeof(char)*100);
+	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
+	string_append(&rutaBloque,puntoMontaje);
+	string_append(&rutaBloque,"Bloques/");
+	string_append(&rutaBloque,numeroDeBloque);
+	string_append(&rutaBloque,".bin");
+	registro *registroBloque = malloc(sizeof(registro));
+	registroBloque->value = malloc (sizeof(char)*100);
+
+	FILE* archivo = fopen(rutaBloque,"rb");
+	if (archivo == NULL)
+		{
+			log_info(archivosDeConfigYLog->logger,"No se pudo abrir el bloque %s",numeroDeBloque);
+			return -1;
+		}
+	while(!feof(archivo)){
+		fread(&(registroBloque->timestamp), sizeof(time_t), 1, archivo);
+		fread(&(registroBloque->key), sizeof(u_int16_t), 1, archivo);
+		*(buffer+pos) = getc(archivo);
+		if(*(buffer+pos)==';') *(buffer+pos) = getc(archivo);
+		while(*(buffer+pos)!= '/' && *(buffer+pos)!= EOF){ //tomo como valor centinela por ahora la "/"
+			//unica manera que se me ocurre por ahora para guardar en algo que es variable el tamanio
+			pos++;
+			*(buffer+pos) = getc(archivo);
+		}
+		pos++;
+		*(buffer+pos) = '\n';
+		pos = 0;
+		strcpy(registroBloque->value,buffer);
+		if(registroBloque->key== key){
+			puts("lo encontre");
+			printf("el value de la key: %i es %s",registroBloque->key,registroBloque->value );
+			//agregarAListaSelect(registroBloque); probablemente hacer algo asi porque son las de la memtable,la de los bloques y de los temporales.
+			break;
+		}
+	}
+	//puts("no lo encontre");
+	free(buffer);
+	fclose(archivo);
+	free(rutaBloque);
+	return 1;
+
+}
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
 	int validacion;
@@ -172,11 +205,6 @@ int calcularParticion(int key,int cantidadParticiones){
 	return particion;
 }
 
-//registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla){ //devolver registro completo por el timestamp
-//	registro registroBuscado = (registro*) malloc(sizeof(registro));
-//	ir particion, sacar bloques,
-//	return registroBuscado;
-//}
 
 
 

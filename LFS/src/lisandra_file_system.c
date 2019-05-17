@@ -22,58 +22,7 @@
 #include <commonsPropias/conexiones.h>
 #include "funcionesLFS.h"
 #include "parser.h"
-//#define CANTPARTICIONES 5 // esto esta en el metadata
-//
-//typedef enum {
-//	SC,
-//	SH,
-//	EC
-//}consistencia;
-//
-//typedef struct {
-//	time_t timestamp;
-//	u_int16_t key;
-//	char* value;  //no seria siempre un char*?
-//	struct registro *sigRegistro;
-//} registroLisandra;
-//
-//typedef struct {
-//	time_t timestamp;
-//	u_int16_t key;
-//	char* value;  //no seria siempre un char*?
-//} registro;
-//
-//typedef struct {
-//	t_config* config;
-//	t_log* logger;
-//} configYLogs;
 
-//
-//typedef struct {
-//	int numeroBloque;
-//	int sizeDeBloque;
-//
-//} bloque;
-//
-//typedef struct {
-//	int size;
-//	int numeroParticion; // para saber que keys estan ahi,por el modulo
-//	registroLisandra *registros;
-//	bloque block[/*CANTIDADBLOQUES*/];
-//} particion;
-//
-//typedef struct {
-//	consistencia tipoConsistencia;
-//	int cantParticiones;
-//	int tiempoCompactacion;
-//} metadata;
-//
-//typedef struct {
-//	char* nombre;
-//	particion particiones[CANTPARTICIONES]; //HAY QUE VER COMO HACER QUE DE CADA PARTICION SALGAN SUS REGISTROS.
-//	consistencia tipoDeConsistencia;
-//	metadata *metadataAsociada;
-//} tabla;
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -136,6 +85,15 @@ void liberarConfigYLogs(configYLogs *archivos) {
 	free(archivos);
 }
 
+//void lisandra_consola(){
+//	printf("Ingrese comando para lisandra con <OPERACION> seguido de los parametros");
+//	char* linea;
+//	linea = readline("");
+//	char** opYArg;
+//	opYArg = string_n_split(linea,2," ");
+//	parserGeneral(*opYArg,*(opYArg+1));
+//} magic veamos de hacer una cosa asi para la consola que nos va a ser mas facil tambien para cuando venga un descri
+
 void leerConsola() {
 
 		char *linea = NULL;  // forces getline to allocate with malloc
@@ -146,6 +104,7 @@ void leerConsola() {
 
 	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
 	 //   parserGeneral(linea);
+	    	//parserGeneral(linea,"nada");
 	    }
 
 	    free (linea);  // free memory allocated by getline
@@ -182,12 +141,12 @@ int main(int argc, char* argv[]) {
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
-	archivosDeConfigYLog->config = config_create("../lisandra.config");
+	archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+	buscarEnBloque(56,"1",archivosDeConfigYLog);
 
-
-	//buscarEnBloque(54,"1",archivosDeConfigYLog);
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
+	puts(existeTabla);
 //	pthread_t threadLeerConsola;
 //    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
 //    pthread_join(threadLeerConsola,NULL);
