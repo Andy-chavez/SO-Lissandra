@@ -9,7 +9,30 @@
 #define STRUCTS_BASICOS_H_
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
+#include <stdlib.h>
 
+t_list* cola_proc_nuevos;
+t_list* cola_proc_listos;
+t_list* cola_proc_terminados;
+t_list* cola_proc_ejecutando;
+t_list* cola_proc_bloqueados;
+
+typedef struct{
+	char* operacion;
+	char* argumentos;
+	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
+	t_list* instrucciones; //fila
+	//t_list* pcb_siguiente;  //columna
+	//TODO agregar mas campos 1
+}pcb;
+typedef struct{
+	char* operacion;
+	char* argumentos;
+	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
+	//t_list* instruccion_siguiente;
+	//TODO agregar mas campos 2
+}instruccion;
 typedef enum {
 	SC, // UNA
 	SH, // MUCHAS
@@ -46,7 +69,7 @@ typedef enum {
 
 typedef struct {
 	t_config* config;
-	t_log* logger;
+	t_log* log;
 } configYLogs;
 
 /************************************************************************/

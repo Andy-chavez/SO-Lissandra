@@ -8,8 +8,9 @@
 #include "structs-basicos.h"
 
 
+
 void liberarConfigYLogs(configYLogs *archivos) {
-	log_destroy(archivos->logger);
+	log_destroy(archivos->log);
 	config_destroy(archivos->config);
 	free(archivos);
 }
