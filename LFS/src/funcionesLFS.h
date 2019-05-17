@@ -80,7 +80,6 @@ void liberarBuffer(char** buffer,int tamanio);
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
 	int tam=0;
-	//char separador;
 	long posicionArchivo;
 	char* buffer= (char*) malloc(sizeof(char)*100);
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
