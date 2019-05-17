@@ -34,48 +34,13 @@ typedef struct {
 	t_log* logger;
 } configYLogs;
 
-/*
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-	struct registro *sigRegistro;
-} registroLisandra;
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
-*/
-
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
 
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
 	char* value;
 } registro;
-/*
-typedef struct {
-	registro* unRegistro;
-	struct listaRegistros *sgte;
-} listaRegistros;
-*/
 
-
-typedef struct {
-	int numeroBloque;
-	int sizeDeBloque;
-} bloque;
-/*
-typedef struct {
-	int size;
-	int numeroParticion; // para saber que keys estan ahi,por el modulo
-	registroLisandra *registros;
-	bloque block[CANTIDADBLOQUES];
-} particion;
-*/
 typedef struct {
 	consistencia tipoConsistencia;
 	int cantParticiones;
@@ -90,14 +55,6 @@ typedef struct {
 	metadata *metadataAsociada; //esto es raro, no creo que vaya en la estructura, preguntar A memoria
 } tabla; //probable solo para serializar
 */
-
-/*
-typedef struct {
-	char* nombre;
-	registroLisandra* sigRegistro;
-} tablaMem;
-*/
-//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 typedef struct {
 	char* nombre;
 	t_list* lista;
@@ -118,11 +75,14 @@ metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg); //cambiar despues de nuevo a registro buscarEnBloque
+void liberarBuffer(char** buffer,int tamanio);
 
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
-	int pos=0;
-	char* buffer= malloc(sizeof(char)*100);
+	int tam=0;
+	//char separador;
+	long posicionArchivo;
+	char* buffer= (char*) malloc(sizeof(char)*100);
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
 	string_append(&rutaBloque,puntoMontaje);
@@ -130,7 +90,7 @@ int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar ar
 	string_append(&rutaBloque,numeroDeBloque);
 	string_append(&rutaBloque,".bin");
 	registro *registroBloque = malloc(sizeof(registro));
-	registroBloque->value = malloc (sizeof(char)*100);
+	//registroBloque->value = malloc (sizeof(char)*100);
 
 	FILE* archivo = fopen(rutaBloque,"rb");
 	if (archivo == NULL)
@@ -138,26 +98,31 @@ int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar ar
 			log_info(archivosDeConfigYLog->logger,"No se pudo abrir el bloque %s",numeroDeBloque);
 			return -1;
 		}
-	while(!feof(archivo)){
-		fread(&(registroBloque->timestamp), sizeof(time_t), 1, archivo);
+	while(fread(&(registroBloque->timestamp), sizeof(time_t), 1, archivo)){
 		fread(&(registroBloque->key), sizeof(u_int16_t), 1, archivo);
-		*(buffer+pos) = getc(archivo);
-		if(*(buffer+pos)==';') *(buffer+pos) = getc(archivo);
-		while(*(buffer+pos)!= '/' && *(buffer+pos)!= EOF){ //tomo como valor centinela por ahora la "/"
+		posicionArchivo = ftell(archivo); //para usar despues
+		fread((buffer+tam),sizeof(char),1,archivo);
+		//*(buffer+tam) = getc(archivo);
+
+		while(*(buffer+tam)!= '*'){ //tomo como valor centinela por ahora la '*'
 			//unica manera que se me ocurre por ahora para guardar en algo que es variable el tamanio
-			pos++;
-			*(buffer+pos) = getc(archivo);
+			tam++;
+			fread((buffer+tam),sizeof(char),1,archivo);
 		}
-		pos++;
-		*(buffer+pos) = '\n';
-		pos = 0;
-		strcpy(registroBloque->value,buffer);
+		tam ++;
+//		strcpy(registroBloque->value,buffer);
 		if(registroBloque->key== key){
+			fseek(archivo, posicionArchivo, SEEK_SET ); //volver atras a la posicion donde empieza el value
+			registroBloque->value = malloc (sizeof(char)*tam);
+			fread(registroBloque->value, sizeof(char)*tam, 1, archivo);
+			//apenas aca cargate el value
 			puts("lo encontre");
-			printf("el value de la key: %i es %s",registroBloque->key,registroBloque->value );
+			puts(registroBloque->value);
 			//agregarAListaSelect(registroBloque); probablemente hacer algo asi porque son las de la memtable,la de los bloques y de los temporales.
 			break;
 		}
+		for(int i=0;i<100;i++) *(buffer+i) = '\0'; //libero buffer
+		tam = 0;
 	}
 	//puts("no lo encontre");
 	free(buffer);
