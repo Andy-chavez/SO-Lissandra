@@ -24,20 +24,6 @@
 #include "parser.h"
 
 
-/* SELECT: FACU , INSERT: PABLO
- * verificarExistencia(char* nombreTabla); //select e insert. FACU
- * metadata obtenerMetadata(char* nombreTabla); //select e insert. PABLO
- * int calcularParticion(int cantidadParticiones, int key); //select e insert. key hay que pasarlo a int. FACU
- * int leerRegistro(int particion, char* nombreTabla); //te devuelve el key. FACU
- * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
- * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
- * registro devolverRegistroDelFileSystem(int key); //select e insert FACU
- * Fijarse que te devuelva el timestamp con epoch unix
- * No olvidar de hacer la comparacion final
-*/
-
-
-
 void* servidorLisandra(void *arg){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 	char* puertoLisandra = "5008";
