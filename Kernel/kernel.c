@@ -49,7 +49,7 @@ void kernel_api(char* operacionAParsear, char* argumentos)
 		}
 		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
 			printf("SELECT\n");
-//TODO			kernel_select();
+//TODO			kernel_select(*(operacion+1));
 			/*
 			*en otra funcion* -> kernel_select();
 			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
