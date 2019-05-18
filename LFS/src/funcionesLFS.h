@@ -211,6 +211,14 @@ bool esIgualAlNombre(char* nombreTabla,void * elemento){
 		return string_equals_ignore_case(tabla->nombre, nombreTabla);
 }
 
+void* devolverMayor(registro* registro1, registro* registro2){
+	if (registro1->timestamp > registro2->timestamp){
+			return registro1;
+		}else{
+			return registro2;
+		}
+}
+
 registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int key){
 
 	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
@@ -223,39 +231,76 @@ registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int 
 		return esIgualAlNombre(nombreTabla, elemento);
 	}
 
+	void* cualEsElMayor(void *elemento1, void *elemento2){
+		registro* primerElemento = elemento1;
+		registro* segundoElemento = elemento2;
+
+		return devolverMayor(primerElemento, segundoElemento);
+
+	}
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 			registroDePrueba -> key = 13;
 			registroDePrueba -> value= string_duplicate("aloo");
 			registroDePrueba -> timestamp = 8000;
 
+	registro* registroDePrueba2 = malloc(sizeof(registro));
+			  registroDePrueba2 -> key = 13;
+			  registroDePrueba2 -> value= string_duplicate("aloo");
+			  registroDePrueba2 -> timestamp = 10000;
 
-			tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
+	registro* registroDePrueba3 = malloc(sizeof(registro));
+			  registroDePrueba3 -> key = 13;
+			  registroDePrueba3 -> value= string_duplicate("aloo");
+			  registroDePrueba3 -> timestamp = 9000;
+
+	tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
 			tablaDePrueba-> nombre = string_duplicate("tablaA");
 			tablaDePrueba->lista = list_create();
 
 			list_add(tablaDePrueba->lista, registroDePrueba);
+			list_add(tablaDePrueba->lista, registroDePrueba2);
 
-			tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-						tablaDePrueba2-> nombre = string_duplicate("tablaB");
-						tablaDePrueba2->lista = list_create();
-						list_add(tablaDePrueba2->lista, registroDePrueba);
+	tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
+			  tablaDePrueba2->nombre = string_duplicate("tablaB");
+			  tablaDePrueba2->lista = list_create();
 
+	list_add(tablaDePrueba2->lista, registroDePrueba);
 	list_add(memtable, tablaDePrueba);
 	list_add(memtable, tablaDePrueba2);
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
-	registro* registroEncontrado = list_find(encuentraLista->lista, encontrarLaKey);
+	t_list* registrosConLaKey = list_filter(encuentraLista->lista, encontrarLaKey);
 
+	//bilardo se sentiria orgulloso(?, pero no se me ocurrio otra forma por ahora de plantear la semilla
+	registro* seed = malloc(sizeof(registro));
+	seed->key = 0;
+	seed->timestamp = 0;
+	seed->value = "";
 
+	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, seed, cualEsElMayor);
+
+//	printf("Esto no va a funcionar a la primera: %ld \n",registroDeMayorTimestamp->timestamp);
 //	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
 
-	return registroEncontrado;
+	return registroDeMayorTimestamp;
 
 }
 
 
+registro* mayorTimestamp(t_list* memtable, int key){
+
+	bool encontrarLaKey(void *elemento){
+		tablaMem* tabla = elemento;
+
+			return estaLaKey(key, elemento);
+		}
+
+	t_list* registrosConLaKey = list_filter(memtable, encontrarLaKey);
+
+
+}
 
 metadata obtenerMetadata(char* nombreTabla){
 	t_config* configMetadata;
