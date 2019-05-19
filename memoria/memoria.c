@@ -11,7 +11,7 @@
 #include <commonsPropias/conexiones.h>
 #include "operacionesMemoria.h"
 
-#define TAMANIOSEGMENTO 10 // esto va a estar en un archivo de config
+#define TAMANIOSEGMENTO 10// esto va a estar en un archivo de config
 
 
 char* pruebaDeRecepcion(void* buffer) {
