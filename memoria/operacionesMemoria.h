@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <commons/string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 typedef struct {
 	t_config* config;
@@ -68,17 +69,6 @@ memoria* inicializarMemoria(int tamanio){
 	return nuevaMemoria;
 }
 
-void agregarSegmento(memoria* memoria,pagina* primeraPagina,char* tabla ){
-	segmento segmentoNuevo;
-	segmentoNuevo.nombreTabla = tabla;
-	segmentoNuevo.tablaPaginas = list_create();
-	paginaEnTabla primerPagina;
-	primerPagina.unaPagina = primeraPagina;
-	primerPagina.numeroPagina = 0;
-	//list_add(segmentoNuevo.paginas,(void*) primerPagina);	no estoy sabiendo como meter esto
-	// Habría que comprobar que hay espacio
-	//list_add(memoria.tablaSegmentos,(void*) segmentoNuevo);    claramente asi no
-}
 
 int calcularEspacio(pagina* unaPagina) {
 	int timeStamp = sizeof(time_t);
@@ -89,7 +79,7 @@ int calcularEspacio(pagina* unaPagina) {
 
 void* encontrarEspacio(memoria* memoriaPrincipal) {
 	void* espacioLibre = memoriaPrincipal->base;
-	while((int*) espacioLibre == 0) {
+	while(*((int*) espacioLibre) != 0) {
 		espacioLibre++;
 	}
 	return espacioLibre;
@@ -103,34 +93,57 @@ bufferDePagina *bufferPagina(pagina* unaPagina) {
 	bufferDePagina* buffer = malloc(sizeof(bufferDePagina));
 	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + strlen(unaPagina->value) + 1;
 	buffer->buffer = malloc(buffer->tamanio);
-	memcpy(buffer, unaPagina->timestamp, sizeof(time_t));
+
+	memcpy(buffer->buffer, &(unaPagina->timestamp), sizeof(time_t));
 	int desplazamiento = sizeof(time_t);
-	memcpy(buffer + desplazamiento, unaPagina->key, sizeof(uint16_t));
+
+	memcpy(buffer->buffer + desplazamiento, &(unaPagina->key), sizeof(uint16_t));
 	desplazamiento += sizeof(uint16_t);
-	memcpy(buffer + desplazamiento, unaPagina->value, strlen(unaPagina->value) + 1);
+
+	memcpy(buffer->buffer + desplazamiento, unaPagina->value, strlen(unaPagina->value) + 1);
 	return buffer;
 }
 
-liberarBufferDePagina(bufferDePagina* buffer) {
+void liberarBufferDePagina(bufferDePagina* buffer) {
 	free(buffer->buffer);
 	free(buffer);
 }
 
-void guardar(pagina* unaPagina, memoria* memoriaPrincipal) {
+void* guardar(pagina* unaPagina, memoria* memoriaPrincipal) {
 	bufferDePagina *bufferAGuardar = bufferPagina(unaPagina);
 	void *guardarDesde = encontrarEspacio(memoriaPrincipal);
+
 	memcpy(guardarDesde, bufferAGuardar->buffer, bufferAGuardar->tamanio);
+
 	liberarBufferDePagina(bufferAGuardar);
+
+	return guardarDesde;
 }
 
-bool guardarEnMemoria(pagina* unaPagina, memoria* memoriaPrincipal) {
+void* guardarEnMemoria(pagina* unaPagina, memoria* memoriaPrincipal) {
 	int espacioNecesario = calcularEspacio(unaPagina);
+
 	if(hayEspacioSuficientePara(memoriaPrincipal, espacioNecesario)){
-		guardar(unaPagina, memoriaPrincipal);
-		return true;
+		return guardar(unaPagina, memoriaPrincipal);
+
 	} else {
-		return false;
+		return NULL;
 	}
+}
+void agregarSegmento(memoria* memoria,pagina* primeraPagina,char* tabla ){
+
+	segmento* segmentoNuevo = malloc(sizeof(segmento));
+	segmentoNuevo->nombreTabla = tabla;
+	segmentoNuevo->tablaPaginas = list_create();
+
+	paginaEnTabla* primerPagina = malloc(sizeof(paginaEnTabla));
+	primerPagina->numeroPagina = 0;
+	primerPagina->unaPagina = guardarEnMemoria(primeraPagina, memoria);
+
+	list_add(segmentoNuevo->tablaPaginas, primerPagina);
+
+
+	list_add(memoria->tablaSegmentos, segmentoNuevo);
 }
 
 pagina* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
@@ -159,9 +172,11 @@ void cambiarDatosEnMemoria(paginaEnTabla* paginaACambiar, pagina* paginaNueva) {
 
 int obtenerTamanioValue(void* valueBuffer) {
 	int tamanio = 0;
-	while((char*) valueBuffer != '\n') {
+	char prueba = *((char*) valueBuffer);
+	while(prueba != '\0') {
 		tamanio++;
 		valueBuffer++;
+		prueba = *((char*) valueBuffer);
 	}
 	return tamanio;
 }
