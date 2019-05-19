@@ -1,4 +1,3 @@
-
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commons/string.h>
@@ -288,19 +287,6 @@ registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int 
 
 }
 
-
-registro* mayorTimestamp(t_list* memtable, int key){
-
-	bool encontrarLaKey(void *elemento){
-		tablaMem* tabla = elemento;
-
-			return estaLaKey(key, elemento);
-		}
-
-	t_list* registrosConLaKey = list_filter(memtable, encontrarLaKey);
-
-
-}
 
 metadata obtenerMetadata(char* nombreTabla){
 	t_config* configMetadata;
