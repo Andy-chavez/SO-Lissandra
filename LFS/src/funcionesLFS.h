@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h> //mirar clave ACCESS para verificar existencia
 #include <sys/stat.h> //para ver si existe un directorio
+#include "configuraciones.h"
+#include <sys/mman.h>
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -76,6 +78,36 @@ registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg); //cambiar despues de nuevo a registro buscarEnBloque
 void liberarBuffer(char** buffer,int tamanio);
 
+//crearTabla(char* ruta){
+//
+//}
+
+void buscarEnBloque2(int key,char* numeroBloque){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+
+	char* rutaBloque = string_new();
+	string_append(&rutaBloque,puntoMontaje);
+	string_append(&rutaBloque,"Bloques/");
+	string_append(&rutaBloque,numeroBloque);
+	string_append(&rutaBloque,".bin");
+	FILE* archivo = fopen(rutaBloque,"rb");
+	// []
+
+//	t_config* archivoParticion;
+//	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/Particion1.bin");
+//	int size = config_get_int_value(archivoParticion,"SIZE"); //sizeParticion/sizeBloques
+	struct stat sb;
+	fstat(archivo,&sb);
+
+	char* informacion = malloc (sizeof(char)*1000);
+	*informacion=mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
+	puts(informacion);
+	fclose(archivo);
+	free(rutaBloque);
+	free(informacion);
+}
+
+
+
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
 	int tam=0;
@@ -89,20 +121,20 @@ int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar ar
 	string_append(&rutaBloque,".bin");
 	registro *registroBloque = malloc(sizeof(registro));
 	//registroBloque->value = malloc (sizeof(char)*100);
-
 	FILE* archivo = fopen(rutaBloque,"rb");
 	if (archivo == NULL)
 		{
 			log_info(archivosDeConfigYLog->logger,"No se pudo abrir el bloque %s",numeroDeBloque);
 			return -1;
 		}
+
 	while(fread(&(registroBloque->timestamp), sizeof(time_t), 1, archivo)){
 		fread(&(registroBloque->key), sizeof(u_int16_t), 1, archivo);
 		posicionArchivo = ftell(archivo); //para usar despues
 		fread((buffer+tam),sizeof(char),1,archivo);
 		//*(buffer+tam) = getc(archivo);
 
-		while(*(buffer+tam)!= '*'){ //tomo como valor centinela por ahora la '*'
+		while(*(buffer+tam)!= '\n'){ //tomo como valor centinela por ahora la '*'
 			//unica manera que se me ocurre por ahora para guardar en algo que es variable el tamanio
 			tam++;
 			fread((buffer+tam),sizeof(char),1,archivo);

@@ -119,6 +119,8 @@ void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
 
 int main(int argc, char* argv[]) {
 
+	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	leerMetadataFS ();
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//obtenerMetadata("tablaA");
@@ -127,9 +129,10 @@ int main(int argc, char* argv[]) {
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
-	archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	//archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
-	buscarEnBloque(56,"1",archivosDeConfigYLog);
+	buscarEnBloque2(56,"1");
+	//buscarEnBloque(56,"1",archivosDeConfigYLog);
 
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
 	puts(existeTabla);
