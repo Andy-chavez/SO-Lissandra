@@ -9,6 +9,9 @@
 #include <sys/stat.h> //para ver si existe un directorio
 #include "configuraciones.h"
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/io.h>
+#include <fcntl.h>
 
 /* SELECT: FACU , INSERT: PABLO
  * verificarExistencia(char* nombreTabla); //select e insert. FACU
@@ -83,13 +86,14 @@ void liberarBuffer(char** buffer,int tamanio);
 //}
 
 void buscarEnBloque2(int key,char* numeroBloque){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
-
+	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 	char* rutaBloque = string_new();
 	string_append(&rutaBloque,puntoMontaje);
 	string_append(&rutaBloque,"Bloques/");
 	string_append(&rutaBloque,numeroBloque);
 	string_append(&rutaBloque,".bin");
-	FILE* archivo = fopen(rutaBloque,"rb");
+	int archivo = open(rutaBloque,O_RDWR);
+	t_list* listaRegistros;
 	// []
 
 //	t_config* archivoParticion;
@@ -97,16 +101,22 @@ void buscarEnBloque2(int key,char* numeroBloque){ //pasarle el tamanio de la par
 //	int size = config_get_int_value(archivoParticion,"SIZE"); //sizeParticion/sizeBloques
 	struct stat sb;
 	fstat(archivo,&sb);
+	//while para leer todos los bloques
+	char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
+	registro *registro = malloc (sizeof(registro));
 
-	char* informacion = malloc (sizeof(char)*1000);
-	*informacion=mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
 	puts(informacion);
-	fclose(archivo);
 	free(rutaBloque);
 	free(informacion);
 }
 
-
+void agregarALista(char* timestamp,char* key,char* value,t_list* head){
+	registro* guardarRegistro = malloc (sizeof(registro)) ;
+	guardarRegistro->timestamp = atoi(timestamp);
+	guardarRegistro->key = atoi(key);
+	guardarRegistro->value = malloc (sizeof(tamanioValue));
+	list_add(head,guardarRegistro);
+}
 
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
