@@ -33,7 +33,7 @@ typedef struct {
 
 typedef struct {
 	int numeroPagina;
-	pagina *unaPagina;
+	void *unaPagina;
 	flagModificado flag;
 } paginaEnTabla;
 
@@ -83,16 +83,16 @@ int calcularEspacio(pagina* unaPagina) {
 	return timeStamp + key + value;
 }
 
-bool hayEspacioSuficientePara(memoria* memoria, int espacioPedido){
-	return (memoria->limite - memoria->base) > espacioPedido;
-}
-
 void* encontrarEspacio(memoria* memoriaPrincipal) {
 	void* espacioLibre = memoriaPrincipal->base;
 	while((int*) espacioLibre == 0) {
 		espacioLibre++;
 	}
 	return espacioLibre;
+}
+
+bool hayEspacioSuficientePara(memoria* memoria, int espacioPedido){
+	return (memoria->limite - encontrarEspacio(memoria)) > espacioPedido;
 }
 
 void guardar(pagina* unaPagina,memoria* memoriaPrincipal) {
@@ -159,7 +159,8 @@ void selectLQL(char*nombreTabla,int key, memoria* memoriaPrincipal){
 			//paginaEncontrada = pedirRegistroLFS(unSegmento,key);
 			//int espacioNecesario = calcularEspacio(paginaEncontrada);
 			//if(hayEspacioMemoria(espacioNecesario)){
-			//	guardarPagina(paginaEncontrada);
+			//	guardarEnMemoria(paginaEncontrada);
+			//
 			//};
 			// else journal();
 	}
