@@ -85,6 +85,16 @@ void liberarBuffer(char** buffer,int tamanio);
 //
 //}
 
+void agregarALista(char* timestamp,char* key,char* value,t_list* head){
+	registro* guardarRegistro = malloc (sizeof(registro)) ;
+	guardarRegistro->timestamp = atoi(timestamp);
+	guardarRegistro->key = atoi(key);
+	guardarRegistro->value = malloc (sizeof(tamanioValue));
+	guardarRegistro->value = value;
+	list_add(head,guardarRegistro);
+	puts(guardarRegistro->value);
+}
+
 void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 	char* rutaBloque = string_new();
@@ -99,22 +109,18 @@ void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tam
 	struct stat sb;
 	fstat(archivo,&sb);
 	//while para leer todos los bloques
-	char* informacion = mmap(NULL,sizeTabla,PROT_READ,MAP_PRIVATE,archivo,0);
+	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,0);
 	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
-	puts(informacion);
-	registro *registro = malloc (sizeof(registro));
-
-	puts(informacion);
+	//parsear informacion
+	char** separarRegistro = string_split(informacion,"\n");
+//	int length = sizeof(separarRegistro)/sizeof(separarRegistro[0]);
+	int i;
+	for(i=0;*(separarRegistro+i)!=NULL;i++){
+		char **aCargar =string_split(*(separarRegistro+i),";");
+		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+	}
 	free(rutaBloque);
-	free(informacion);
-}
-
-void agregarALista(char* timestamp,char* key,char* value,t_list* head){
-	registro* guardarRegistro = malloc (sizeof(registro)) ;
-	guardarRegistro->timestamp = atoi(timestamp);
-	guardarRegistro->key = atoi(key);
-	guardarRegistro->value = malloc (sizeof(tamanioValue));
-	list_add(head,guardarRegistro);
+	//free(informacion);
 }
 
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log

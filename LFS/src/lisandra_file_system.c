@@ -129,16 +129,15 @@ int main(int argc, char* argv[]) {
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
-	//archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
 	t_config* archivoParticion;
-	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/part1.bin");
-	int sizeParticion = atoi(config_get_string_value(archivoParticion,"SIZE"));
+	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/Part1.bin");
+	int sizeParticion=config_get_int_value(archivoParticion,"SIZE");
 	buscarEnBloque2(56,"1",sizeParticion);
 	//buscarEnBloque(56,"1",archivosDeConfigYLog);
 
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
-	puts(existeTabla);
 //	pthread_t threadLeerConsola;
 //    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
 //    pthread_join(threadLeerConsola,NULL);
