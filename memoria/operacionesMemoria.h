@@ -28,7 +28,7 @@ typedef enum {
 typedef struct {
 	time_t timestamp;
 	uint16_t key;
-	void* value;
+	char* value;
 } pagina;
 
 typedef struct {
@@ -49,6 +49,10 @@ typedef struct {
 	int *seeds;
 } memoria;
 
+typedef struct {
+	void* buffer;
+	int tamanio;
+} bufferDePagina;
 
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE MEMORIA PRINCIPAL //
@@ -95,13 +99,28 @@ bool hayEspacioSuficientePara(memoria* memoria, int espacioPedido){
 	return (memoria->limite - encontrarEspacio(memoria)) > espacioPedido;
 }
 
-void guardar(pagina* unaPagina,memoria* memoriaPrincipal) {
-	void* guardarDesde = encontrarEspacio(memoriaPrincipal);
-	memcpy(guardarDesde, unaPagina->timestamp, sizeof(time_t));
+bufferDePagina *bufferPagina(pagina* unaPagina) {
+	bufferDePagina* buffer = malloc(sizeof(bufferDePagina));
+	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + strlen(unaPagina->value) + 1;
+	buffer->buffer = malloc(buffer->tamanio);
+	memcpy(buffer, unaPagina->timestamp, sizeof(time_t));
 	int desplazamiento = sizeof(time_t);
-	memcpy(guardarDesde + desplazamiento, unaPagina->key, sizeof(uint16_t));
+	memcpy(buffer + desplazamiento, unaPagina->key, sizeof(uint16_t));
 	desplazamiento += sizeof(uint16_t);
-	memcpy(guardarDesde + desplazamiento, unaPagina->value, strlen(unaPagina->value) + 1);
+	memcpy(buffer + desplazamiento, unaPagina->value, strlen(unaPagina->value) + 1);
+	return buffer;
+}
+
+liberarBufferDePagina(bufferDePagina* buffer) {
+	free(buffer->buffer);
+	free(buffer);
+}
+
+void guardar(pagina* unaPagina, memoria* memoriaPrincipal) {
+	bufferDePagina *bufferAGuardar = bufferPagina(unaPagina);
+	void *guardarDesde = encontrarEspacio(memoriaPrincipal);
+	memcpy(guardarDesde, bufferAGuardar->buffer, bufferAGuardar->tamanio);
+	liberarBufferDePagina(bufferAGuardar);
 }
 
 bool guardarEnMemoria(pagina* unaPagina, memoria* memoriaPrincipal) {
@@ -114,8 +133,38 @@ bool guardarEnMemoria(pagina* unaPagina, memoria* memoriaPrincipal) {
 	}
 }
 
+pagina* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
+	pagina* paginaARetornar = malloc(sizeof(pagina));
+
+	memcpy(&(paginaARetornar->timestamp),(time_t*) unaPagina->unaPagina, sizeof(time_t));
+	int desplazamiento = sizeof(time_t);
+
+	memcpy(&(paginaARetornar->key), (uint16_t*) (unaPagina->unaPagina + desplazamiento), sizeof(uint16_t));
+	desplazamiento += sizeof(uint16_t);
+
+	int tamanioValue = obtenerTamanioValue((unaPagina->unaPagina + desplazamiento));
+	paginaARetornar->value = malloc(tamanioValue);
+	memcpy(paginaARetornar->value, (unaPagina->unaPagina + desplazamiento), tamanioValue);
+
+	return paginaARetornar;
+}
+
+void cambiarDatosEnMemoria(paginaEnTabla* paginaACambiar, pagina* paginaNueva) {
+	bufferDePagina* bufferParaCambio = bufferPagina(paginaNueva);
+	memcpy(paginaACambiar->unaPagina, bufferParaCambio->buffer, bufferParaCambio->tamanio);
+}
+
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
+
+int obtenerTamanioValue(void* valueBuffer) {
+	int tamanio = 0;
+	while((char*) valueBuffer != '\n') {
+		tamanio++;
+		valueBuffer++;
+	}
+	return tamanio;
+}
 
 bool tienenIgualNombre(char* unNombre,char* otroNombre){
 	return string_equals_ignore_case(unNombre, otroNombre);
@@ -129,8 +178,9 @@ segmento* encontrarSegmentoPorNombre(memoria* memoria,char* tablaNombre){
 	return (segmento*) list_find(memoria->tablaSegmentos,(void*)segmentoDeIgualNombre);
 }
 
-bool igualKeyPagina(paginaEnTabla* pagina,int keyDada){
-	return pagina->unaPagina->key == keyDada;
+bool igualKeyPagina(paginaEnTabla* unaPagina,int keyDada){
+	pagina* paginaReal = leerDatosEnMemoria(unaPagina);
+	return paginaReal->key == keyDada;
 }
 
 paginaEnTabla* encontrarPaginaPorKey(segmento* unSegmento, int keyDada){
@@ -142,7 +192,8 @@ paginaEnTabla* encontrarPaginaPorKey(segmento* unSegmento, int keyDada){
 }
 char* valuePagina(segmento* unSegmento, int key){
 	paginaEnTabla* paginaEncontrada = encontrarPaginaPorKey(unSegmento,key);
-	return (char*)paginaEncontrada->unaPagina->value;
+	pagina* paginaReal = leerDatosEnMemoria(paginaEncontrada);
+	return paginaReal->value;
 }
 
 // ------------------------------------------------------------------------ //
@@ -172,9 +223,7 @@ void insertLQL(char*nombreTabla, pagina* paginaNueva, memoria* memoriaPrincipal)
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 		paginaEnTabla* paginaEncontrada;
 		if(paginaEncontrada = encontrarPaginaPorKey(unSegmento,paginaNueva->key)){
-			paginaEncontrada->unaPagina->value = paginaNueva->value;
-			paginaEncontrada->unaPagina->timestamp = paginaNueva->timestamp;
-			paginaEncontrada->flag = SI;
+			cambiarDatosEnMemoria(paginaEncontrada, paginaNueva);
 			list_replace_and_destroy_element(unSegmento->tablaPaginas,paginaEncontrada->numeroPagina,paginaEncontrada,free);
 			guardarEnMemoria(paginaEncontrada->unaPagina, memoriaPrincipal);
 			//Todo esto lo deberiamos mandar en una funcioncita aparte de "cambiarPagina" o algo asi?
