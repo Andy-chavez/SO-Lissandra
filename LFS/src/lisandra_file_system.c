@@ -131,7 +131,10 @@ int main(int argc, char* argv[]) {
 
 	//archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
-	buscarEnBloque2(56,"1");
+	t_config* archivoParticion;
+	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/part1.bin");
+	int sizeParticion = atoi(config_get_string_value(archivoParticion,"SIZE"));
+	buscarEnBloque2(56,"1",sizeParticion);
 	//buscarEnBloque(56,"1",archivosDeConfigYLog);
 
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int

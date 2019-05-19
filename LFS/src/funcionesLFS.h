@@ -85,7 +85,7 @@ void liberarBuffer(char** buffer,int tamanio);
 //
 //}
 
-void buscarEnBloque2(int key,char* numeroBloque){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 	char* rutaBloque = string_new();
 	string_append(&rutaBloque,puntoMontaje);
@@ -96,13 +96,12 @@ void buscarEnBloque2(int key,char* numeroBloque){ //pasarle el tamanio de la par
 	t_list* listaRegistros;
 	// []
 
-//	t_config* archivoParticion;
-//	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/Particion1.bin");
-//	int size = config_get_int_value(archivoParticion,"SIZE"); //sizeParticion/sizeBloques
 	struct stat sb;
 	fstat(archivo,&sb);
 	//while para leer todos los bloques
-	char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
+	char* informacion = mmap(NULL,sizeTabla,PROT_READ,MAP_PRIVATE,archivo,0);
+	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
+	puts(informacion);
 	registro *registro = malloc (sizeof(registro));
 
 	puts(informacion);
@@ -315,12 +314,7 @@ registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int 
 	t_list* registrosConLaKey = list_filter(encuentraLista->lista, encontrarLaKey);
 
 	//bilardo se sentiria orgulloso(?, pero no se me ocurrio otra forma por ahora de plantear la semilla
-	registro* seed = malloc(sizeof(registro));
-	seed->key = 0;
-	seed->timestamp = 0;
-	seed->value = "";
-
-	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, seed, cualEsElMayor);
+	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, list_get(registrosConLaKey,0), cualEsElMayor);
 
 //	printf("Esto no va a funcionar a la primera: %ld \n",registroDeMayorTimestamp->timestamp);
 //	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
