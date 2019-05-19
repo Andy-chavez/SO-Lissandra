@@ -69,6 +69,21 @@ memoria* inicializarMemoria(int tamanio){
 	return nuevaMemoria;
 }
 
+void liberarMemoria(memoria* memoriaPrincipal) {
+	void* liberarPaginas(paginaEnTabla* unaPagina) {
+		free(unaPagina);
+	}
+
+	void* liberarSegmentos(segmento* unSegmento) {
+		free(unSegmento->nombreTabla);
+		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
+		free(unSegmento);
+	}
+
+	free(memoriaPrincipal->base);
+	list_destroy_and_destroy_elements(memoriaPrincipal->tablaSegmentos, liberarSegmentos);
+	free(memoriaPrincipal);
+}
 
 int calcularEspacio(pagina* unaPagina) {
 	int timeStamp = sizeof(time_t);
@@ -142,7 +157,6 @@ void agregarSegmento(memoria* memoria,pagina* primeraPagina,char* tabla ){
 
 	list_add(segmentoNuevo->tablaPaginas, primerPagina);
 
-
 	list_add(memoria->tablaSegmentos, segmentoNuevo);
 }
 
@@ -165,6 +179,7 @@ pagina* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 void cambiarDatosEnMemoria(paginaEnTabla* paginaACambiar, pagina* paginaNueva) {
 	bufferDePagina* bufferParaCambio = bufferPagina(paginaNueva);
 	memcpy(paginaACambiar->unaPagina, bufferParaCambio->buffer, bufferParaCambio->tamanio);
+	liberarBufferDePagina(bufferParaCambio);
 }
 
 // ------------------------------------------------------------------------ //
@@ -181,6 +196,11 @@ int obtenerTamanioValue(void* valueBuffer) {
 	return tamanio;
 }
 
+void liberarPagina(pagina* unaPagina) {
+	free(unaPagina->value);
+	free(unaPagina);
+}
+
 bool tienenIgualNombre(char* unNombre,char* otroNombre){
 	return string_equals_ignore_case(unNombre, otroNombre);
 }
@@ -195,7 +215,10 @@ segmento* encontrarSegmentoPorNombre(memoria* memoria,char* tablaNombre){
 
 bool igualKeyPagina(paginaEnTabla* unaPagina,int keyDada){
 	pagina* paginaReal = leerDatosEnMemoria(unaPagina);
-	return paginaReal->key == keyDada;
+	bool respuesta = paginaReal->key == keyDada;
+
+	liberarPagina(paginaReal);
+	return respuesta;
 }
 
 paginaEnTabla* encontrarPaginaPorKey(segmento* unSegmento, int keyDada){
@@ -207,8 +230,12 @@ paginaEnTabla* encontrarPaginaPorKey(segmento* unSegmento, int keyDada){
 }
 char* valuePagina(segmento* unSegmento, int key){
 	paginaEnTabla* paginaEncontrada = encontrarPaginaPorKey(unSegmento,key);
+
 	pagina* paginaReal = leerDatosEnMemoria(paginaEncontrada);
-	return paginaReal->value;
+	char* value = paginaReal->value;
+
+	liberarPagina(paginaReal);
+	return value;
 }
 
 // ------------------------------------------------------------------------ //
@@ -219,7 +246,8 @@ void selectLQL(char*nombreTabla,int key, memoria* memoriaPrincipal){
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
 		if(paginaEncontrada = encontrarPaginaPorKey(unSegmento,key)){
-			printf ("El valor es %s\n",valuePagina(unSegmento,key));
+			char* value = valuePagina(unSegmento,key);
+			printf ("El valor es %s\n", value);
 		}
 		//else{
 			//paginaEncontrada = pedirRegistroLFS(unSegmento,key);
