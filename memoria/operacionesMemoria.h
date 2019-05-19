@@ -219,7 +219,7 @@ void selectLQL(char*nombreTabla,int key, memoria* memoriaPrincipal){
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
 		if(paginaEncontrada = encontrarPaginaPorKey(unSegmento,key)){
-			printf ("El valor es %s",valuePagina(unSegmento,key));
+			printf ("El valor es %s\n",valuePagina(unSegmento,key));
 		}
 		//else{
 			//paginaEncontrada = pedirRegistroLFS(unSegmento,key);
@@ -239,9 +239,7 @@ void insertLQL(char*nombreTabla, pagina* paginaNueva, memoria* memoriaPrincipal)
 		paginaEnTabla* paginaEncontrada;
 		if(paginaEncontrada = encontrarPaginaPorKey(unSegmento,paginaNueva->key)){
 			cambiarDatosEnMemoria(paginaEncontrada, paginaNueva);
-			list_replace_and_destroy_element(unSegmento->tablaPaginas,paginaEncontrada->numeroPagina,paginaEncontrada,free);
-			guardarEnMemoria(paginaEncontrada->unaPagina, memoriaPrincipal);
-			//Todo esto lo deberiamos mandar en una funcioncita aparte de "cambiarPagina" o algo asi?
+			paginaEncontrada->flag = SI;
 		}
 	}
 
