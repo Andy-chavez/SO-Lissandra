@@ -339,13 +339,13 @@ metadata obtenerMetadata(char* nombreTabla){
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
 	metadata unaMetadata;
-	char* str1 = "../src/Directorio/";
 	char* str2 = "/metadata";
 
 	char* ruta = string_new();
-	string_append(&ruta, str1);
+	string_append(&ruta, puntoMontaje);
+	string_append(&ruta,"Tables/");
 	string_append(&ruta,nombreTabla);
-	string_append(&ruta,str2); //revisar magic string_append y string_new esto parece medio feo
+	string_append(&ruta,str2);
 
 	configMetadata = config_create(ruta);
 
@@ -368,7 +368,7 @@ metadata obtenerMetadata(char* nombreTabla){
 void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	int particion;
-	int key = atoi(*(argSeparados+0));
+	int key = atoi(*(argSeparados+1));
 	//metadata *metadataTabla = malloc (sizeof(metadata));
 	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return; //primero verificas existencia
 	metadata metadataTabla = obtenerMetadata(*(argSeparados+0));

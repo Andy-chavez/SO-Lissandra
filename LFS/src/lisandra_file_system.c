@@ -144,10 +144,11 @@ int main(int argc, char* argv[]) {
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
 //	char* saludo = "hoekSJKls";
+//	string_to_upper(saludo);
 //	string_to_upper("HOdalA");
 //	puts(saludo);
-//	verificarExistenciaDirectorioTabla("TaBlA1"); ver despues esto del uppercase del nombre de las tablas
-	funcionSelect("Tabla1 ");
+//	verificarExistenciaDirectorioTabla("TaBlA1"); //ver despues esto del uppercase del nombre de las tablas
+	funcionSelect("Tabla1 56");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//obtenerMetadata("tablaA");
