@@ -94,39 +94,12 @@ void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	list_add(head,guardarRegistro);
 	puts(guardarRegistro->value);
 }
-
+/*
 char* select(){
 	//listaDeRegistro memtable,
 }
+*/
 
-void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
-	//ver que agarre toda la info de los bloques correspondientes a esa tabla
-	char* rutaBloque = string_new();
-	string_append(&rutaBloque,puntoMontaje);
-	string_append(&rutaBloque,"Bloques/");
-	string_append(&rutaBloque,numeroBloque);
-	string_append(&rutaBloque,".bin");
-	int archivo = open(rutaBloque,O_RDWR);
-	t_list* listaRegistros;
-	// []
-
-	struct stat sb;
-	fstat(archivo,&sb);
-	//while para leer todos los bloques
-	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,0);
-	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
-	//parsear informacion
-	char** separarRegistro = string_split(informacion,"\n");
-//	int length = sizeof(separarRegistro)/sizeof(separarRegistro[0]);
-	int i;
-	for(i=0;*(separarRegistro+i)!=NULL;i++){
-		char **aCargar =string_split(*(separarRegistro+i),";");
-		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
-	}
-	list_find()
-	free(rutaBloque);
-	//free(informacion);
-}
 
 int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
@@ -270,7 +243,7 @@ void* devolverMayor(registro* registro1, registro* registro2){
 		}
 }
 
-registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int key){
+void devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
 	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
 
@@ -282,7 +255,7 @@ registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int 
 		return esIgualAlNombre(nombreTabla, elemento);
 	}
 
-	void* cualEsElMayor(void *elemento1, void *elemento2){
+	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
 		registro* primerElemento = elemento1;
 		registro* segundoElemento = elemento2;
 
@@ -296,9 +269,9 @@ registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int 
 			registroDePrueba -> timestamp = 8000;
 
 	registro* registroDePrueba2 = malloc(sizeof(registro));
-			  registroDePrueba2 -> key = 13;
+			  registroDePrueba2 -> key = 56;
 			  registroDePrueba2 -> value= string_duplicate("aloo");
-			  registroDePrueba2 -> timestamp = 10000;
+			  registroDePrueba2 -> timestamp = 1548421506;
 
 	registro* registroDePrueba3 = malloc(sizeof(registro));
 			  registroDePrueba3 -> key = 13;
@@ -320,19 +293,70 @@ registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int 
 	list_add(memtable, tablaDePrueba);
 	list_add(memtable, tablaDePrueba2);
 
+
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
 	t_list* registrosConLaKey = list_filter(encuentraLista->lista, encontrarLaKey);
 
-	//bilardo se sentiria orgulloso(?, pero no se me ocurrio otra forma por ahora de plantear la semilla
-	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, list_get(registrosConLaKey,0), cualEsElMayor);
+	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, list_get(registrosConLaKey,0), cualEsElMayorTimestamp);
 
-//	printf("Esto no va a funcionar a la primera: %ld \n",registroDeMayorTimestamp->timestamp);
-//	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
-
-	return registroDeMayorTimestamp;
+	list_add(listaRegistros, registroDeMayorTimestamp);
 
 }
+
+registro* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombreTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+	//ver que agarre toda la info de los bloques correspondientes a esa tabla
+
+	bool encontrarLaKey(void *elemento){
+			return estaLaKey(key, elemento);
+		}
+
+	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
+		registro* primerElemento = elemento1;
+		registro* segundoElemento = elemento2;
+
+		return devolverMayor(primerElemento, segundoElemento);
+
+	}
+
+
+	char* rutaBloque = string_new();
+	string_append(&rutaBloque,puntoMontaje);
+	string_append(&rutaBloque,"Bloques/");
+	string_append(&rutaBloque,numeroBloque);
+	string_append(&rutaBloque,".bin");
+	int archivo = open(rutaBloque,O_RDWR);
+	t_list* listaRegistros = list_create();
+	// []
+
+	struct stat sb;
+	fstat(archivo,&sb);
+	//while para leer todos los bloques
+	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,0);
+	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
+	//parsear informacion
+	char** separarRegistro = string_split(informacion,"\n");
+//	int length = sizeof(separarRegistro)/sizeof(separarRegistro[0]);
+	int i;
+	for(i=0;*(separarRegistro+i)!=NULL;i++){
+		char **aCargar =string_split(*(separarRegistro+i),";");
+		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+	}
+
+	devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable, nombreTabla, key);
+
+	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
+
+	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
+
+
+//	list_find()
+	free(rutaBloque);
+	//free(informacion);
+
+return registroADevolver;
+}
+
 
 
 metadata obtenerMetadata(char* nombreTabla){
