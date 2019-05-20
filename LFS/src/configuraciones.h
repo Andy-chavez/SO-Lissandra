@@ -12,6 +12,7 @@
 #include <commons/string.h>
 #include <commons/bitarray.h>
 
+t_log* logger;
 
 int tamanioBloques;
 int cantDeBloques;
@@ -48,6 +49,15 @@ void leerMetadataFS (){
 }
 void inicializarMemtable(){
 	memtable = list_create();
+}
+
+void inicializarLog(char* ruta){
+	logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+}
+
+void liberarConfigYLogs() {
+	log_destroy(logger);
+	config_destroy(archivoDeConfig);
 }
 
 //inicializarBitMap(){

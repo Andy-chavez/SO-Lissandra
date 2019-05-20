@@ -21,11 +21,8 @@
 #include <commons/log.h>
 #include <commonsPropias/conexiones.h>
 #include "funcionesLFS.h"
-#include "parser.h"
 
-
-void* servidorLisandra(void *arg){
-	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
+void* servidorLisandra(){
 	char* puertoLisandra = "5008";
 	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
 	//char* ipLisandra = config_get_string_value(archivosDeConfigYLog->config, "IP_LISANDRA");
@@ -42,7 +39,7 @@ void* servidorLisandra(void *arg){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
 		if(socketMemoria == -1) {
-			log_error(archivosDeConfigYLog->logger, "Socket Defectuoso");
+			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
 			continue;
 		}
 
@@ -55,7 +52,7 @@ void* servidorLisandra(void *arg){
 		//enviar(socketMemoria,(void*) mensaje,tamanio);
 		//char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
 
-		log_info(archivosDeConfigYLog->logger, "Recibi: %s", buffer);
+		log_info(logger, "Recibi: %s", buffer);
 
 		free(buffer);
 		cerrarConexion(socketMemoria);
@@ -63,12 +60,6 @@ void* servidorLisandra(void *arg){
 
 	cerrarConexion(socketServidorLisandra);
 
-}
-
-void liberarConfigYLogs(configYLogs *archivos) {
-	log_destroy(archivos->logger);
-	config_destroy(archivos->config);
-	free(archivos);
 }
 
 //void lisandra_consola(){
@@ -85,19 +76,34 @@ void leerConsola() {
 		char *linea = NULL;  // forces getline to allocate with malloc
 	    size_t len = 0;     // ignored when line = NULL
 	    ssize_t leerConsola;
+	    char** opYArg;
 
 	    printf ("Ingresa operacion\n");
+	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------");
+	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------");
+	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------");
+	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------");
+	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------");
+	    printf("-------DROP [NOMBRE_TABLA]---------");
 
 	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
-	    	opYArg = string_n_split(linea,2," ");
-	    	//parserGeneral(linea,"nada");
+	    opYArg = string_n_split(linea,2," ");
+	    parserGeneral(*(opYArg+0),*(opYArg+1));
 	    }
 
 	    free (linea);  // free memory allocated by getline
 }
 
-void funcionSelect(){
+void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
+	char** argSeparados = string_n_split(argumentos,2," ");
+	int particion;
+	int key = atoi(*(argSeparados+0));
+	//metadata *metadataTabla = malloc (sizeof(metadata));
+	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return; //primero verificas existencia
+	metadata *metadataTabla = (metadata*) obtenerMetadata(*(argSeparados+0));
+	particion=calcularParticion(key,3);
 
+	free(metadataTabla);
 }
 
 void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
@@ -126,23 +132,22 @@ int main(int argc, char* argv[]) {
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS ();
 	incializarMemtable();
+	inicializarLogger();
+	verificarExistenciaDirectorioTabla("TaBlA1");
+	funcionSelect("Tabla1 ");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//obtenerMetadata("tablaA");
 	//int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
 	//pthread_mutex_init(&mutexLog,NULL);
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
-	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
-
-	archivosDeConfigYLog->config = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
-	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
 	t_config* archivoParticion;
 	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/Part1.bin");
 	int sizeParticion=config_get_int_value(archivoParticion,"SIZE");
 	buscarEnBloque2(56,"1",sizeParticion);
 	//buscarEnBloque(56,"1",archivosDeConfigYLog);
 
-	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog); //devuelve un int
+	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla); //devuelve un int
 //	pthread_t threadLeerConsola;
 //    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
 //    pthread_join(threadLeerConsola,NULL);
@@ -151,14 +156,11 @@ int main(int argc, char* argv[]) {
 //    liberarConfigYLogs(archivosDeConfigYLog);
 	/*
 	pthread_t threadServer ; //habria que ver tambien thread dumping.
-	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
-	archivosDeConfigYLog->config = config_create("LISANDRA.CONFIG");
-	archivosDeConfigYLog->logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
 	pthread_create(&threadServer, NULL, servidorLisandra, (void*) archivosDeConfigYLog);
 	pthread_join(threadServer,NULL);
 	//servidorLisandra(archivosDeConfigYLog);
-	liberarConfigYLogs(archivosDeConfigYLog);
 	*/
+	liberarConfigYLogs();
 	return EXIT_SUCCESS;
 }
 

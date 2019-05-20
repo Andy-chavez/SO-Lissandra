@@ -33,11 +33,6 @@ typedef enum {
 	EC
 }consistencia;
 
-typedef struct {
-	t_config* config;
-	t_log* logger;
-} configYLogs;
-
 
 typedef struct {
 	time_t timestamp;
@@ -74,12 +69,13 @@ typedef struct {
 
 
 
-int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg);
+int verificarExistenciaDirectorioTabla(char* nombreTabla);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
-int buscarEnBloque(int key,char* numeroDeBloque,void* arg); //cambiar despues de nuevo a registro buscarEnBloque
-void liberarBuffer(char** buffer,int tamanio);
+int buscarEnBloque(int key,char* numeroDeBloque); //cambiar despues de nuevo a registro buscarEnBloque
+void agregarALista(char* timestamp,char* key,char* value,t_list* head);
+void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla);
 
 //crearTabla(char* ruta){
 //
@@ -93,10 +89,6 @@ void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	guardarRegistro->value = value;
 	list_add(head,guardarRegistro);
 	puts(guardarRegistro->value);
-}
-
-char* select(){
-	//listaDeRegistro memtable,
 }
 
 void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
@@ -123,18 +115,16 @@ void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tam
 		char **aCargar =string_split(*(separarRegistro+i),";");
 		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
 	}
-	list_find()
+	//list_find()
 	free(rutaBloque);
 	//free(informacion);
 }
 
-int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar argumento para config y log
+int buscarEnBloque(int key,char* numeroDeBloque){ //despues agregar argumento para config y log
 	char* rutaBloque = string_new();
 	int tam=0;
 	long posicionArchivo;
 	char* buffer= (char*) malloc(sizeof(char)*100);
-	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
 	string_append(&rutaBloque,puntoMontaje);
 	string_append(&rutaBloque,"Bloques/");
 	string_append(&rutaBloque,numeroDeBloque);
@@ -144,7 +134,7 @@ int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar ar
 	FILE* archivo = fopen(rutaBloque,"rb");
 	if (archivo == NULL)
 		{
-			log_info(archivosDeConfigYLog->logger,"No se pudo abrir el bloque %s",numeroDeBloque);
+			log_info(logger,"No se pudo abrir el bloque %s",numeroDeBloque);
 			return -1;
 		}
 
@@ -182,32 +172,27 @@ int buscarEnBloque(int key,char* numeroDeBloque,void* arg){ //despues agregar ar
 
 }
 
-int verificarExistenciaDirectorioTabla(char* nombreTabla,void* arg){
+int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	int validacion;
-	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-	char* puntoMontaje= config_get_string_value(archivosDeConfigYLog->config,"PUNTO_MONTAJE");
-	//char* puntoMontaje = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/";
+	strupr(nombreTabla);
 	char* rutaDirectorio= string_new();
-	//puts("estoy por salir");
 	string_append(&rutaDirectorio,puntoMontaje); //OJO ACA HAY QUE VER QUE EN EL CONFIG NO TE VENGA CON "" EL PUNTO DE MONTAJE
 	string_append(&rutaDirectorio,"Tables/"); //habria que ver esto, es lo mejor que se me ocurrio porque en el select solo te dan el nombre
 	string_append(&rutaDirectorio,nombreTabla);
-	printf("%s\n",rutaDirectorio);
 	struct stat sb;
 	//pthread_mutex_lock(&mutexLog);
-	log_info(archivosDeConfigYLog->logger,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
+	log_info(logger,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
 	    if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
 	    {
-	    	log_info(archivosDeConfigYLog->logger,"La tabla existe en el FS");
+	    	log_info(logger,"La tabla existe en el FS");
 	    	//pthread_mutex_unlock(&mutexLog); revisar tema semaforos creo que me esta quedando muy grande la region critica,nose si son tan necesarios en este caso
 	    	printf("existe la tabla en la direccion");
 	    	validacion=1;
 	    }
 	    else
 	    {
-	    	log_info(archivosDeConfigYLog->logger,"Error no existe tabla en ruta indicada %s \n",rutaDirectorio);
+	    	log_info(logger,"Error no existe tabla en ruta indicada %s \n",rutaDirectorio);
 	    	//pthread_mutex_unlock(&mutexLog);
-	    	puts("no entro\n");
 	    	validacion=0;
 	    	printf("No se ha encontrado el directorio de la tabla en la ruta: %s \n",rutaDirectorio);
 	    }
