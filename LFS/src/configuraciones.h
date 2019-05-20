@@ -26,6 +26,7 @@ char* puntoMontaje;
 int tamanioValue;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
+t_list* memtable;
 
 void leerConfig(char* ruta){
 	archivoDeConfig = config_create(ruta);
@@ -44,6 +45,9 @@ void leerMetadataFS (){
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+}
+void inicializarMemtable(){
+	memtable = list_create();
 }
 
 //inicializarBitMap(){

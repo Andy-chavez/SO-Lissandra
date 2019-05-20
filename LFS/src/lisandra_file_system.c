@@ -89,11 +89,15 @@ void leerConsola() {
 	    printf ("Ingresa operacion\n");
 
 	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
-	 //   parserGeneral(linea);
+	    	opYArg = string_n_split(linea,2," ");
 	    	//parserGeneral(linea,"nada");
 	    }
 
 	    free (linea);  // free memory allocated by getline
+}
+
+void funcionSelect(){
+
 }
 
 void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
@@ -121,6 +125,7 @@ int main(int argc, char* argv[]) {
 
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS ();
+	incializarMemtable();
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//obtenerMetadata("tablaA");

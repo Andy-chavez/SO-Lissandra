@@ -95,6 +95,10 @@ void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	puts(guardarRegistro->value);
 }
 
+char* select(){
+	//listaDeRegistro memtable,
+}
+
 void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 	char* rutaBloque = string_new();
@@ -119,6 +123,7 @@ void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla){ //pasarle el tam
 		char **aCargar =string_split(*(separarRegistro+i),";");
 		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
 	}
+	list_find()
 	free(rutaBloque);
 	//free(informacion);
 }
