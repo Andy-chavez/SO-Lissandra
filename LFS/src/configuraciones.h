@@ -52,7 +52,7 @@ void inicializarMemtable(){
 }
 
 void inicializarLog(char* ruta){
-	logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
+	logger = log_create(ruta, "LISANDRA", 1, LOG_LEVEL_ERROR);
 }
 
 void liberarConfigYLogs() {

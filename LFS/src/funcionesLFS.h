@@ -27,6 +27,17 @@
 */
 #define CANTPARTICIONES 5 // esto esta en el metadata
 pthread_mutex_t mutexLog;
+
+typedef enum {
+	INSERT,
+	CREATE,
+	DESCRIBETABLE,
+	DESCRIBEALL,
+	DROP,
+	JOURNAL,
+	SELECT
+} operacion;
+
 typedef enum {
 	SC,
 	SH,
@@ -76,6 +87,8 @@ registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 int buscarEnBloque(int key,char* numeroDeBloque); //cambiar despues de nuevo a registro buscarEnBloque
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
 void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla);
+void parserGeneral(char* operacionAParsear,char* argumentos);
+
 
 //crearTabla(char* ruta){
 //
@@ -174,7 +187,7 @@ int buscarEnBloque(int key,char* numeroDeBloque){ //despues agregar argumento pa
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	int validacion;
-	strupr(nombreTabla);
+	string_to_upper(nombreTabla);
 	char* rutaDirectorio= string_new();
 	string_append(&rutaDirectorio,puntoMontaje); //OJO ACA HAY QUE VER QUE EN EL CONFIG NO TE VENGA CON "" EL PUNTO DE MONTAJE
 	string_append(&rutaDirectorio,"Tables/"); //habria que ver esto, es lo mejor que se me ocurrio porque en el select solo te dan el nombre
@@ -349,5 +362,17 @@ metadata obtenerMetadata(char* nombreTabla){
 
 	return unaMetadata;
 
+
+}
+
+void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
+	char** argSeparados = string_n_split(argumentos,2," ");
+	int particion;
+	int key = atoi(*(argSeparados+0));
+	//metadata *metadataTabla = malloc (sizeof(metadata));
+	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return; //primero verificas existencia
+	metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
+	puts(metadataTabla.cantParticiones);
+	particion=calcularParticion(key,3);
 
 }

@@ -22,6 +22,28 @@
 #include <commonsPropias/conexiones.h>
 #include "funcionesLFS.h"
 
+void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
+	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+				printf("INSERT\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+				puts("SELECT\n");
+				funcionSelect(argumentos);
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
+				printf("DESCRIBE\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
+				printf("CREATE\n");
+			}
+			else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
+				printf("DROP\n");
+			}
+	else {
+		printf("no entendi xD");
+	}
+}
+
 void* servidorLisandra(){
 	char* puertoLisandra = "5008";
 	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
@@ -94,18 +116,6 @@ void leerConsola() {
 	    free (linea);  // free memory allocated by getline
 }
 
-void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
-	char** argSeparados = string_n_split(argumentos,2," ");
-	int particion;
-	int key = atoi(*(argSeparados+0));
-	//metadata *metadataTabla = malloc (sizeof(metadata));
-	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return; //primero verificas existencia
-	metadata *metadataTabla = (metadata*) obtenerMetadata(*(argSeparados+0));
-	particion=calcularParticion(key,3);
-
-	free(metadataTabla);
-}
-
 void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
 
 	//queda todo medio desordenado ahora, se va a ir ordenando en la medida que vayamos discutiendo
@@ -130,10 +140,13 @@ void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
 int main(int argc, char* argv[]) {
 
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
-	leerMetadataFS ();
-	incializarMemtable();
-	inicializarLogger();
-	verificarExistenciaDirectorioTabla("TaBlA1");
+	leerMetadataFS();
+	inicializarMemtable();
+	inicializarLog("lisandra.log");
+//	char* saludo = "hoekSJKls";
+//	string_to_upper("HOdalA");
+//	puts(saludo);
+//	verificarExistenciaDirectorioTabla("TaBlA1"); ver despues esto del uppercase del nombre de las tablas
 	funcionSelect("Tabla1 ");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
