@@ -352,12 +352,13 @@ metadata obtenerMetadata(char* nombreTabla){
 	cantParticiones = atoi(config_get_string_value(configMetadata, "PARTITIONS"));
 	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
 	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY")); //delegar a funcion con strcmp
-	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTACION_TIME"));
+	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTION_TIME"));
 
 	unaMetadata.cantParticiones = cantParticiones;
 	unaMetadata.tipoConsistencia = tipoConsistencia;
 	unaMetadata.tiempoCompactacion = tiempoCompactacion;
 
+	config_destroy(configMetadata);
 	free(ruta);
 
 	return unaMetadata;
@@ -367,12 +368,27 @@ metadata obtenerMetadata(char* nombreTabla){
 
 void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
-	int particion;
+	int i=0;
+	char* particion;
+	t_config* part;
+	char* ruta = string_new();
 	int key = atoi(*(argSeparados+1));
 	//metadata *metadataTabla = malloc (sizeof(metadata));
 	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return; //primero verificas existencia
 	metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
-	puts(metadataTabla.cantParticiones);
-	particion=calcularParticion(key,3);
-
+	particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
+	string_append(&ruta,puntoMontaje);
+	string_append(&ruta,"Tables/");
+	string_append(&ruta,*(argSeparados+0));
+	string_append(&ruta,"/Part"); //vamos a usar la convension PartN.bin
+	string_append(&ruta,particion);
+	string_append(&ruta,".bin");
+	part = config_create(ruta);
+	char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
+	while(*(arrayDeBloques+0)!= NULL){
+		buscarEnBloque2(key,*(arrayDeBloques+i),"tabla");
+	}
+	//y aca afuera haria la busqueda del registro.
+	config_destroy(part);
+	free (ruta);
 }
