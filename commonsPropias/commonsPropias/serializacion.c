@@ -12,7 +12,7 @@ operacionProtocolo empezarDeserializacion(void **buffer) {
 	return protocolo;
 }
 
-registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
+registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) { //y porque nombre tabla es un doble puntero?
 	int desplazamiento = 0;
 	registro* unRegistro = malloc(sizeof(registro));
 	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
