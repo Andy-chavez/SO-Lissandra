@@ -350,7 +350,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		return devolverMayor(primerElemento, segundoElemento);
 
 	}
-	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return NULL; //primero verificas existencia, ver despues de si es NULL de tirar error
+	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return NULL; //primero verificas existencia, ver despues de si es NULL de tirar/enviar error
 	metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
 	particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
 	string_append(&ruta,puntoMontaje);
