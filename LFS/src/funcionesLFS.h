@@ -407,8 +407,10 @@ void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segun
 	string_append(&ruta,".bin");
 	part = config_create(ruta);
 	char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
+	int sizeParticion=config_get_int_value(part,"SIZE");
 	while(*(arrayDeBloques+0)!= NULL){
-		buscarEnBloque2(key,*(arrayDeBloques+i),"tabla");
+		buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion);
+		i++;
 	}
 	//y aca afuera haria la busqueda del registro.
 	config_destroy(part);

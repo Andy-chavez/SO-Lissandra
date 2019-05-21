@@ -156,12 +156,6 @@ int main(int argc, char* argv[]) {
 	//pthread_mutex_init(&mutexLog,NULL);
 	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
 	t_config* archivoParticion;
-	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/Part1.bin");
-	int sizeParticion=config_get_int_value(archivoParticion,"SIZE");
-	buscarEnBloque2(56,"1",sizeParticion, "tablaA");
-	//buscarEnBloque(56,"1",archivosDeConfigYLog);
-
-	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla); //devuelve un int
 //	pthread_t threadLeerConsola;
 //    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
 //    pthread_join(threadLeerConsola,NULL);
