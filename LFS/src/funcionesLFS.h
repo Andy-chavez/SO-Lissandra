@@ -84,8 +84,9 @@ int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/N
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 int buscarEnBloque(int key,char* numeroDeBloque); //cambiar despues de nuevo a registro buscarEnBloque
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
-void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,char* nombreTabla,t_list* listaRegistros);
+char* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros);
 void parserGeneral(char* operacionAParsear,char* argumentos);
+int largoBloque(char* numeroDeBloque);
 
 
 //crearTabla(char* ruta){
@@ -99,7 +100,6 @@ void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	guardarRegistro->value = malloc (sizeof(tamanioValue));
 	guardarRegistro->value = value;
 	list_add(head,guardarRegistro);
-	puts(guardarRegistro->value);
 }
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla){
@@ -116,7 +116,7 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	    {
 	    	log_info(logger,"La tabla existe en el FS");
 	    	//pthread_mutex_unlock(&mutexLog); revisar tema semaforos creo que me esta quedando muy grande la region critica,nose si son tan necesarios en este caso
-	    	printf("existe la tabla en la direccion");
+	    	printf("existe la tabla en el directorio\n");
 	    	validacion=1;
 	    }
 	    else
@@ -221,7 +221,7 @@ void devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_li
 			  registroDePrueba3 -> timestamp = 9000;
 
 	tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-			tablaDePrueba-> nombre = string_duplicate("tablaA");
+			tablaDePrueba-> nombre = string_duplicate("TABLA1");
 			tablaDePrueba->lista = list_create();
 
 			list_add(tablaDePrueba->lista, registroDePrueba);
@@ -238,7 +238,7 @@ void devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_li
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
-	t_list* registrosConLaKey = list_filter(encuentraLista->lista, encontrarLaKey);
+	t_list* registrosConLaKey = list_filter(encuentraLista->lista, encontrarLaKey); //habria que ver que aca esta rompiendo el select cuando debuggeo
 
 	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, list_get(registrosConLaKey,0), cualEsElMayorTimestamp);
 
@@ -246,7 +246,7 @@ void devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_li
 
 }
 
-void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombreTabla,t_list* listaRegistros){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+char* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 
 	/*bool encontrarLaKey(void *elemento){
@@ -268,28 +268,19 @@ void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombreTabla
 	string_append(&rutaBloque,numeroBloque);
 	string_append(&rutaBloque,".bin");
 	int archivo = open(rutaBloque,O_RDWR);
-	struct stat sb;
-	fstat(archivo,&sb);
-	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,0);
+	//char* informacion = malloc(tamanioBloques);
+	//fread(informacion,tamanioBloques,1,archivo);
+	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);
 	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
 	//parsear informacion
-	char** separarRegistro = string_split(informacion,"\n");
-//	int length = sizeof(separarRegistro)/sizeof(separarRegistro[0]);
-	int i;
-	for(i=0;*(separarRegistro+i)!=NULL;i++){
-		char **aCargar =string_split(*(separarRegistro+i),";");
-		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
-	}
-
-	devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable, nombreTabla, key);
 
 //	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
 //
 //	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
 
-
+	//puts(informacion);
 	free(rutaBloque);
-	free(informacion);
+	return informacion;
 }
 
 
@@ -327,6 +318,18 @@ metadata obtenerMetadata(char* nombreTabla){
 
 }
 
+int largoBloque(char* numeroBloque){
+	char* rutaBloque = string_new();
+	string_append(&rutaBloque,puntoMontaje);
+	string_append(&rutaBloque,"Bloques/");
+	string_append(&rutaBloque,numeroBloque);
+	string_append(&rutaBloque,".bin");
+	struct stat sb;
+	int archivo = open(rutaBloque,O_RDWR);
+	fstat(archivo,&sb);
+	return sb.st_size+1;
+}
+
 registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	int i=0;
@@ -335,7 +338,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	char* ruta = string_new();
 	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
-
+	int desplazamiento=0;
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
@@ -359,18 +362,35 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	part = config_create(ruta);
 	char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 	int sizeParticion=config_get_int_value(part,"SIZE");
+	char* buffer = malloc (sizeof(char)*sizeParticion);
+	int largoDeBloque;
+//	int bloquesLeidos=0;
 	while(*(arrayDeBloques+i)!= NULL){
-		buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion,*(argSeparados+0),listaRegistros);
+		char* informacion = buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
+		largoDeBloque = largoBloque(*(arrayDeBloques+i));
+		memcpy(buffer+desplazamiento,informacion,largoDeBloque);
+		desplazamiento += largoDeBloque;
 		i++;
 	}
+
+	char** separarRegistro = string_split(buffer,"\n");
+	int j =0;
+	for(j=0;*(separarRegistro+j)!=NULL;j++){
+		char **aCargar =string_split(*(separarRegistro+j),";");
+		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+	}
+	//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
+	//puts(buffer);
 	//y aca afuera haria la busqueda del registro.
 
+
+	devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key);
 	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
 
 	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
 	config_destroy(part);
 	free (ruta);
 	list_clean(listaRegistros);
-
+	free(buffer);
 	return registroADevolver;
 }
