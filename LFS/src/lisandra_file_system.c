@@ -142,26 +142,19 @@ int main(int argc, char* argv[]) {
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
-//	char* saludo = "hoekSJKls";
-//	string_to_upper(saludo);
-//	string_to_upper("HOdalA");
-//	puts(saludo);
-//	verificarExistenciaDirectorioTabla("TaBlA1"); //ver despues esto del uppercase del nombre de las tablas
 	funcionSelect("Tabla1 56");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
+	//ver de liberar la memtable al final
+	/*obtenerMetadata("tablaA");
+	int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
+	pthread_mutex_init(&mutexLog,NULL);
+	pthread_t threadLeerConsola;
+    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
+    pthread_join(threadLeerConsola,NULL);
 
-	//obtenerMetadata("tablaA");
-	//int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
-	//pthread_mutex_init(&mutexLog,NULL);
-	char* nombreTabla="Tabla1"; //para probar si existe la tabla(la tengo en mi directorio)
-	t_config* archivoParticion;
-//	pthread_t threadLeerConsola;
-//    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
-//    pthread_join(threadLeerConsola,NULL);
-//
-//    pthread_mutex_destroy(&mutexLog);
-//    liberarConfigYLogs(archivosDeConfigYLog);
+    pthread_mutex_destroy(&mutexLog);
+    liberarConfigYLogs(archivosDeConfigYLog);*/
 	/*
 	pthread_t threadServer ; //habria que ver tambien thread dumping.
 	pthread_create(&threadServer, NULL, servidorLisandra, (void*) archivosDeConfigYLog);

@@ -1,2 +1,2 @@
 SIZE=250
-BLOCKS=[0]
+BLOCKS=[0,1]

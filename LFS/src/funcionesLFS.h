@@ -14,8 +14,6 @@
 #include <fcntl.h>
 
 /* SELECT: FACU , INSERT: PABLO
- * verificarExistencia(char* nombreTabla); //select e insert. FACU
- * metadata obtenerMetadata(char* nombreTabla); //select e insert. PABLO
  * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
  * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
  * registro devolverRegistroDelFileSystem(int key); //select e insert FACU
@@ -86,7 +84,7 @@ int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/N
 registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
 int buscarEnBloque(int key,char* numeroDeBloque); //cambiar despues de nuevo a registro buscarEnBloque
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
-void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla);
+void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,char* nombreTabla,t_list* listaRegistros);
 void parserGeneral(char* operacionAParsear,char* argumentos);
 
 
@@ -102,58 +100,6 @@ void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	guardarRegistro->value = value;
 	list_add(head,guardarRegistro);
 	puts(guardarRegistro->value);
-}
-
-int buscarEnBloque(int key,char* numeroDeBloque){ //despues agregar argumento para config y log
-	char* rutaBloque = string_new();
-	int tam=0;
-	long posicionArchivo;
-	char* buffer= (char*) malloc(sizeof(char)*100);
-	string_append(&rutaBloque,puntoMontaje);
-	string_append(&rutaBloque,"Bloques/");
-	string_append(&rutaBloque,numeroDeBloque);
-	string_append(&rutaBloque,".bin");
-	registro *registroBloque = malloc(sizeof(registro));
-	//registroBloque->value = malloc (sizeof(char)*100);
-	FILE* archivo = fopen(rutaBloque,"rb");
-	if (archivo == NULL)
-		{
-			log_info(logger,"No se pudo abrir el bloque %s",numeroDeBloque);
-			return -1;
-		}
-
-	while(fread(&(registroBloque->timestamp), sizeof(time_t), 1, archivo)){
-		fread(&(registroBloque->key), sizeof(u_int16_t), 1, archivo);
-		posicionArchivo = ftell(archivo); //para usar despues
-		fread((buffer+tam),sizeof(char),1,archivo);
-		//*(buffer+tam) = getc(archivo);
-
-		while(*(buffer+tam)!= '\n'){ //tomo como valor centinela por ahora la '*'
-			//unica manera que se me ocurre por ahora para guardar en algo que es variable el tamanio
-			tam++;
-			fread((buffer+tam),sizeof(char),1,archivo);
-		}
-		tam ++;
-//		strcpy(registroBloque->value,buffer);
-		if(registroBloque->key== key){
-			fseek(archivo, posicionArchivo, SEEK_SET ); //volver atras a la posicion donde empieza el value
-			registroBloque->value = malloc (sizeof(char)*tam);
-			fread(registroBloque->value, sizeof(char)*tam, 1, archivo);
-			//apenas aca cargate el value
-			puts("lo encontre");
-			puts(registroBloque->value);
-			//agregarAListaSelect(registroBloque); probablemente hacer algo asi porque son las de la memtable,la de los bloques y de los temporales.
-			break;
-		}
-		for(int i=0;i<100;i++) *(buffer+i) = '\0'; //libero buffer
-		tam = 0;
-	}
-	//puts("no lo encontre");
-	free(buffer);
-	fclose(archivo);
-	free(rutaBloque);
-	return 1;
-
 }
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla){
@@ -300,10 +246,10 @@ void devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_li
 
 }
 
-registro* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombreTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+void buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombreTabla,t_list* listaRegistros){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 
-	bool encontrarLaKey(void *elemento){
+	/*bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
 
@@ -313,7 +259,7 @@ registro* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombre
 
 		return devolverMayor(primerElemento, segundoElemento);
 
-	}
+	}*/
 
 
 	char* rutaBloque = string_new();
@@ -322,12 +268,8 @@ registro* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombre
 	string_append(&rutaBloque,numeroBloque);
 	string_append(&rutaBloque,".bin");
 	int archivo = open(rutaBloque,O_RDWR);
-	t_list* listaRegistros = list_create();
-	// []
-
 	struct stat sb;
 	fstat(archivo,&sb);
-	//while para leer todos los bloques
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,0);
 	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
 	//parsear informacion
@@ -341,16 +283,13 @@ registro* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla, char* nombre
 
 	devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable, nombreTabla, key);
 
-	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
+//	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
+//
+//	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
 
-	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
 
-
-//	list_find()
 	free(rutaBloque);
-	//free(informacion);
-
-return registroADevolver;
+	free(informacion);
 }
 
 
@@ -388,15 +327,27 @@ metadata obtenerMetadata(char* nombreTabla){
 
 }
 
-void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
+registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	int i=0;
 	char* particion;
 	t_config* part;
 	char* ruta = string_new();
+	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
-	//metadata *metadataTabla = malloc (sizeof(metadata));
-	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return; //primero verificas existencia
+
+	bool encontrarLaKey(void *elemento){
+			return estaLaKey(key, elemento);
+		}
+
+	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
+		registro* primerElemento = elemento1;
+		registro* segundoElemento = elemento2;
+
+		return devolverMayor(primerElemento, segundoElemento);
+
+	}
+	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return NULL; //primero verificas existencia, ver despues de si es NULL de tirar error
 	metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
 	particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
 	string_append(&ruta,puntoMontaje);
@@ -408,11 +359,18 @@ void funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segun
 	part = config_create(ruta);
 	char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 	int sizeParticion=config_get_int_value(part,"SIZE");
-	while(*(arrayDeBloques+0)!= NULL){
-		buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion);
+	while(*(arrayDeBloques+i)!= NULL){
+		buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion,*(argSeparados+0),listaRegistros);
 		i++;
 	}
 	//y aca afuera haria la busqueda del registro.
+
+	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
+
+	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
 	config_destroy(part);
 	free (ruta);
+	list_clean(listaRegistros);
+
+	return registroADevolver;
 }
