@@ -41,7 +41,7 @@ registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
 	unRegistro->value = malloc(largoDeValue);
 
 	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
-
+	//che no estarian faltando dos frees aca?
 	return unRegistro;
 }
 
