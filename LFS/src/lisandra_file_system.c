@@ -110,11 +110,12 @@ void leerConsola() {
 
 	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
 	    opYArg = string_n_split(linea,2," ");
-	    parserGeneral(*(opYArg+0),*(opYArg+1));
+
 	    }
 
 	    free (linea);  // free memory allocated by getline
 }
+
 
 void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
 
@@ -123,14 +124,12 @@ void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
 	//int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog);
 	//obtenerMetadata(nombreTabla);
 
-	t_list* memtable = list_create();
+	registro* registroDePrueba = malloc(sizeof(registro));
+				registroDePrueba -> key = 13;
+				registroDePrueba -> value= string_duplicate("aloo");
+				registroDePrueba -> timestamp = 8000;
 
-	//para probar si anda el devolver registro
-	registro* unRegistro = devolverRegistroDeLaMemtable(memtable, nombreTabla, key);
-	printf("Printeo el value del registro encontrado: %d \n", unRegistro->key);
-
-	//para probar si anda el agregar registro
-    guardarRegistro(memtable, unRegistro, nombreTabla);
+  guardarRegistro(memtable, registroDePrueba, nombreTabla);
 
 
 }
@@ -151,6 +150,7 @@ int main(int argc, char* argv[]) {
 	funcionSelect("Tabla1 56");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
+
 	//obtenerMetadata("tablaA");
 	//int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
 	//pthread_mutex_init(&mutexLog,NULL);
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
 	t_config* archivoParticion;
 	archivoParticion= config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/Tabla1/Part1.bin");
 	int sizeParticion=config_get_int_value(archivoParticion,"SIZE");
-	buscarEnBloque2(56,"1",sizeParticion);
+	buscarEnBloque2(56,"1",sizeParticion, "tablaA");
 	//buscarEnBloque(56,"1",archivosDeConfigYLog);
 
 	int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla); //devuelve un int
