@@ -117,24 +117,6 @@ void leerConsola() {
 }
 
 
-void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
-
-	//queda todo medio desordenado ahora, se va a ir ordenando en la medida que vayamos discutiendo
-
-	//int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog);
-	//obtenerMetadata(nombreTabla);
-
-	registro* registroDePrueba = malloc(sizeof(registro));
-				registroDePrueba -> key = 13;
-				registroDePrueba -> value= string_duplicate("aloo");
-				registroDePrueba -> timestamp = 8000;
-
-  guardarRegistro(memtable, registroDePrueba, nombreTabla);
-
-
-}
-
-
 
 int main(int argc, char* argv[]) {
 
@@ -142,7 +124,9 @@ int main(int argc, char* argv[]) {
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
-	funcionSelect("Tabla1 56");
+	funcionSelect("TABLA1 56");
+	//funcionSelect("TABLA1 56");
+	funcionInsert("TABLA1 56 alo");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//ver de liberar la memtable al final
