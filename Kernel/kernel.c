@@ -27,7 +27,7 @@ criterio *inicializarCriterios();
 void kernel_consola();
 
 void kernel_consola(){
-	printf(" Welcome to the league of Kernel\n Por favor ingrese <OPERACION> seguido de los argumentos\n");
+	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n");
 	char* linea;
 	linea = readline("");
 	char** opYArg;
