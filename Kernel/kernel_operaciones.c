@@ -50,20 +50,17 @@ void kernel_obtener_configuraciones(char* path){
 	IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	PuertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 }
-void kernel_insert(char** argumentos){ //TODO buscar memoria segun consistencia
+void kernel_agregar_cola_proc_nuevos(char*operacion, char*argumentos){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	pcb_auxiliar->operacion = "INSERT";
-	pcb_auxiliar->argumentos = *argumentos;
+	pcb_auxiliar->operacion = string_new();
+	string_append(pcb_auxiliar->operacion,*operacion);
+	pcb_auxiliar->argumentos = 	string_new();
+	string_append(pcb_auxiliar->argumentos,*argumentos);
 	pcb_auxiliar->ejecutado = 0;
 	list_add(cola_proc_nuevos,pcb_auxiliar);
+	free(pcb_auxiliar);
 }
-void kernel_select(char** argumentos){ //TODO buscar memoria segun consistencia
-	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	pcb_auxiliar->operacion = "INSERT";
-	pcb_auxiliar->argumentos = *argumentos;
-	pcb_auxiliar->ejecutado = 0;
-	list_add(cola_proc_nuevos,pcb_auxiliar);
-}
+
 //void* kernel_cliente(void *archivo){
 //	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
 //	 //aca tengo dudas de si dejar ese enviar o si puedo salir de la funcion
