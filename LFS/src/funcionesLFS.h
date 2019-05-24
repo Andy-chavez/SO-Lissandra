@@ -164,8 +164,8 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 		tablaMem* tabla = elemento;
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
-			puts("La encontre");
 			list_add(tabla->lista, unRegistro);
+			log_info(logger, "Se añadio registro");
 			return true;
 		}else{
 			return false;
@@ -189,48 +189,13 @@ void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) 
 						list_add(nuevaTabla->lista, unRegistro);
 						list_add(memtable, nuevaTabla);
 						log_info(logger, "Se añadio la tabla a la memtable");
-						puts("holu");
 	}
 
 
 
 }
 
-/*
-bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
-		tablaMem* tabla = elemento;
 
-		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
-			list_add(tabla->lista, unRegistro);
-			log_info(logger, "Se guardo el registro en la tabla");
-		}
-
-}
-
-//Guarda un registro en la memtable
-void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) {
-
-	bool buscarPorNombre(void *elemento){
-		return agregarRegistro(nombreTabla, unRegistro, elemento);
-	}
-
-	tablaMem* tablaEncontrada = list_find(memtable, buscarPorNombre);
-/*
-	if (!(list_find(memtable, buscarPorNombre))) {
-		puts("holi");
-	}
-*/
-	/*
-	if (!(tablaEncontrada = list_find(memtable, buscarPorNombre))){
-				tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
-				nuevaTabla->nombre = nombreTabla;
-				list_add(nuevaTabla->lista, unRegistro);
-				list_add(memtable, nuevaTabla);
-				log_info(logger, "Se añadio la tabla a la memtable");
-	}
-
-}
-*/
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
 
