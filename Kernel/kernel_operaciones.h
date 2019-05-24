@@ -11,6 +11,7 @@
 #include <commons/string.h>
 
 /************************************************************************/
+void kernel_almacenar_en_cola(char*,char*);
 void kernel_agregar_cola_proc_nuevos(char*, char*);
 void kernel_insert();
 void kernel_select();

@@ -32,9 +32,10 @@ void kernel_consola(){
 	linea = readline("");
 	char** opYArg;
 	opYArg = string_n_split(linea,2," ");
-	kernel_api(*opYArg,*(opYArg+1));
+	kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
+	//crear proc nuevo, preguntar ssi run o no TODO
 }
-void kernel_api(char* operacionAParsear, char* argumentos)
+void kernel_api(char* operacionAParsear, char* argumentos) //cuando ya esta en el rr
 {
 	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
 			printf("INSERT\n");
