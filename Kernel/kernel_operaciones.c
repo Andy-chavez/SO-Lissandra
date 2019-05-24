@@ -51,7 +51,7 @@ void kernel_planificador(){
 			else
 				list_add(cola_proc_listos, pcb_auxiliar);
 		}
-
+		free(pcb_auxiliar);
 	}
 	//cola_proc_listos
 }
