@@ -172,7 +172,7 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 			list_add(memtable, nuevaTabla);
 
 		}
-	return true;
+
 }
 
 //Guarda un registro en la memtable
@@ -186,30 +186,23 @@ void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) 
 
 }
 
-int devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
+registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
 	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
 
 	bool encontrarLaKey(void *elemento){
-	if (!estaLaKey(key, elemento)) {
-		return 0;
-	}else{
-		return 1;
-	}}
+		return estaLaKey(key, elemento);
+	}
 
 	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
 			registro* primerElemento = elemento1;
 			registro* segundoElemento = elemento2;
-
 			return devolverMayor(primerElemento, segundoElemento);
-
-		}
-
-	bool tieneElNombre(void *elemento){
-		return esIgualAlNombre(nombreTabla, elemento);
 	}
 
-
+	bool tieneElNombre(void *elemento){
+	return esIgualAlNombre(nombreTabla, elemento);
+	}
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 			registroDePrueba -> key = 13;
@@ -219,7 +212,7 @@ int devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_lis
 	registro* registroDePrueba2 = malloc(sizeof(registro));
 			  registroDePrueba2 -> key = 56;
 			  registroDePrueba2 -> value= string_duplicate("aloo");
-			  registroDePrueba2 -> timestamp = 1548421506;
+			  registroDePrueba2 -> timestamp = 1548421509;
 
 	registro* registroDePrueba3 = malloc(sizeof(registro));
 			  registroDePrueba3 -> key = 13;
@@ -241,20 +234,18 @@ int devolverRegistroDeMayorTimestampYAgregarALista(t_list* listaRegistros, t_lis
 	list_add(memtable, tablaDePrueba);
 	list_add(memtable, tablaDePrueba2);
 
-
-
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
-	t_list* registrosConLaKey = list_filter(encuentraLista->lista, encontrarLaKey); //habria que ver que aca esta rompiendo el select cuando debuggeo
+	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->lista, encontrarLaKey);
 
-	if (registrosConLaKey->elements_count == 0){
-		printf("No se encuentra la key\n");
-		return 0;
+	if (registrosConLaKeyEnMemtable->elements_count == 0){
+		printf("No se encuentra la key en la memtable\n");
+		return NULL;
 	}
-	registro* registroDeMayorTimestamp = list_fold(registrosConLaKey, list_get(registrosConLaKey,0), cualEsElMayorTimestamp);
 
-	list_add(listaRegistros, registroDeMayorTimestamp);
-return 1;
+	registro* registroDeMayorTimestamp= list_fold(registrosConLaKeyEnMemtable, list_get(registrosConLaKeyEnMemtable,0), cualEsElMayorTimestamp);
+
+return registroDeMayorTimestamp;
 
 }
 
@@ -272,8 +263,6 @@ char* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,t_list* listaRegi
 		return devolverMayor(primerElemento, segundoElemento);
 
 	}*/
-
-
 	char* rutaBloque = string_new();
 	string_append(&rutaBloque,puntoMontaje);
 	string_append(&rutaBloque,"Bloques/");
@@ -398,16 +387,23 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	//puts(buffer);
 	//y aca afuera haria la busqueda del registro.
 
+	registro* registroBuscado;
 
-	if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
-	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
+	if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
+		t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
+		if (registrosConLaKeyEnListaRegistros->elements_count == 0){
+				printf("No se encuentra la key\n");
+				return NULL;
+			}
+	registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
+	}
 
-	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
+	//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
 	config_destroy(part);
 	free (ruta);
 	list_clean(listaRegistros);
 	free(buffer);
-	return registroADevolver;
+	return registroBuscado;
 }
 
 void* funcionInsert(char* argumentos) {
@@ -432,6 +428,5 @@ void* funcionInsert(char* argumentos) {
   guardarRegistro(memtable, registroDePrueba, nombreTabla);
 
 }
-
 
 
