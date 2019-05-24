@@ -1,11 +1,90 @@
 
 #include "kernel_operaciones.h"
+#include <stdbool.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 char * path ="../KERNEL_CONFIG_EJEMPLO";
 configYLogs *kernel_configYLog;
 char* IpMemoria;
 char* PuertoMemoria;
+instruccion* obtener_ultima_instruccion(t_list* instruc){
+	int size = list_size(instruc);
+	instruccion *instrucAux = malloc(sizeof(instruccion));
+	instrucAux = list_get(instruc,size);
+	return instrucAux;
+}
+bool instruccion_no_ejecutada(instruccion* instruc){
+	return instruc->ejecutado==0;
+}
+void kernel_planificador(){
+	while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
+		//TODO poner semaforo
+		pcb* pcb_auxiliar = malloc(sizeof(pcb));
+		pcb_auxiliar->instruccion =list_create();
+		pcb_auxiliar = list_remove(cola_proc_listos,1);
+		if( pcb_auxiliar->instruccion == NULL){
+			if(pcb_auxiliar->ejecutado ==1){
+				list_add(cola_proc_terminados,pcb_auxiliar);
+				free(pcb_auxiliar);
+			}
+			else{
+				pcb_auxiliar->ejecutado=1;
+				kernel_api(pcb_auxiliar->operacion,pcb_auxiliar->argumentos);
+				list_add(cola_proc_terminados,pcb_auxiliar);
+				free(pcb_auxiliar);
+			}
+		}
+		else if(pcb_auxiliar->instruccion !=NULL){
+			for(int quantum=0;quantum++;quantum<quantumMax){
+				if(pcb_auxiliar->ejecutado ==0){
+					kernel_api(pcb_auxiliar->operacion, pcb_auxiliar->argumentos);
+					pcb_auxiliar->ejecutado=1;
+				}
+				instruccion* instruc=malloc(sizeof(instruccion));
+				instruc= list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
+				instruc->ejecutado = 1;
+				kernel_api(instruc->operacion,instruc->argumentos);
+			}
+			if(!instruccion_no_ejecutada(obtener_ultima_instruccion(pcb_auxiliar->instruccion)))
+				list_add(cola_proc_terminados, pcb_auxiliar);
+			else
+				list_add(cola_proc_listos, pcb_auxiliar);
+		}
 
+	}
+	//cola_proc_listos
+}
+
+void kernel_almacenar_en_cola(char*operacion,char* argumentos){
+	if (string_equals_ignore_case(operacion, "RUN")) {
+		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n"); //poner esto en log aclarando el path
+		kernel_run(argumentos);
+	}
+	else{
+		kernel_agregar_cola_proc_nuevos(operacion, argumentos);
+	}
+
+}
+void kernel_agregar_cola_proc_nuevos(char*operacion, char*argumentos){
+	pcb* pcb_auxiliar = malloc(sizeof(pcb));
+	pcb_auxiliar->operacion= malloc(sizeof(*operacion));
+	pcb_auxiliar->operacion = operacion;
+	pcb_auxiliar->operacion= malloc(sizeof(*argumentos));
+	pcb_auxiliar->argumentos = argumentos;
+	pcb_auxiliar->ejecutado = 0;
+	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
+	free(pcb_auxiliar);
+}
+void kernel_consola(){
+	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n");
+	char* linea;
+	linea = readline("");
+	char** opYArg;
+	opYArg = string_n_split(linea,2," ");
+	kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
+	//crear proc nuevo, preguntar ssi run o no TODO
+}
 void kernel_run(char* path){
 	FILE *archivoALeer;
 	archivoALeer = fopen(path, "r");
@@ -17,11 +96,13 @@ void kernel_run(char* path){
 		log_error(kernel_configYLog->log,"No se pudo ejecutar el archivo solicitado, verifique su existencia\n");
 		exit(EXIT_FAILURE);
 	}
-		pcb* pcb_auxiliar = malloc(sizeof(pcb));
-		pcb_auxiliar->operacion = "RUN";
-		pcb_auxiliar->argumentos = path;
-		pcb_auxiliar->ejecutado = 1;
-		pcb_auxiliar->instrucciones =list_create();
+	pcb* pcb_auxiliar = malloc(sizeof(pcb));
+	pcb_auxiliar->operacion= malloc(sizeof("RUN"));
+	pcb_auxiliar->operacion = "RUN";
+	pcb_auxiliar->operacion= malloc(sizeof(*path));
+	pcb_auxiliar->argumentos = path;
+	pcb_auxiliar->ejecutado = 1;
+	pcb_auxiliar->instruccion =list_create();
 
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		char** operacion;
@@ -33,32 +114,75 @@ void kernel_run(char* path){
 		instruccion_auxiliar->argumentos= malloc(sizeof(*(operacion+1)));
 		instruccion_auxiliar->argumentos= *(operacion+1);
 
-		list_add(pcb_auxiliar->instrucciones,instruccion_auxiliar);
-
+		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 		free(instruccion_auxiliar);
 
 	}
-		list_add(cola_proc_nuevos,pcb_auxiliar);
-
+	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
 	free(pcb_auxiliar);
 	fclose(archivoALeer);
 }
-
-void kernel_obtener_configuraciones(char* path){
+void kernel_api(char* operacionAParsear, char* argumentos) //cuando ya esta en el rr
+{
+	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+			printf("INSERT\n");
+//TODO			kernel_insert();
+			/*
+			*en otra funcion* -> kernel_insert();
+			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+			hacer recibir para tener la rta
+			cerrarConexion(socketClienteKernel);
+			*/
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+			printf("SELECT\n");
+//TODO			kernel_select(*(operacion+1));
+			/*
+			*en otra funcion* -> kernel_select();
+			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+			hacer recibir para tener la rta
+			cerrarConexion(socketClienteKernel);
+			*/
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
+			printf("DESCRIBE\n");
+//TODO			kernel_describe();
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
+			printf("CREATE\n");
+//TODO			kernel_create();
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
+			printf("DROP\n");
+//TODO			kernel_drop();
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "JOURNAL")) {
+			printf("JOURNAL\n");
+//TODO			kernel_journal();
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
+			printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
+//TODO			kernel_run(*argumentos);
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
+			printf("METRICS\n");
+//TODO			kernel_metrics();
+		}
+		else if (string_equals_ignore_case(operacionAParsear, "ADD")) {
+			printf("ADD\n");
+//TODO			kernel_add();
+		}
+		else {
+			printf("Mi no entender esa operacion");
+		}
+}
+void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
 	kernel_configYLog->config = config_create(path);
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	PuertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
-}
-void kernel_agregar_cola_proc_nuevos(char*operacion, char*argumentos){
-	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	pcb_auxiliar->operacion = string_new();
-	string_append(pcb_auxiliar->operacion,*operacion);
-	pcb_auxiliar->argumentos = 	string_new();
-	string_append(pcb_auxiliar->argumentos,*argumentos);
-	pcb_auxiliar->ejecutado = 0;
-	list_add(cola_proc_nuevos,pcb_auxiliar);
-	free(pcb_auxiliar);
 }
 
 //void* kernel_cliente(void *archivo){
