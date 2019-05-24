@@ -159,18 +159,50 @@ void* devolverMayor(registro* registro1, registro* registro2){
 		}
 }
 
+
 bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 		tablaMem* tabla = elemento;
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
 			puts("La encontre");
 			list_add(tabla->lista, unRegistro);
+			return true;
 		}else{
-			tablaMem* nuevaTabla;
-			nuevaTabla->nombre = nombreTabla;
-			list_add(nuevaTabla->lista, unRegistro);
-			list_add(memtable, nuevaTabla);
+			return false;
+		}
 
+
+}
+
+//Guarda un registro en la memtable
+void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) {
+
+	bool buscarPorNombre(void *elemento){
+		return agregarRegistro(nombreTabla, unRegistro, elemento);
+	}
+
+	if(!list_find(memtable, buscarPorNombre)){
+
+		tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
+						nuevaTabla->nombre = string_duplicate(nombreTabla);
+						nuevaTabla->lista = list_create();
+						list_add(nuevaTabla->lista, unRegistro);
+						list_add(memtable, nuevaTabla);
+						log_info(logger, "Se añadio la tabla a la memtable");
+						puts("holu");
+	}
+
+
+
+}
+
+/*
+bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
+		tablaMem* tabla = elemento;
+
+		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
+			list_add(tabla->lista, unRegistro);
+			log_info(logger, "Se guardo el registro en la tabla");
 		}
 
 }
@@ -183,12 +215,24 @@ void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) 
 	}
 
 	tablaMem* tablaEncontrada = list_find(memtable, buscarPorNombre);
+/*
+	if (!(list_find(memtable, buscarPorNombre))) {
+		puts("holi");
+	}
+*/
+	/*
+	if (!(tablaEncontrada = list_find(memtable, buscarPorNombre))){
+				tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
+				nuevaTabla->nombre = nombreTabla;
+				list_add(nuevaTabla->lista, unRegistro);
+				list_add(memtable, nuevaTabla);
+				log_info(logger, "Se añadio la tabla a la memtable");
+	}
 
 }
-
+*/
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
-	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
 
 	bool encontrarLaKey(void *elemento){
 		return estaLaKey(key, elemento);
@@ -239,11 +283,14 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->lista, encontrarLaKey);
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
+		log_info(logger, "La key buscada no se encuentra la key en la memtable");
 		printf("No se encuentra la key en la memtable\n");
 		return NULL;
 	}
 
 	registro* registroDeMayorTimestamp= list_fold(registrosConLaKeyEnMemtable, list_get(registrosConLaKeyEnMemtable,0), cualEsElMayorTimestamp);
+
+	log_info(logger, "Registro encontrado en la memtable");
 
 return registroDeMayorTimestamp;
 
@@ -353,7 +400,12 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	}
 	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0) return NULL; //primero verificas existencia, ver despues de si es NULL de tirar/enviar error
 
+	log_info(logger, "Directorio de tabla valido");
+
 	metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
+
+	log_info(logger, "Metadata cargado");
+
 	particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Tables/");
@@ -377,6 +429,8 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		i++;
 	}
 
+	log_info(logger, "Informacion de bloques cargada");
+
 	char** separarRegistro = string_split(buffer,"\n");
 	int j =0;
 	for(j=0;*(separarRegistro+j)!=NULL;j++){
@@ -390,12 +444,15 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	registro* registroBuscado;
 
 	if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
+		log_info(logger, "El registro no se encuentra en la memtable");
 		t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 		if (registrosConLaKeyEnListaRegistros->elements_count == 0){
-				printf("No se encuentra la key\n");
+			log_info(logger, "La key buscada no se encuentra");
+			printf("No se encuentra la key\n");
 				return NULL;
 			}
 	registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
+	log_info(logger, "Registro encontrado en bloques");
 	}
 
 	//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
@@ -412,6 +469,7 @@ void* funcionInsert(char* argumentos) {
 	char* nombreTabla = *(argSeparados + 0);
 
 	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return NULL;
+	log_info(logger, "Directorio de tabla valido");
 	int key = atoi(*(argSeparados+1));
 	char* value = *(argSeparados + 2);
 	int timestamp = *(argSeparados + 3);
@@ -426,7 +484,7 @@ void* funcionInsert(char* argumentos) {
 				registroDePrueba -> timestamp = timestamp;
 
   guardarRegistro(memtable, registroDePrueba, nombreTabla);
-
+  log_info(logger, "Se guardo el registro");
 }
 
 
