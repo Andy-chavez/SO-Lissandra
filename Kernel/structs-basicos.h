@@ -12,9 +12,10 @@
 #include <commons/collections/list.h>
 #include <stdlib.h>
 
+int quantumMax; //sacar esto de archivo de config
 t_list* cola_proc_nuevos;  //use esta en el caso del run
-// t_list* cola_proc_listos; esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
-// t_list* cola_proc_terminados; creo que quiza es innecesario seguir guardando lo que ya ejecute
+t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
+t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 // t_list* cola_proc_bloqueados; es necesaria? al no haber tiempo io como que bloqueados no se en que casos llenarla
 
@@ -22,7 +23,7 @@ typedef struct{
 	char* operacion;
 	char* argumentos;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
-	t_list* instrucciones; //fila
+	t_list* instruccion; //fila
 	//t_list* pcb_siguiente;  //columna
 	//TODO agregar mas campos 1
 }pcb;
