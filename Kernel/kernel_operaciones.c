@@ -5,7 +5,6 @@
 #include <readline/history.h>
 
 char * path ="../KERNEL_CONFIG_EJEMPLO";
-configYLogs *kernel_configYLog;
 char* IpMemoria;
 char* PuertoMemoria;
 instruccion* obtener_ultima_instruccion(t_list* instruc){
@@ -56,16 +55,6 @@ void kernel_planificador(){
 	//cola_proc_listos
 }
 
-void kernel_almacenar_en_cola(char*operacion,char* argumentos){
-	if (string_equals_ignore_case(operacion, "RUN")) {
-		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n"); //poner esto en log aclarando el path
-		kernel_run(argumentos);
-	}
-	else{
-		kernel_agregar_cola_proc_nuevos(operacion, argumentos);
-	}
-
-}
 void kernel_agregar_cola_proc_nuevos(char*operacion, char*argumentos){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
 	pcb_auxiliar->operacion= malloc(sizeof(*operacion));
@@ -74,26 +63,48 @@ void kernel_agregar_cola_proc_nuevos(char*operacion, char*argumentos){
 	pcb_auxiliar->argumentos = argumentos;
 	pcb_auxiliar->ejecutado = 0;
 	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
+	free(pcb_auxiliar->operacion);
+	free(pcb_auxiliar->argumentos);
 	free(pcb_auxiliar);
 }
+void kernel_almacenar_en_cola(char*operacion,char* argumentos){
+	string_to_upper(operacion);
+	if (string_equals_ignore_case(operacion, "RUN")) {
+		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n"); //poner esto en log aclarando el path
+		kernel_run(argumentos);
+	}
+	else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", operacion)){
+		kernel_agregar_cola_proc_nuevos(operacion, argumentos);
+	}
+	else{
+		//loggear error de instruccion incorrecta
+	}
+
+}
 void kernel_consola(){
-	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n");
-	char* linea;
-	linea = readline("");
+	printf("Por favor ingrese <OPERACION> seguido de los argumento"
+			"s\n");
+	char* linea= NULL;
+	size_t largo = 0;
+	getline(&linea, &largo, stdin);
+	//linea = readline("");
 	char** opYArg;
 	opYArg = string_n_split(linea,2," ");
 	kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
+	free(linea);
+	//free(opYArg+1);
+	free(opYArg);
 	//crear proc nuevo, preguntar ssi run o no TODO
 }
 void kernel_run(char* path){
-	FILE *archivoALeer;
-	archivoALeer = fopen(path, "r");
+	FILE *archivoALeer= fopen(path, "r");
 	char *lineaLeida;
 	size_t limite = 250;
 	ssize_t leer;
 	lineaLeida = (char *)malloc(limite * sizeof(char));
 	if (archivoALeer == NULL){
-		log_error(kernel_configYLog->log,"No se pudo ejecutar el archivo solicitado, verifique su existencia\n");
+		//log_error(kernel_configYLog->log,"No se pudo ejecutar el archivo solicitado, verifique su existencia\n");
+		free(lineaLeida);
 		exit(EXIT_FAILURE);
 	}
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
@@ -114,11 +125,17 @@ void kernel_run(char* path){
 		instruccion_auxiliar->argumentos= malloc(sizeof(*(operacion+1)));
 		instruccion_auxiliar->argumentos= *(operacion+1);
 
+
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
+		free(instruccion_auxiliar->operacion);
+		free(instruccion_auxiliar->argumentos);
 		free(instruccion_auxiliar);
 
 	}
 	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
+	free(lineaLeida);
+	free(pcb_auxiliar->operacion);
+	free(pcb_auxiliar->argumentos);
 	free(pcb_auxiliar);
 	fclose(archivoALeer);
 }
@@ -184,7 +201,11 @@ void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
 	IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	PuertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 }
-
+void liberarConfigYLogs(configYLogs *archivos) {
+	log_destroy(archivos->log);
+	config_destroy(archivos->config);
+	free(archivos);
+}
 //void* kernel_cliente(void *archivo){
 //	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
 //	 //aca tengo dudas de si dejar ese enviar o si puedo salir de la funcion
