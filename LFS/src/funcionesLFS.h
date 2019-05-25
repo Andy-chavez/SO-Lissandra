@@ -351,7 +351,6 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	char* ruta = string_new();
 	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
-	int desplazamiento=0;
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
@@ -381,16 +380,10 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	part = config_create(ruta);
 	char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 	int sizeParticion=config_get_int_value(part,"SIZE");
-	//char* buffer = malloc (sizeof(char)*sizeParticion);
 	char* buffer = string_new();
-	int largoDeBloque;
-//	int bloquesLeidos=0;
 	while(*(arrayDeBloques+i)!= NULL){
 		char* informacion = buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
 		string_append(&buffer, informacion);
-		//largoDeBloque = largoBloque(*(arrayDeBloques+i));
-		//memcpy(buffer+desplazamiento,informacion,largoDeBloque);
-		//desplazamiento += largoDeBloque;
 		i++;
 	}
 
@@ -428,12 +421,12 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	return registroBuscado;
 }
 
-void* funcionInsert(char* argumentos) {
+void funcionInsert(char* argumentos) {
 	char** argSeparados = string_n_split(argumentos,4," ");
 
 	char* nombreTabla = *(argSeparados + 0);
 
-	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return NULL;
+	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return;
 	log_info(logger, "Directorio de tabla valido");
 	int key = atoi(*(argSeparados+1));
 	char* value = *(argSeparados + 2);
