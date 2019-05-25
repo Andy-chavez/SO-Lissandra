@@ -140,7 +140,6 @@ void kernel_consola(){
 	opYArg = string_n_split(linea,2," ");
 	kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
 	free(linea);
-	//free(opYArg+1);
 	free(opYArg);
 	//crear proc nuevo, preguntar ssi run o no TODO
 }
