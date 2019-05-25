@@ -23,8 +23,6 @@
 
 criterio *inicializarCriterios();
 
-
-
 criterio *inicializarCriterios(){
 	criterio *datos = malloc(3*sizeof(criterio));
 	datos[STRONG].unCriterio = SC; //Strong
@@ -40,15 +38,16 @@ criterio *inicializarCriterios(){
 int main(int argc, char *argv[]){
 //	criterio *criterios;
 //	criterios = inicializarCriterios();
-/*	pthread_t threadCliente;
-
-	archivosDeConfigYLog->config = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
-	archivosDeConfigYLog->logger = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
+/*
+ * pthread_t threadCliente;
 	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
 */
+	//kernel_configYLog->config = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
+	//kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	cola_proc_nuevos = list_create();
 	kernel_consola();
-//	liberarConfigYLogs(archivosDeConfigYLog);
+//TODO frees de las colas
+	//liberarConfigYLogs(kernel_configYLog);
 	return EXIT_SUCCESS;
 }

@@ -10,6 +10,7 @@
 #include "structs-basicos.h"
 #include <commons/string.h>
 
+configYLogs *kernel_configYLog;
 /************************************************************************/
 void kernel_almacenar_en_cola(char*,char*);
 void kernel_agregar_cola_proc_nuevos(char*, char*);
@@ -17,6 +18,7 @@ void kernel_run(char* path);
 void kernel_obtener_configuraciones(char* path);
 void kernel_consola();
 void kernel_api(char*,char*);
+void liberarConfigYLogs(configYLogs *archivos);
 /* TODO implementaciones
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
  * run -> ya esta hecho

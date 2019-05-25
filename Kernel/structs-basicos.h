@@ -74,12 +74,7 @@ typedef struct {
 } configYLogs;
 
 /************************************************************************/
-void liberarConfigYLogs(configYLogs *archivos);
+//void liberarConfigYLogs(configYLogs *archivos);
 
-void liberarConfigYLogs(configYLogs *archivos) {
-	log_destroy(archivos->log);
-	config_destroy(archivos->config);
-	free(archivos);
-}
 
 #endif /* STRUCTS_BASICOS_H_ */
