@@ -97,7 +97,6 @@ void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	registro* guardarRegistro = malloc (sizeof(registro)) ;
 	guardarRegistro->timestamp = atoi(timestamp);
 	guardarRegistro->key = atoi(key);
-	guardarRegistro->value = malloc (sizeof(tamanioValue));
 	guardarRegistro->value = value;
 	list_add(head,guardarRegistro);
 }
@@ -257,6 +256,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 	log_info(logger, "Registro encontrado en la memtable");
 
+	list_clean(registrosConLaKeyEnMemtable);
 return registroDeMayorTimestamp;
 
 }
@@ -343,6 +343,15 @@ int largoBloque(char* numeroBloque){
 	return sb.st_size+1;
 }
 
+void liberarDoblePuntero(char** doblePuntero){
+	int i;
+	for (i=0; *(doblePuntero+i)!= NULL; i++){
+			free(*(doblePuntero+i));
+		}
+	free(*(doblePuntero+i));
+
+}
+
 registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	int i=0;
@@ -394,7 +403,11 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	for(j=0;*(separarRegistro+j)!=NULL;j++){
 		char **aCargar =string_split(*(separarRegistro+j),";");
 		agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+		free(*(aCargar+0));
+		free(*(aCargar+1));
+		free(*(aCargar+2));
 	}
+
 	//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
 	//puts(buffer);
 	//y aca afuera haria la busqueda del registro.
@@ -414,12 +427,20 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	}
 
 	//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
+
+	liberarDoblePuntero(arrayDeBloques);
+	liberarDoblePuntero(separarRegistro);
+	liberarDoblePuntero(argSeparados);
+
 	config_destroy(part);
 	free (ruta);
 	list_clean(listaRegistros);
 	free(buffer);
+
+	//ver si la funcion tiene que devolver el registro
 	return registroBuscado;
 }
+
 
 void funcionInsert(char* argumentos) {
 	char** argSeparados = string_n_split(argumentos,4," ");
@@ -443,6 +464,9 @@ void funcionInsert(char* argumentos) {
 
   guardarRegistro(memtable, registroDePrueba, nombreTabla);
   log_info(logger, "Se guardo el registro");
+
+  liberarDoblePuntero(argSeparados);
+
 }
 
 
