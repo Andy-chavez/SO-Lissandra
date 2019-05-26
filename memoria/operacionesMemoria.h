@@ -59,6 +59,8 @@ typedef struct {
 	int tamanio;
 } datosInicializacion;
 
+int socketLissandraFS;
+
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE MEMORIA PRINCIPAL //
 
@@ -70,7 +72,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	nuevaMemoria->limite = nuevaMemoria->base + datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
 
-	if(nuevaMemoria != NULL && nuevaMemoria->base != NULL) {
+	if(nuevaMemoria == NULL || nuevaMemoria->base == NULL) {
 		log_error(configYLog->logger, "hubo un error al inicializar la memoria");
 		return NULL;
 	}
@@ -179,7 +181,7 @@ pagina* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	memcpy(&(paginaARetornar->key), (uint16_t*) (unaPagina->unaPagina + desplazamiento), sizeof(uint16_t));
 	desplazamiento += sizeof(uint16_t);
 
-	int tamanioValue = obtenerTamanioValue((unaPagina->unaPagina + desplazamiento));
+	int tamanioValue = obtenerTamanioValue((unaPagina->unaPagina + desplazamiento)) + 1;
 	paginaARetornar->value = malloc(tamanioValue);
 	memcpy(paginaARetornar->value, (unaPagina->unaPagina + desplazamiento), tamanioValue);
 
@@ -194,6 +196,53 @@ void cambiarDatosEnMemoria(paginaEnTabla* paginaACambiar, pagina* paginaNueva) {
 
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
+
+char* concatenarParametros(char** parametros) {
+	char* parametro = malloc(strlen(*parametros) + 1);
+	memset(parametro, 0, strlen((*parametros)+1));
+	char** aux = parametros;
+	while(*aux != NULL) {
+		string_append_with_format(parametro, " %s",*(aux+1));
+		*(aux) = *(aux+1);
+	}
+	return parametro;
+}
+
+operacionLQL *armarOperacionLQL(char* nombreOperacion, char** parametros) {
+	operacionLQL *operacionARetornar = malloc(sizeof(operacionLQL));
+	operacionARetornar->operacion = nombreOperacion;
+	operacionARetornar->parametros = concatenarParametros(parametros);
+	return operacionARetornar;
+}
+
+pagina* enviarYRecibirRegistro(void *bufferOperacion, char** nombreTabla) {
+	enviar(socketLissandraFS, bufferOperacion, 31);
+	void* bufferRespuesta = recibir(socketLissandraFS);
+	registro* registroADevolver = deserializarRegistro(bufferRespuesta, *(nombreTabla));
+	return (pagina*) registroADevolver;
+}
+
+pagina* pedirRegistroLFS(char* operacion, char** parametros, char** nombreTabla) {
+	operacionLQL *operacionAEnviar = armarOperacionLQL(operacion, parametros);
+	void* buffer = serializarOperacionLQL(operacionAEnviar);
+	pagina* paginaEncontradaEnLFS = enviarYRecibirRegistro(buffer, nombreTabla);
+
+	return paginaEncontradaEnLFS;
+}
+
+pagina* crearPaginaNueva(char** parametros) {
+	pagina* nuevaPagina = malloc(sizeof(pagina));
+
+	nuevaPagina->timestamp = time(NULL);
+	nuevaPagina->key = atoi(*(parametros+1));
+	nuevaPagina->value = *(parametros+2);
+
+	return nuevaPagina;
+}
+
+char* obtenerNombreDeTabla(char** parametros) {
+	return *parametros;
+}
 
 int obtenerTamanioValue(void* valueBuffer) {
 	int tamanio = 0;
@@ -242,7 +291,8 @@ char* valuePagina(segmento* unSegmento, int key){
 	paginaEnTabla* paginaEncontrada = encontrarPaginaPorKey(unSegmento,key);
 
 	pagina* paginaReal = leerDatosEnMemoria(paginaEncontrada);
-	char* value = paginaReal->value;
+	char* value = malloc(strlen(paginaReal->value) + 1);
+	memcpy(value, paginaReal->value, strlen(paginaReal->value) + 1);
 
 	liberarPagina(paginaReal);
 	return value;
@@ -251,27 +301,41 @@ char* valuePagina(segmento* unSegmento, int key){
 // ------------------------------------------------------------------------ //
 // OPERACIONESLQL //
 
-void selectLQL(char*nombreTabla, int key, memoria* memoriaPrincipal){
+void selectLQL(char** parametrosDeSelect, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){
+	char* nombreTabla = obtenerNombreDeTabla(parametrosDeSelect);
+	int key = atoi(*(parametrosDeSelect + 1));
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
 		if(paginaEncontrada = encontrarPaginaPorKey(unSegmento,key)){
 			char* value = valuePagina(unSegmento,key);
 			printf ("El valor es %s\n", value);
+			enviar(socketKernel, (void*) value, strlen(value) + 1);
 		}
-		//else{
-			//paginaEncontrada = pedirRegistroLFS(unSegmento,key);
-			//int espacioNecesario = calcularEspacio(paginaEncontrada);
-			//if(hayEspacioMemoria(espacioNecesario)){
-			//	guardarEnMemoria(paginaEncontrada);
-			//
-			//};
+		else {
+			pagina* paginaNueva = pedirRegistroLFS("Select", parametrosDeSelect, NULL);
+			int espacioNecesario = calcularEspacio(paginaNueva);
+			if(hayEspacioSuficientePara(memoriaPrincipal, espacioNecesario)){
+				guardarEnMemoria(paginaNueva, memoriaPrincipal);
+			}
+			enviar(socketKernel, (void*) paginaNueva->value, strlen(paginaNueva->value) + 1);
 			// else journal();
+		}
+	} else {
+		char* nombreTabla;
+		pagina* paginaNueva = pedirRegistroLFS("Select", parametrosDeSelect, &nombreTabla);
+		int espacioNecesario = calcularEspacio(paginaNueva);
+		if(hayEspacioSuficientePara(memoriaPrincipal, espacioNecesario)){
+			agregarSegmento(memoriaPrincipal, paginaNueva, nombreTabla);
+		}
+		enviar(socketKernel, (void*) paginaNueva->value, strlen(paginaNueva->value) + 1);
 	}
 }
 
 
-void insertLQL(char*nombreTabla, pagina* paginaNueva, memoria* memoriaPrincipal){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
+void insertLQL(char** parametrosDeInsert, configYLogs* configYLog, memoria* memoriaPrincipal){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
+	char* nombreTabla = obtenerNombreDeTabla(parametrosDeInsert);
+	pagina* paginaNueva = crearPaginaNueva(parametrosDeInsert);
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 		paginaEnTabla* paginaEncontrada;
@@ -282,7 +346,9 @@ void insertLQL(char*nombreTabla, pagina* paginaNueva, memoria* memoriaPrincipal)
 	}
 
 	else{
+		log_info(configYLog->logger, "No existia el segmento, es nuevo!");
 		agregarSegmento(memoriaPrincipal,paginaNueva,nombreTabla);
 	}
+	log_info(configYLog->logger, "capaz lo hizo bien xd");
 }
 
