@@ -158,7 +158,7 @@ void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la mem
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	enviar(socketClienteKernel, aEnviar, 39);
 	printf("\n\nEnviado\n\n");
-	//cerrarConexion(socketClienteKernel);
+	cerrarConexion(socketClienteKernel);
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -169,6 +169,21 @@ void kernel_select(char* operacion){
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	enviar(socketClienteKernel, aEnviar, 39);
 	printf("\n\nEnviado\n\n");
+	char* recibido = (char*)recibir(socketClienteKernel);
+	printf("\n\nEl valor recibido es: %s\n\n",recibido);
+	//recibir valor
+	//cerrarConexion(socketClienteKernel);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+void kernel_create(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	void * aEnviar = serializarOperacionLQL(opAux);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	enviar(socketClienteKernel, aEnviar, 39);
+	printf("\n\nEnviado\n\n");
+	//recibir valor
 	//cerrarConexion(socketClienteKernel);
 	free(opAux->operacion);
 	free(opAux->parametros);
@@ -292,7 +307,7 @@ void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 //TODO			kernel_add();
 	}
 	else {
-		printf("Mi no entender esa operacion");
+		printf("Mi no entender esa operacion\n");
 		}
 }
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________

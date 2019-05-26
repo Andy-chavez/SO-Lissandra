@@ -20,7 +20,14 @@
 #define HASH 1
 #define EVENTUAL 2
 
-
+/*
+ * EJEMPLOS:
+ * INSERT TABLA1 515 malesal
+ * SELECT TABLA1 515
+ *
+ *
+ *
+ */
 /*criterio *inicializarCriterios();
 
 criterio *inicializarCriterios(){
@@ -32,7 +39,7 @@ criterio *inicializarCriterios(){
 		datos[iter].memoriasAsociadas = malloc(sizeof(int));
 		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
 	}
-	return datos; 	INSERT TABLA1 515 malesal
+	return datos;
 }*/
 
 int main(int argc, char *argv[]){
