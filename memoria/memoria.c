@@ -11,8 +11,29 @@
 #include <commonsPropias/conexiones.h>
 #include "operacionesMemoria.h"
 
-#define TAMANIOSEGMENTO 10// esto va a estar en un archivo de config
-
+void APIMemoria(char* operacionAParsear, configYLogs* configYLog) {
+	if(string_starts_with(operacionAParsear, "INSERT")) {
+		log_info(configYLog->logger, "Recibi un INSERT");
+	}
+	else if (string_starts_with(operacionAParsear, "SELECT")) {
+		log_info(configYLog->logger, "Recibi un SELECT");
+	}
+	else if (string_starts_with(operacionAParsear, "DESCRIBE")) {
+		log_info(configYLog->logger, "Recibi un DESCRIBE");
+	}
+	else if (string_starts_with(operacionAParsear, "CREATE")) {
+		log_info(configYLog->logger, "Recibi un CREATE");
+	}
+	else if (string_starts_with(operacionAParsear, "DROP")) {
+		log_info(configYLog->logger, "Recibi un DROP");
+	}
+	else if (string_starts_with(operacionAParsear, "JOURNAL")) {
+		log_info(configYLog->logger, "Recibi un JOURNAL");
+		}
+	else {
+		log_error(configYLog->logger, "No pude entender la operacion");
+	}
+}
 
 char* pruebaDeRecepcion(void* buffer) {
 	return (char*) buffer;
@@ -25,12 +46,19 @@ void envioDePrueba(int socketServidor, char* mensajeAEnviar) {
 }
 
 
-
 void liberarConfigYLogs(configYLogs *archivos) {
-	log_destroy(archivos->logger);
 	config_destroy(archivos->config);
+	log_destroy(archivos->logger);
 	free(archivos);
 }
+
+datosInicializacion* realizarHandshake(configYLogs* configYLog) {
+	datosInicializacion* datosMock = malloc(sizeof(datosInicializacion));
+	datosMock->tamanio = 2048;
+	return datosMock;
+}
+
+void liberarDatosDeInicializacion();
 
 void *clienteLFS(void* arg) {
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
@@ -53,6 +81,7 @@ void *servidorMemoria(void* arg){
 
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
+		log_error(archivosDeConfigYLog->logger, "No se pudo inicializar el servidor de memoria");
 		pthread_exit(0);
 	}
 
@@ -60,7 +89,6 @@ void *servidorMemoria(void* arg){
 
 	while(1){
 		int socketKernel = aceptarCliente(socketServidorMemoria);
-//
 		if(socketKernel == -1) {
 			log_info(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			continue;
@@ -68,9 +96,8 @@ void *servidorMemoria(void* arg){
 
 
 		//void* buffer = envioDePrueba("hola");
-		char* mensaje = (char*) recibir(socketKernel); // interface( deserializarOperacion( buffer , 1 ) )
+		void* mensaje = recibir(socketKernel); // interface( deserializarOperacion( buffer , 1 ) )
 
-		clienteLFS((void*) mensaje);
 
 
 		log_info(archivosDeConfigYLog->logger, "Recibi: %s", mensaje);
@@ -84,13 +111,18 @@ void *servidorMemoria(void* arg){
 }
 
 int main() {
-	//pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
+	pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
 	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
 
-	archivosDeConfigYLog->config = config_create("../memoria.config");
+	archivosDeConfigYLog->config = config_create("memoria.config");
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 
-	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
+	datosInicializacion* datosDeInicializacion = realizarHandshake(archivosDeConfigYLog);
+
+	memoria* memoriaPrincipal = inicializarMemoria(datosDeInicializacion, archivosDeConfigYLog);
+	liberarDatosDeInicializacion(datosDeInicializacion);
+
+	pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
 	//pthread_create(&threadCliente, NULL, clienteKernel, archivosDeConfigYLog);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, archivosDeConfigYLog);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, archivosDeConfigYLog);
@@ -100,7 +132,8 @@ int main() {
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
 
-	//liberarConfigYLogs(archivosDeConfigYLog); Esta dando segfault
+	liberarMemoria(memoriaPrincipal);
+	liberarConfigYLogs(archivosDeConfigYLog);
 	return 0;
 }
 

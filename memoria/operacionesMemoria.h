@@ -55,17 +55,27 @@ typedef struct {
 	int tamanio;
 } bufferDePagina;
 
+typedef struct {
+	int tamanio;
+} datosInicializacion;
+
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE MEMORIA PRINCIPAL //
 
-memoria* inicializarMemoria(int tamanio){
+memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* configYLog) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
 
-	nuevaMemoria->base = malloc(tamanio);
-	memset(nuevaMemoria->base, 0, tamanio);
-	nuevaMemoria->limite = nuevaMemoria->base + tamanio;
+	nuevaMemoria->base = malloc(datosParaInicializar->tamanio);
+	memset(nuevaMemoria->base, 0, datosParaInicializar->tamanio);
+	nuevaMemoria->limite = nuevaMemoria->base + datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
 
+	if(nuevaMemoria != NULL && nuevaMemoria->base != NULL) {
+		log_error(configYLog->logger, "hubo un error al inicializar la memoria");
+		return NULL;
+	}
+
+	log_info(configYLog->logger, "Memoria inicializada.");
 	return nuevaMemoria;
 }
 
@@ -241,7 +251,7 @@ char* valuePagina(segmento* unSegmento, int key){
 // ------------------------------------------------------------------------ //
 // OPERACIONESLQL //
 
-void selectLQL(char*nombreTabla,int key, memoria* memoriaPrincipal){
+void selectLQL(char*nombreTabla, int key, memoria* memoriaPrincipal){
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
