@@ -36,24 +36,24 @@ typedef enum {
 	SELECT
 } operacion;
 
-typedef enum {
-	SC,
-	SH,
-	EC
-}consistencia;
+//typedef enum {
+//	SC,
+//	SH,
+//	EC
+//}consistencia;
+//
+//
+//typedef struct {
+//	time_t timestamp;
+//	u_int16_t key;
+//	char* value;
+//} registro;
 
-
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
-
-typedef struct {
-	consistencia tipoConsistencia;
-	int cantParticiones;
-	int tiempoCompactacion;
-} metadata;
+//typedef struct {
+//	consistencia tipoConsistencia;
+//	int cantParticiones;
+//	int tiempoCompactacion;
+//} metadata;
 
 /*
 typedef struct {

@@ -22,6 +22,7 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 #include "funcionesLFS.h"
 
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
@@ -96,21 +97,38 @@ void* servidorLisandra(){
 			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
 			continue;
 		}
+		int i =0;
+		//char* mensajeRecibido = recibir(socketMemoria);
+		if(i==0){ //en realidad hay que deserializar handshake
+			void* mensaje = serializarHandshake(tamanioValue);
+			enviar(socketMemoria, mensaje, 2*sizeof(int));
+			i++;
+		}
+		else{
+			char* mensajeRecibido = recibir(socketMemoria);
+			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
+			registro* registroASerializar= funcionSelect(operacion->parametros);
+			char* nombreTabla = "TABLA1";
+			void* registroMandar = serializarRegistro(registroASerializar, nombreTabla);
+			enviar(socketMemoria,registroMandar, 98);
+
+		}
+
 
 		//char* mensaje = "hola";
 
 		//int tamanio = strlen(mensaje) + 1;
 
-		void* mensaje = serializarHandshake(tamanioValue);
+		//void* mensaje = serializarHandshake(tamanioValue);
 
-		enviar(socketMemoria, mensaje, 2*sizeof(int));
+//		enviar(socketMemoria, mensaje, 2*sizeof(int));
 
 		//char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
 
-		log_info(logger, "Recibi: %s", mensaje);
+		//log_info(logger, "Recibi: %s", mensaje);
 
-		free(mensaje);
-		cerrarConexion(socketMemoria);
+		//free(mensaje);
+		//cerrarConexion(socketMemoria);
 	}
 
 	cerrarConexion(socketServidorLisandra);
@@ -156,14 +174,18 @@ int main(int argc, char* argv[]) {
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
-	//servidorLisandra();
-	leerConsola();
+	servidorLisandra();
+	//leerConsola();
 	/*
 	void* bufferHandshake = serializarHandshake(tamanioValue);
 	int tamanioRecibido = deserializarHandshake(bufferHandshake);
 */
 
-	funcionSelect("TABLA1 56");
+//	registro* registroParaMemoria = funcionSelect("TABLA1 56");
+
+
+
+
 	funcionInsert("TABLA1 56 alo");
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
