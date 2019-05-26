@@ -22,8 +22,8 @@
 
 /*
  * EJEMPLOS:
- * INSERT TABLA1 515 malesal
- * SELECT TABLA1 515
+ * INSERT TABLA1 515 malesal 25-39=14
+ * SELECT TABLA1 515 17+14= 31
  *
  *
  *

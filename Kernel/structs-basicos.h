@@ -15,7 +15,6 @@
 
 typedef struct{
 	char* operacion;
-	char* argumentos;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
 	t_list* instruccion; //fila
 	//t_list* pcb_siguiente;  //columna
@@ -23,7 +22,6 @@ typedef struct{
 }pcb;
 typedef struct{
 	char* operacion;
-	char* argumentos;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
 	//t_list* instruccion_siguiente;
 	//TODO agregar mas campos 2
