@@ -130,6 +130,7 @@ void kernel_almacenar_en_cola(char*operacion,char* argumentos){
 	}
 
 }
+// _________________________________________.: PASAR A COMMONS PROPIAS :.____________________________________________
 operacionLQL* splitear_operacion(char* operacion){
 	operacionLQL* operacionAux=malloc(sizeof(operacionLQL));
 	char** opSpliteada;
@@ -150,7 +151,8 @@ operacionLQL* splitear_operacion(char* operacion){
 	}
 	return operacionAux;
 }
-void kernel_insert(char* operacion){
+// _________________________________________.: OPERACIONES DE API :.____________________________________________
+void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
 	void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
@@ -161,6 +163,18 @@ void kernel_insert(char* operacion){
 	free(opAux->parametros);
 	free(opAux);
 }
+void kernel_select(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	void * aEnviar = serializarOperacionLQL(opAux);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	enviar(socketClienteKernel, aEnviar, 39);
+	printf("\n\nEnviado\n\n");
+	//cerrarConexion(socketClienteKernel);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+// _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
@@ -188,7 +202,7 @@ void kernel_run(char* path){
 	ssize_t leer;
 	lineaLeida = (char *)malloc(limite * sizeof(char));
 	if (archivoALeer == NULL){
-		//log_error(kernel_configYLog->log,"No se pudo ejecutar el archivo solicitado, verifique su existencia\n");
+		log_error(kernel_configYLog->log,"No se pudo ejecutar el archivo solicitado, verifique su existencia\n");
 		free(lineaLeida);
 		exit(EXIT_FAILURE);
 	}
@@ -281,6 +295,7 @@ void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 		printf("Mi no entender esa operacion");
 		}
 }
+// _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(path);
