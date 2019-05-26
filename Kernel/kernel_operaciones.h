@@ -9,12 +9,13 @@
 #define KERNEL_OPERACIONES_H_
 #include "structs-basicos.h"
 #include <commons/string.h>
+#include <commonsPropias/serializacion.h>
 #include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
 /******************************VARIABLES GLOBALES******************************************/
-char * pathConfig ="../KERNEL_CONFIG_EJEMPLO";
+char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 char* IpMemoria;
 char* PuertoMemoria;
 configYLogs *kernel_configYLog;
@@ -31,7 +32,7 @@ void kernel_agregar_cola_proc_nuevos(char*, char*);
 void kernel_run(char*);
 void kernel_obtener_configuraciones(char*);
 void kernel_consola();
-void kernel_api(char*,char*);
+void kernel_api(char*);
 void liberarConfigYLogs(configYLogs *);
 /* TODO implementaciones
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
@@ -64,7 +65,7 @@ instruccion* obtener_ultima_instruccion(t_list* instruc){
 bool instruccion_no_ejecutada(instruccion* instruc){
 	return instruc->ejecutado==0;
 }
-void kernel_planificador(){
+/*void kernel_planificador(){
 	while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
 		//TODO poner semaforo
 		pcb* pcb_auxiliar = malloc(sizeof(pcb));
@@ -102,7 +103,7 @@ void kernel_planificador(){
 	}
 	//cola_proc_listos
 }
-
+*/
 void kernel_agregar_cola_proc_nuevos(char*operacion, char*argumentos){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
 	pcb_auxiliar->operacion= malloc(sizeof(*operacion));
@@ -129,6 +130,41 @@ void kernel_almacenar_en_cola(char*operacion,char* argumentos){
 	}
 
 }
+operacionLQL* splitear_operacion(char* operacion){
+	operacionLQL* operacionAux=malloc(sizeof(operacionLQL));
+	char** opSpliteada;
+	if(string_starts_with(operacion,"JOURNAL") || (string_starts_with(operacion,"DESCRIBE") && !string_contains(operacion," "))){
+		operacionAux->operacion=malloc(sizeof(operacion));
+		operacionAux->operacion=operacion;
+		operacionAux->parametros= NULL;
+	}
+	else{
+		opSpliteada = string_n_split(operacion,2," ");
+		operacionAux->operacion=malloc(sizeof(*(opSpliteada)));
+		operacionAux->operacion=*opSpliteada;
+		operacionAux->parametros=malloc(sizeof(*(opSpliteada+1)));
+		operacionAux->parametros=*(opSpliteada+1);
+		free(*(opSpliteada+1));
+		free(*(opSpliteada));
+		free(opSpliteada);
+	}
+	return operacionAux;
+}
+void kernel_insert(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	void * aEnviar = serializarOperacionLQL(opAux);
+	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+	enviar(socketClienteKernel, aEnviar, sizeof(aEnviar));
+	printf("\n\nEnviado\n\n");
+	//enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
+	int* recibido = (int*)recibir(socketClienteKernel);
+	printf("%d",*recibido);
+	printf("\n\nRecibido\n\n");
+	cerrarConexion(socketClienteKernel);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumento"
 			"s\n");
@@ -136,11 +172,18 @@ void kernel_consola(){
 	size_t largo = 0;
 	getline(&linea, &largo, stdin);
 	//linea = readline("");
-	char** opYArg;
-	opYArg = string_n_split(linea,2," ");
-	kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
+	//char** opYArg;
+	//opYArg = string_n_split(linea,2," ");
+	kernel_api(linea);
+	//kernel_api(*opYArg,*(opYArg+1));
+	//printf("%s",opYArg);
+	//printf("%s",opYArg+1);
+	//kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
 	free(linea);
-	free(opYArg);
+	//free(*(opYArg+1));
+	//free(*(opYArg));
+	//free(opYArg); //tener en cuenta esa liberacion de punteros
+
 	//crear proc nuevo, preguntar ssi run o no TODO
 }
 void kernel_run(char* path){
@@ -186,20 +229,21 @@ void kernel_run(char* path){
 	free(pcb_auxiliar);
 	fclose(archivoALeer);
 }
-void kernel_api(char* operacionAParsear, char* argumentos) //cuando ya esta en el rr
+void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
-	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+	if(string_starts_with(operacionAParsear, "INSERT")) {
 			printf("INSERT\n");
-//TODO			kernel_insert();
-			/*
+		kernel_insert(operacionAParsear);
+//TODO
+		/*
 			*en otra funcion* -> kernel_insert();
 			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
 			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
 			hacer recibir para tener la rta
 			cerrarConexion(socketClienteKernel);
 			*/
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+	}
+	else if (string_starts_with(operacionAParsear, "SELECT")) {
 			printf("SELECT\n");
 //TODO			kernel_select(*(operacion+1));
 			/*
@@ -209,43 +253,44 @@ void kernel_api(char* operacionAParsear, char* argumentos) //cuando ya esta en e
 			hacer recibir para tener la rta
 			cerrarConexion(socketClienteKernel);
 			*/
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
-			printf("DESCRIBE\n");
+	}
+	else if (string_starts_with(operacionAParsear, "DESCRIBE")) {
+		printf("DESCRIBE\n");
 //TODO			kernel_describe();
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
-			printf("CREATE\n");
+	}
+	else if (string_starts_with(operacionAParsear, "CREATE")) {
+		printf("CREATE\n");
 //TODO			kernel_create();
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
-			printf("DROP\n");
+	}
+	else if (string_starts_with(operacionAParsear, "DROP")) {
+		printf("DROP\n");
 //TODO			kernel_drop();
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "JOURNAL")) {
-			printf("JOURNAL\n");
+	}
+	else if (string_starts_with(operacionAParsear, "JOURNAL")) {
+		printf("JOURNAL\n");
 //TODO			kernel_journal();
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
-			printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
+	}
+	else if (string_starts_with(operacionAParsear, "RUN")) {
+		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
 //TODO			kernel_run(*argumentos);
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
-			printf("METRICS\n");
+	}
+	else if (string_starts_with(operacionAParsear, "METRICS")) {
+		printf("METRICS\n");
 //TODO			kernel_metrics();
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "ADD")) {
-			printf("ADD\n");
+	}
+	else if (string_starts_with(operacionAParsear, "ADD")) {
+		printf("ADD\n");
 //TODO			kernel_add();
-		}
-		else {
-			printf("Mi no entender esa operacion");
+	}
+	else {
+		printf("Mi no entender esa operacion");
 		}
 }
 void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
-	kernel_configYLog->config = config_create(path);
 	kernel_configYLog= malloc(sizeof(configYLogs));
-	IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
+	kernel_configYLog->config = config_create(path);
+	char* ip = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
+	//IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	PuertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 }
 void liberarConfigYLogs(configYLogs *archivos) {

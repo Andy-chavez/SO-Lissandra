@@ -21,7 +21,7 @@
 #define EVENTUAL 2
 
 
-criterio *inicializarCriterios();
+/*criterio *inicializarCriterios();
 
 criterio *inicializarCriterios(){
 	criterio *datos = malloc(3*sizeof(criterio));
@@ -33,7 +33,7 @@ criterio *inicializarCriterios(){
 		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
 	}
 	return datos;
-}
+}*/
 
 int main(int argc, char *argv[]){
 //	criterio *criterios;
@@ -45,9 +45,10 @@ int main(int argc, char *argv[]){
 */
 	//kernel_configYLog->config = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
 	//kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
-	cola_proc_nuevos = list_create();
+	//cola_proc_nuevos = list_create();
+	kernel_obtener_configuraciones(pathConfig);
 	kernel_consola();
 //TODO frees de las colas
-	//liberarConfigYLogs(kernel_configYLog);
+	liberarConfigYLogs(kernel_configYLog);
 	return EXIT_SUCCESS;
 }

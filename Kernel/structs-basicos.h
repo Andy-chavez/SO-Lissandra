@@ -10,6 +10,7 @@
 #include <commons/log.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
+#include <commonsPropias/serializacion.h>
 #include <stdlib.h>
 
 typedef struct{
@@ -27,25 +28,25 @@ typedef struct{
 	//t_list* instruccion_siguiente;
 	//TODO agregar mas campos 2
 }instruccion;
-typedef enum {
+/*typedef enum {
 	SC, // UNA
 	SH, // MUCHAS
 	EC  // MUCHAS
 }criterios;
-
+*/
 typedef struct{
 	int numeroDeMemoria;
-	criterios *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
+	consistencia *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
 }memoria;
 
 typedef struct{
-	criterios unCriterio;
+	consistencia unCriterio;
 	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
 }criterio;
 
 typedef struct{
 	char* nombreDeTabla;
-	criterios criterioDeTabla;
+	consistencia criterioDeTabla;
 }tabla; //ver si es necesario agregar algo mas
 
 typedef enum {
