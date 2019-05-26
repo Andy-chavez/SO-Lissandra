@@ -15,6 +15,8 @@
 #include <string.h>
 #include<readline/readline.h>
 #include <time.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <commons/string.h>
 #include <pthread.h>
 #include <commons/config.h>
@@ -25,6 +27,7 @@
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
 				printf("INSERT\n");
+				funcionInsert(argumentos);
 			}
 			else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
 				puts("SELECT\n");
@@ -44,8 +47,36 @@ void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser p
 	}
 }
 
+void* serializarHandshake(int tamanioValue){
+
+	int desplazamiento = 0;
+	void *buffer= malloc((sizeof(int))*2);
+	int tamanioInt= sizeof(int);
+	memcpy(buffer + desplazamiento, &tamanioInt, sizeof(int));
+	desplazamiento+= sizeof(int);
+	memcpy(buffer + desplazamiento, &tamanioValue, sizeof(int));
+	desplazamiento+= sizeof(int);
+
+	return buffer;
+}
+
+
+int deserializarHandshake(void* bufferHandshake){
+
+	int desplazamiento = 0;
+	int tamanioDelInt;
+	int tamanioDelValue;
+
+	memcpy(&tamanioDelInt, bufferHandshake + desplazamiento, sizeof(int));
+	desplazamiento+= sizeof(int);
+	memcpy(&tamanioDelValue, bufferHandshake + desplazamiento, sizeof(int));
+
+	return tamanioDelValue;
+}
+
 void* servidorLisandra(){
-	char* puertoLisandra = "5008";
+
+	//char* puertoLisandra = "5008";
 	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
 	//char* ipLisandra = config_get_string_value(archivosDeConfigYLog->config, "IP_LISANDRA");
 	int socketServidorLisandra = crearSocketServidor(puertoLisandra);
@@ -57,6 +88,7 @@ void* servidorLisandra(){
 		pthread_exit(0);
 	}
 
+
 	while(1){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
@@ -65,18 +97,19 @@ void* servidorLisandra(){
 			continue;
 		}
 
-		char* buffer = (char*)recibir(socketMemoria);
-
 		//char* mensaje = "hola";
 
 		//int tamanio = strlen(mensaje) + 1;
 
-		//enviar(socketMemoria,(void*) mensaje,tamanio);
+		void* mensaje = serializarHandshake(tamanioValue);
+
+		enviar(socketMemoria, mensaje, 2*sizeof(int));
+
 		//char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
 
-		log_info(logger, "Recibi: %s", buffer);
+		log_info(logger, "Recibi: %s", mensaje);
 
-		free(buffer);
+		free(mensaje);
 		cerrarConexion(socketMemoria);
 	}
 
@@ -96,34 +129,39 @@ void* servidorLisandra(){
 void leerConsola() {
 
 		char *linea = NULL;  // forces getline to allocate with malloc
-	    size_t len = 0;     // ignored when line = NULL
-	    ssize_t leerConsola;
 	    char** opYArg;
 
 	    printf ("Ingresa operacion\n");
-	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------");
-	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------");
-	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------");
-	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------");
-	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------");
-	    printf("-------DROP [NOMBRE_TABLA]---------");
+	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
+	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
+	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
+	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
+	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
+	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 
-	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
+	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
+	    //guardiola con el describe all porque puede tirar basura
 	    opYArg = string_n_split(linea,2," ");
+	    parserGeneral(*(opYArg+0), *(opYArg+1));
 
 	    }
 
 	    free (linea);  // free memory allocated by getline
 }
 
+
 int main(int argc, char* argv[]) {
-
-
 
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
+	//servidorLisandra();
+	leerConsola();
+	/*
+	void* bufferHandshake = serializarHandshake(tamanioValue);
+	int tamanioRecibido = deserializarHandshake(bufferHandshake);
+*/
 
 	funcionSelect("TABLA1 56");
 	funcionInsert("TABLA1 56 alo");
@@ -139,12 +177,12 @@ int main(int argc, char* argv[]) {
 
     pthread_mutex_destroy(&mutexLog);
     liberarConfigYLogs(archivosDeConfigYLog);*/
-	/*
-	pthread_t threadServer ; //habria que ver tambien thread dumping.
-	pthread_create(&threadServer, NULL, servidorLisandra, (void*) archivosDeConfigYLog);
-	pthread_join(threadServer,NULL);
+
+	//pthread_t threadServer ; //habria que ver tambien thread dumping.
+	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+	//pthread_join(threadServer,NULL);
 	//servidorLisandra(archivosDeConfigYLog);
-	*/
+
 	liberarConfigYLogs();
 	return EXIT_SUCCESS;
 }

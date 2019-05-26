@@ -212,6 +212,10 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	return esIgualAlNombre(nombreTabla, elemento);
 	}
 
+	void* liberarRegistro(registro* registro) {
+		free(registro);
+	}
+
 	registro* registroDePrueba = malloc(sizeof(registro));
 			registroDePrueba -> key = 13;
 			registroDePrueba -> value= string_duplicate("aloo");
@@ -256,7 +260,9 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 	log_info(logger, "Registro encontrado en la memtable");
 
-	list_clean(registrosConLaKeyEnMemtable);
+
+//	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistro);
+
 return registroDeMayorTimestamp;
 
 }
@@ -364,6 +370,12 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 			return estaLaKey(key, elemento);
 		}
 
+
+	void* liberarRegistro(registro* registro) {
+			free(registro);
+		}
+
+
 	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
 		registro* primerElemento = elemento1;
 		registro* segundoElemento = elemento2;
@@ -434,7 +446,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 
 	config_destroy(part);
 	free (ruta);
-	list_clean(listaRegistros);
+	list_destroy_and_destroy_elements(listaRegistros, liberarRegistro);
 	free(buffer);
 
 	//ver si la funcion tiene que devolver el registro
@@ -443,6 +455,9 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 
 
 void funcionInsert(char* argumentos) {
+
+	//verificar que no se exceda el tamaño del value, tamanioValue (var. global
+
 	char** argSeparados = string_n_split(argumentos,4," ");
 
 	char* nombreTabla = *(argSeparados + 0);
