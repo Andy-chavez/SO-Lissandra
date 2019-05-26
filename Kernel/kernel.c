@@ -49,6 +49,6 @@ int main(int argc, char *argv[]){
 	kernel_obtener_configuraciones(pathConfig);
 	kernel_consola();
 //TODO frees de las colas
-	liberarConfigYLogs(kernel_configYLog);
+//	liberarConfigYLogs(kernel_configYLog);
 	return EXIT_SUCCESS;
 }
