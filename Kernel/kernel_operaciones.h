@@ -7,13 +7,14 @@
 
 #ifndef KERNEL_OPERACIONES_H_
 #define KERNEL_OPERACIONES_H_
-#include "structs-basicos.h"
 #include <commons/string.h>
 #include <commonsPropias/serializacion.h>
 #include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include "configuraciones.h"
+
+#include "kernel_configuraciones.h"
+#include "kernel_structs-basicos.h"
 
 /******************************VARIABLES GLOBALES******************************************/
 int quantumMax; //sacar esto de archivo de config
@@ -161,9 +162,9 @@ void kernel_select(char* operacion){
 	void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	enviar(socketClienteKernel, aEnviar, 31); //TODO serializacion
-	printf("\n\nEnviado\n\n");
+	printf("\nEnviado\n");
 	char* recibido = (char*)recibir(socketClienteKernel);
-	printf("\n\nEl valor recibido es: %s\n\n",recibido);
+	printf("\nEl valor recibido es: %s\n",recibido);
 	//recibir valor
 	//cerrarConexion(socketClienteKernel);
 	free(opAux->operacion);
@@ -257,8 +258,8 @@ void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 			*/
 	}
 	else if (string_starts_with(operacionAParsear, "SELECT")) {
-			printf("SELECT\n");
-//TODO			kernel_select(*(operacion+1));
+			//printf("SELECT\n");
+			kernel_select(operacionAParsear);
 			/*
 			*en otra funcion* -> kernel_select();
 			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);

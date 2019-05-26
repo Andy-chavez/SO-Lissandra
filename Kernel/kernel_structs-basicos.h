@@ -5,8 +5,8 @@
  *      Author: utnso
  */
 
-#ifndef STRUCTS_BASICOS_H_
-#define STRUCTS_BASICOS_H_
+#ifndef KERNEL_STRUCTS_BASICOS_H_
+#define KERNEL_STRUCTS_BASICOS_H_
 #include <commons/log.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
@@ -65,4 +65,4 @@ typedef struct {
 	t_log* log;
 } configYLogs;
 
-#endif /* STRUCTS_BASICOS_H_ */
+#endif /* KERNEL_STRUCTS_BASICOS_H_ */

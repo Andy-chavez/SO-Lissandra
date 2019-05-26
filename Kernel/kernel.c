@@ -45,8 +45,7 @@ criterio *inicializarCriterios(){
 int main(int argc, char *argv[]){
 //	criterio *criterios;
 //	criterios = inicializarCriterios();
-/*
- * pthread_t threadCliente;
+/*  pthread_t threadCliente;
 	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
 */
