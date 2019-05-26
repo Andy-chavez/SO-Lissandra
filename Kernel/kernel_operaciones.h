@@ -144,9 +144,9 @@ operacionLQL* splitear_operacion(char* operacion){
 		operacionAux->operacion=*opSpliteada;
 		operacionAux->parametros=malloc(sizeof(*(opSpliteada+1)));
 		operacionAux->parametros=*(opSpliteada+1);
-		free(*(opSpliteada+1));
+		/*free(*(opSpliteada+1));
 		free(*(opSpliteada));
-		free(opSpliteada);
+		free(opSpliteada);*/
 	}
 	return operacionAux;
 }
@@ -154,13 +154,9 @@ void kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	enviar(socketClienteKernel, aEnviar, sizeof(aEnviar));
+	enviar(socketClienteKernel, aEnviar, 39);
 	printf("\n\nEnviado\n\n");
-	//enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
-	int* recibido = (int*)recibir(socketClienteKernel);
-	printf("%d",*recibido);
-	printf("\n\nRecibido\n\n");
-	cerrarConexion(socketClienteKernel);
+	//cerrarConexion(socketClienteKernel);
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -168,9 +164,9 @@ void kernel_insert(char* operacion){
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	size_t largo = 0;
-	getline(&linea, &largo, stdin);
-	//linea = readline("");
+	//size_t largo = 0;
+	//getline(&linea, &largo, stdin);
+	linea = readline("");
 	//char** opYArg;
 	//opYArg = string_n_split(linea,2," ");
 	kernel_api(linea);
