@@ -32,7 +32,7 @@ criterio *inicializarCriterios(){
 		datos[iter].memoriasAsociadas = malloc(sizeof(int));
 		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
 	}
-	return datos;
+	return datos; 	INSERT TABLA1 515 malesal
 }*/
 
 int main(int argc, char *argv[]){
