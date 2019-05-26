@@ -16,8 +16,8 @@
 
 /******************************VARIABLES GLOBALES******************************************/
 char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
-char* IpMemoria;
-char* PuertoMemoria;
+char* ipMemoria;
+char* puertoMemoria;
 configYLogs *kernel_configYLog;
 int quantumMax; //sacar esto de archivo de config
 t_list* cola_proc_nuevos;  //use esta en el caso del run
@@ -33,7 +33,7 @@ void kernel_run(char*);
 void kernel_obtener_configuraciones(char*);
 void kernel_consola();
 void kernel_api(char*);
-void liberarConfigYLogs(configYLogs *);
+void liberarConfigYLogs();
 /* TODO implementaciones
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
  * run -> ya esta hecho
@@ -153,7 +153,7 @@ operacionLQL* splitear_operacion(char* operacion){
 void kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	void * aEnviar = serializarOperacionLQL(opAux);
-	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	enviar(socketClienteKernel, aEnviar, sizeof(aEnviar));
 	printf("\n\nEnviado\n\n");
 	//enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
@@ -166,8 +166,7 @@ void kernel_insert(char* operacion){
 	free(opAux);
 }
 void kernel_consola(){
-	printf("Por favor ingrese <OPERACION> seguido de los argumento"
-			"s\n");
+	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
 	size_t largo = 0;
 	getline(&linea, &largo, stdin);
@@ -184,7 +183,7 @@ void kernel_consola(){
 	//free(*(opYArg));
 	//free(opYArg); //tener en cuenta esa liberacion de punteros
 
-	//crear proc nuevo, preguntar ssi run o no TODO
+	//TODO crear proc nuevo, preguntar si run o no
 }
 void kernel_run(char* path){
 	FILE *archivoALeer= fopen(path, "r");
@@ -232,7 +231,7 @@ void kernel_run(char* path){
 void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
 	if(string_starts_with(operacionAParsear, "INSERT")) {
-			printf("INSERT\n");
+		//	printf("INSERT\n");
 		kernel_insert(operacionAParsear);
 //TODO
 		/*
@@ -289,14 +288,18 @@ void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(path);
-	char* ip = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
-	//IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
-	PuertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
+	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
+	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
+	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 }
-void liberarConfigYLogs(configYLogs *archivos) {
-	log_destroy(archivos->log);
-	config_destroy(archivos->config);
-	free(archivos);
+void liberarConfigYLogs() {
+	free(kernel_configYLog->config);
+	free(kernel_configYLog->log);
+	log_destroy(kernel_configYLog->log);
+	config_destroy(kernel_configYLog->config);
+	free(ipMemoria);
+	free(puertoMemoria);
+	free(kernel_configYLog);
 }
 //void* kernel_cliente(void *archivo){
 //	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
