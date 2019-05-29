@@ -26,13 +26,15 @@ typedef enum {
 typedef enum {
 	OPERACIONLQL,
 	PAQUETEREGISTROS,
-	METADATA
+	METADATA,
+	NUEVACONEXIONMEMORIA
 } operacionProtocolo;
 
 typedef struct {
   char* operacion;
   char* parametros;
 } operacionLQL;
+
 
 typedef struct {
 	consistencia tipoConsistencia;

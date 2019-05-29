@@ -458,9 +458,10 @@ void printearBitmap(){
 	//Hace mal el recorrido!! en el mmap se guarda tal cual, falla el test bit me parece
 
 	int j;
-	for(j=0; j<16; j++){
+	for(j=0; j<3; j++){
 		bool bit = bitarray_test_bit(bitarrayDeBitmap, j);
 		printf("%i \n", bit);
+	//j+=7;
 	}
 
 	//printf("\n");
@@ -596,20 +597,21 @@ void funcionCreate(char* argumentos) {
 }
 
 
-void tamanioRegistros(){
+int tamanioRegistros(){
 
 	int tamanioTotal = 0;
+	int i = 0;
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = 13;
-				registroDePrueba -> value= string_duplicate("aloo");
+				registroDePrueba -> value= string_duplicate("eloooooooooooooo");
 				registroDePrueba -> timestamp = 8000;
-    //tamanioTotal = tamanioTotal + sizeof(registroDePrueba->key) + sizeof(registroDePrueba->value) + sizeof(registroDePrueba->timestamp);
+    tamanioTotal = tamanioTotal + sizeof(registroDePrueba->key) + sizeof(registroDePrueba->timestamp) + (strlen(registroDePrueba->value) + 1);
 		registro* registroDePrueba2 = malloc(sizeof(registro));
 				  registroDePrueba2 -> key = 56;
-				  registroDePrueba2 -> value= string_duplicate("aloo");
+				  registroDePrueba2 -> value= string_duplicate("ghj");
 				  registroDePrueba2 -> timestamp = 1548421509;
-	//tamanioTotal = tamanioTotal + sizeof(registroDePrueba2->key) + sizeof(registroDePrueba2->value) + sizeof(registroDePrueba2->timestamp);
+	tamanioTotal = tamanioTotal + sizeof(registroDePrueba2->key) + sizeof(registroDePrueba2->timestamp) + (strlen(registroDePrueba2->value) + 1);
 		registro* registroDePrueba3 = malloc(sizeof(registro));
 				  registroDePrueba3 -> key = 13;
 				  registroDePrueba3 -> value= string_duplicate("aloo");
@@ -626,20 +628,34 @@ void tamanioRegistros(){
 				  tablaDePrueba2->nombre = string_duplicate("tablaB");
 				  tablaDePrueba2->lista = list_create();
 
-		list_add(tablaDePrueba2->lista, registroDePrueba);
-	//tamanioTotal = tamanioTotal + sizeof(registroDePrueba->key) + sizeof(registroDePrueba->value) + sizeof(registroDePrueba->timestamp);
+		list_add(tablaDePrueba2->lista, registroDePrueba3);
+		tamanioTotal = tamanioTotal + sizeof(registroDePrueba3->key) + sizeof(registroDePrueba3->timestamp) + (strlen(registroDePrueba3->value) + 1);
 		list_add(memtable, tablaDePrueba);
 		list_add(memtable, tablaDePrueba2);
+		tamanioTotal = 0;
 
-	void* sumarRegistros(registro* registro1){
+	void* sumarRegistros(/*registro* registro1,*/int valor , registro* registro2 ){
 
-		tamanioTotal = tamanioTotal + sizeof(registro1->key)  + sizeof(registro1->timestamp) + sizeof(registro1->value);
+		tamanioTotal = tamanioTotal + sizeof(registro2->key)  + sizeof(registro2->timestamp) + (strlen(registro2->value) + 1);
+/*
+		if (i==0){
+			tamanioTotal = tamanioTotal + sizeof(registro1->key)  + sizeof(registro1->timestamp) + (strlen(registro1->value) + 1);
+		}else{
+			tamanioTotal = tamanioTotal + sizeof(registro2->key)  + sizeof(registro2->timestamp) + (strlen(registro2->value) + 1);
+		}
+		i++;
+
+	*/
 	}
 
 	void* sumatoriaDeTamanios(tablaMem* unaTabla){
+	//	registro* primerRegistro = list_get(unaTabla->lista,0);
+	//	tamanioTotal = tamanioTotal + sizeof(primerRegistro->key)  + sizeof(primerRegistro->timestamp) + (strlen(primerRegistro->value) + 1);
 		list_fold(unaTabla->lista, 0, sumarRegistros);
 	}
 
 	list_iterate(memtable, sumatoriaDeTamanios);
+
+return tamanioTotal;
 
 }

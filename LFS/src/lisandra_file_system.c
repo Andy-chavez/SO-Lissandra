@@ -177,13 +177,15 @@ int main(int argc, char* argv[]) {
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
 
+	int tamanio = tamanioRegistros();
+
 	inicializarArchivoBitmap();
 	inicializarBitmap();
 	printearBitmap();
 
 	funcionCreate("TABLA2 SC 2 60000");
 
-	tamanioRegistros();
+
 
 
 

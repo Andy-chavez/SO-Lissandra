@@ -64,7 +64,7 @@ int crearSocketServidor(char *puerto) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(NULL, puerto, &hints, &infoDireccionServidor);
+	getaddrinfo("192.168.0.90", puerto, &hints, &infoDireccionServidor);
 
 		for (lista=infoDireccionServidor; lista != NULL; lista = lista->ai_next) {
 			//errores de conexion

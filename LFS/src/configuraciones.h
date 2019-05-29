@@ -48,9 +48,10 @@ void inicializarArchivoBitmap(){
 	FILE *f;
 	int i;
 
-	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wr+");
+	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wb");
 	//en el bitmap.bin va en formato binario
-	for(i=0; i < 16; i++){
+
+	for(i=0; i < 3; i++){
 		fputc(1,f);
 	}
 
@@ -61,7 +62,7 @@ void inicializarBitmap() {
 
 	struct stat s;
 	int tamanio;
-	char* bitmap;
+	unsigned char* bitmap;
 
 	//FILE *f;
 	//f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap");
@@ -78,7 +79,7 @@ void inicializarBitmap() {
 	bitmap =  mmap(0, tamanio, PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);
 
 	//ver bien cual es el tamaño
-	bitarrayDeBitmap = bitarray_create_with_mode(bitmap,2, LSB_FIRST);
+	bitarrayDeBitmap = bitarray_create_with_mode(bitmap,3/8, LSB_FIRST);
 
 	free(direccionBitmap);
 }
