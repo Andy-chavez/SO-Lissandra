@@ -216,35 +216,6 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 		free(registro);
 	}
 
-	registro* registroDePrueba = malloc(sizeof(registro));
-			registroDePrueba -> key = 13;
-			registroDePrueba -> value= string_duplicate("aloo");
-			registroDePrueba -> timestamp = 8000;
-
-	registro* registroDePrueba2 = malloc(sizeof(registro));
-			  registroDePrueba2 -> key = 56;
-			  registroDePrueba2 -> value= string_duplicate("aloo");
-			  registroDePrueba2 -> timestamp = 1548421509;
-
-	registro* registroDePrueba3 = malloc(sizeof(registro));
-			  registroDePrueba3 -> key = 13;
-			  registroDePrueba3 -> value= string_duplicate("aloo");
-			  registroDePrueba3 -> timestamp = 9000;
-
-	tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-			tablaDePrueba-> nombre = string_duplicate("TABLA1");
-			tablaDePrueba->lista = list_create();
-
-			list_add(tablaDePrueba->lista, registroDePrueba);
-			list_add(tablaDePrueba->lista, registroDePrueba2);
-
-	tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-			  tablaDePrueba2->nombre = string_duplicate("tablaB");
-			  tablaDePrueba2->lista = list_create();
-
-	list_add(tablaDePrueba2->lista, registroDePrueba);
-	list_add(memtable, tablaDePrueba);
-	list_add(memtable, tablaDePrueba2);
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
@@ -273,13 +244,10 @@ char* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,t_list* listaRegi
 	/*bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
-
 	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
 		registro* primerElemento = elemento1;
 		registro* segundoElemento = elemento2;
-
 		return devolverMayor(primerElemento, segundoElemento);
-
 	}*/
 	char* rutaBloque = string_new();
 	string_append(&rutaBloque,puntoMontaje);
@@ -485,3 +453,193 @@ void funcionInsert(char* argumentos) {
 }
 
 
+
+void printearBitmap(){
+	//Hace mal el recorrido!! en el mmap se guarda tal cual, falla el test bit me parece
+
+	int j;
+	for(j=0; j<16; j++){
+		bool bit = bitarray_test_bit(bitarrayDeBitmap, j);
+		printf("%i \n", bit);
+	}
+
+	//printf("\n");
+}
+
+void guardarInfoEnArchivo(char* ruta, char* info){
+	FILE *fp = fopen(ruta, "ab");
+	if (fp != NULL){
+		fputs(info, fp);
+		fclose(fp);
+	}
+}
+
+char* devolverBloqueLibre(){
+	int i;
+
+	int bloqueEncontrado = 0;
+	int encontroBloque = 0;
+	char* numero;
+
+	for(i=0; i < 16; i++){
+		bool bit = bitarray_test_bit(bitarrayDeBitmap, i);
+
+		if(bit == 0){
+			encontroBloque = 1;
+			bloqueEncontrado = i;
+			break;
+		}
+
+	}
+
+	if (encontroBloque == 1){
+		bitarray_set_bit(bitarrayDeBitmap, bloqueEncontrado);
+		numero = string_itoa(bloqueEncontrado);
+	}
+	return numero;
+}
+
+void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion) {
+
+	char* infoDelMetadata = string_new();
+	char* rutaMetadata = string_new();
+
+	string_append(&infoDelMetadata, "CONSISTENCY=");
+	string_append(&infoDelMetadata, consistenciaTabla);
+	string_append(&infoDelMetadata, "\n");
+	string_append(&infoDelMetadata, "PARTITIONS=");
+	string_append(&infoDelMetadata, numeroParticiones);
+	string_append(&infoDelMetadata, "\n");
+	string_append(&infoDelMetadata, "COMPACTATION_TIME=");
+	string_append(&infoDelMetadata, tiempoCompactacion);
+
+	FILE *archivoMetadata;
+	string_append(&rutaMetadata, ruta);
+	string_append(&rutaMetadata, "/metadata.bin");
+
+
+	guardarInfoEnArchivo(rutaMetadata, infoDelMetadata);
+
+
+	free(infoDelMetadata);
+	free(rutaMetadata);
+}
+
+void crearParticiones(char* ruta, int numeroParticiones) {
+
+	char* bloqueLibre;
+
+	for (int i= 0; i < numeroParticiones; i++){
+
+		FILE* particion;
+		char * rutaDeLaParticion = string_new();
+		char* infoAGuardar = string_new();
+		char* numeroParticion = string_itoa(i);
+
+		string_append(&rutaDeLaParticion, ruta);
+		string_append(&rutaDeLaParticion, "/Part");
+		string_append(&rutaDeLaParticion, numeroParticion);
+		string_append(&rutaDeLaParticion, ".bin");
+
+		string_append(&infoAGuardar, "SIZE=");
+		//aca no se bien que va al principio, por ahora le dejo 0 pero creo que cuando empezas con 1 bloque es el block size pero en string
+		string_append(&infoAGuardar, "0");
+		string_append(&infoAGuardar, "\n");
+		string_append(&infoAGuardar, "BLOCKS=[");
+		bloqueLibre = devolverBloqueLibre();
+		string_append(&infoAGuardar, bloqueLibre);
+		string_append(&infoAGuardar, "]");
+
+//		particion = fopen(rutaDeLaParticion, "w");
+
+		guardarInfoEnArchivo(rutaDeLaParticion, infoAGuardar);
+		//fputs(infoAGuardar, particion);
+
+		free(infoAGuardar);
+		free(rutaDeLaParticion);
+
+	}
+
+}
+
+void funcionCreate(char* argumentos) {
+
+
+	char** argSeparados = string_n_split(argumentos,4," ");
+
+	//es todo char porque cuando lo guardes en el metadata se guarda como caracteres
+	char* nombreTabla = *(argSeparados + 0);
+    char* consistenciaTabla = *(argSeparados + 1);
+	char* numeroParticiones = *(argSeparados + 2);
+	char* tiempoCompactacion = *(argSeparados + 3);
+
+	//hay que liberarlo
+	char* directorioTabla = string_new();
+	//falta ver que no exista una tabla del mismo nombre
+	if (!verificarExistenciaDirectorioTabla(nombreTabla)){
+
+		string_append(&directorioTabla, puntoMontaje);
+		string_append(&directorioTabla, "Tables/");
+		string_append(&directorioTabla, nombreTabla);
+
+		mkdir(directorioTabla, 0777);
+
+	}else{
+		puts("ya existe");
+	}
+
+
+	crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
+	int cantidadParticiones = atoi(numeroParticiones);
+	crearParticiones(directorioTabla, cantidadParticiones);
+
+}
+
+
+void tamanioRegistros(){
+
+	int tamanioTotal = 0;
+
+	registro* registroDePrueba = malloc(sizeof(registro));
+				registroDePrueba -> key = 13;
+				registroDePrueba -> value= string_duplicate("aloo");
+				registroDePrueba -> timestamp = 8000;
+    //tamanioTotal = tamanioTotal + sizeof(registroDePrueba->key) + sizeof(registroDePrueba->value) + sizeof(registroDePrueba->timestamp);
+		registro* registroDePrueba2 = malloc(sizeof(registro));
+				  registroDePrueba2 -> key = 56;
+				  registroDePrueba2 -> value= string_duplicate("aloo");
+				  registroDePrueba2 -> timestamp = 1548421509;
+	//tamanioTotal = tamanioTotal + sizeof(registroDePrueba2->key) + sizeof(registroDePrueba2->value) + sizeof(registroDePrueba2->timestamp);
+		registro* registroDePrueba3 = malloc(sizeof(registro));
+				  registroDePrueba3 -> key = 13;
+				  registroDePrueba3 -> value= string_duplicate("aloo");
+				  registroDePrueba3 -> timestamp = 9000;
+
+		tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
+				tablaDePrueba-> nombre = string_duplicate("TABLA1");
+				tablaDePrueba->lista = list_create();
+
+				list_add(tablaDePrueba->lista, registroDePrueba);
+				list_add(tablaDePrueba->lista, registroDePrueba2);
+
+		tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
+				  tablaDePrueba2->nombre = string_duplicate("tablaB");
+				  tablaDePrueba2->lista = list_create();
+
+		list_add(tablaDePrueba2->lista, registroDePrueba);
+	//tamanioTotal = tamanioTotal + sizeof(registroDePrueba->key) + sizeof(registroDePrueba->value) + sizeof(registroDePrueba->timestamp);
+		list_add(memtable, tablaDePrueba);
+		list_add(memtable, tablaDePrueba2);
+
+	void* sumarRegistros(registro* registro1){
+
+		tamanioTotal = tamanioTotal + sizeof(registro1->key)  + sizeof(registro1->timestamp) + sizeof(registro1->value);
+	}
+
+	void* sumatoriaDeTamanios(tablaMem* unaTabla){
+		list_fold(unaTabla->lista, 0, sumarRegistros);
+	}
+
+	list_iterate(memtable, sumatoriaDeTamanios);
+
+}

@@ -25,6 +25,8 @@
 #include <commonsPropias/serializacion.h>
 #include "funcionesLFS.h"
 
+
+
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
 				printf("INSERT\n");
@@ -174,6 +176,21 @@ int main(int argc, char* argv[]) {
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
+
+	inicializarArchivoBitmap();
+	inicializarBitmap();
+	printearBitmap();
+
+	funcionCreate("TABLA2 SC 2 60000");
+
+	tamanioRegistros();
+
+
+
+	//asignarBloqueLibre();
+
+
+
 	servidorLisandra();
 	//leerConsola();
 	/*
@@ -181,12 +198,14 @@ int main(int argc, char* argv[]) {
 	int tamanioRecibido = deserializarHandshake(bufferHandshake);
 */
 
+
 //	registro* registroParaMemoria = funcionSelect("TABLA1 56");
 
+	//funcionInsert("TABLA1 56 alo");
 
 
 
-	funcionInsert("TABLA1 56 alo");
+
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//ver de liberar la memtable al final

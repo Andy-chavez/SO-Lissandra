@@ -11,6 +11,10 @@
 #include <commons/config.h>
 #include <commons/string.h>
 #include <commons/bitarray.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/io.h>
+#include <fcntl.h>
 
 t_log* logger;
 
@@ -28,6 +32,7 @@ int tamanioValue;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
+t_bitarray* bitarrayDeBitmap;
 
 void leerConfig(char* ruta){
 	archivoDeConfig = config_create(ruta);
@@ -36,6 +41,46 @@ void leerConfig(char* ruta){
 	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
 
+}
+
+
+void inicializarArchivoBitmap(){
+	FILE *f;
+	int i;
+
+	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wr+");
+	//en el bitmap.bin va en formato binario
+	for(i=0; i < 16; i++){
+		fputc(1,f);
+	}
+
+	fclose(f);
+}
+
+void inicializarBitmap() {
+
+	struct stat s;
+	int tamanio;
+	char* bitmap;
+
+	//FILE *f;
+	//f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap");
+
+	char* direccionBitmap = string_new();
+	string_append(&direccionBitmap, puntoMontaje);
+	string_append(&direccionBitmap, "Metadata/Bitmap.bin");
+
+	int f = open(direccionBitmap, O_RDWR);
+
+	int infoArchivo = fstat(f, &s);
+	tamanio = s.st_size;
+
+	bitmap =  mmap(0, tamanio, PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);
+
+	//ver bien cual es el tamaño
+	bitarrayDeBitmap = bitarray_create_with_mode(bitmap,2, LSB_FIRST);
+
+	free(direccionBitmap);
 }
 
 void leerMetadataFS (){
@@ -52,7 +97,7 @@ void inicializarMemtable(){
 }
 
 void inicializarLog(char* ruta){
-	logger = log_create(ruta, "LISANDRA", 1, LOG_LEVEL_ERROR);
+	logger = log_create(ruta, "LISANDRA", 1, LOG_LEVEL_INFO);
 }
 
 void liberarConfigYLogs() {
