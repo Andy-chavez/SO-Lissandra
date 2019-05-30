@@ -8,8 +8,14 @@
 #ifndef SERIALIZACION_H_
 #define SERIALIZACION_H_
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <commons/collections/list.h>
 #include <time.h>
 #include <stdlib.h>
+#include "conexiones.h"
 
 typedef struct {
 	time_t timestamp;
@@ -39,6 +45,7 @@ typedef struct {
 	int cantParticiones;
 	int tiempoCompactacion;
 } metadata;
+
 
 /*
  * Para saber que es lo que me estan mandando, utilizar
@@ -89,12 +96,15 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla);
  * Serializa una operacionLQL. devuelve un buffer donde
  * se encuentra la operacion serializada.
  */
-void* serializarOperacionLQL(operacionLQL* unaOperacion);
+void* serializarOperacionLQL(operacionLQL* unaOperacion, int* tamanio);
 
 /*
  * Serializa una metadata. devuelve un buffer donde
  * se encuentra la metadata serializada.
  */
 void* serializarMetadata(metadata* unaMetadata);
+
+void serializador_serializarYEnviarOperacionLQL(operacionLQL* operacionLQL, int socket);
+operacionLQL* serializador_recibirYDeserializarOperacionLQL(int socket);
 
 #endif /* SERIALIZACION_H_ */

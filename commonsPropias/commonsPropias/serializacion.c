@@ -1,19 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <commons/collections/list.h>
 #include "serializacion.h"
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
 	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
-	*buffer += 4;
 	return protocolo;
 }
 
 registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
-	int desplazamiento = 0;
+	int desplazamiento = 4;
 	registro* unRegistro = malloc(sizeof(registro));
 	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
 
@@ -84,7 +78,7 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 
 //void *memcpy(void *dest, const void *src, size_t n);
 operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
-	int desplazamiento = 0;
+	int desplazamiento = 4;
 	int tamanioOperacion,largoDeParametros;
 	operacionLQL* unaOperacion = malloc(sizeof(operacionLQL));
 
@@ -108,7 +102,7 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 /*
  * Serializa una operacion LQL.
  */
-void* serializarOperacionLQL(operacionLQL* operacionLQL) {
+void* serializarOperacionLQL(operacionLQL* operacionLQL, int* tamanio) {
 
 	int desplazamiento = 0;
 	int tamanioOperacion = strlen(operacionLQL->operacion) + 1;
@@ -134,9 +128,16 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL) {
 	memcpy(bufferOperacion + desplazamiento, (operacionLQL->parametros), tamanioParametros);
 	desplazamiento+= tamanioParametros;
 
+	*tamanio = desplazamiento;
+
 	return bufferOperacion;
 }
 
+void serializador_serializarYEnviarOperacionLQL(operacionLQL* operacionLQL, int socket) {
+	int tamanioBuffer;
+	void* bufferAEnviar = serializarOperacionLQL(operacionLQL, &tamanioBuffer);
+	enviar(socket, bufferAEnviar, tamanioBuffer);
+}
 
 /*
 	Serializa una metadata. Toma un parametro:
@@ -184,7 +185,7 @@ void* serializarMetadata(metadata* unMetadata) {
 }
 
 metadata* deserializarMetadata(void* bufferMetadata) {
-	int desplazamiento = 0;
+	int desplazamiento = 4;
 	metadata* unMetadata = malloc(sizeof(metadata));
 	int tamanioDelTipoDeConsistencia,tamanioDeCantidadDeParticiones,tamanioDelTiempoDeCompactacion;
 
