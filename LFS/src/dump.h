@@ -5,9 +5,11 @@
  *      Author: utnso
  */
 
-#ifndef SRC_DUMP_H_
-#define SRC_DUMP_H_
+#include "funcionesLFS.h"
 
+void dump();
 
+void dump(){
 
-#endif /* SRC_DUMP_H_ */
+	//ultimo que hago liberarMemtable();
+}

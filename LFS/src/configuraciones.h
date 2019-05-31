@@ -101,17 +101,4 @@ void liberarConfigYLogs() {
 	config_destroy(archivoDeConfig);
 }
 
-//inicializarBitMap(){
-//	FILE *archBitMap;
-//	char* rutaBitMap = string_new(); //recordar inicializar siempre primero el leerConfig para el punto de montaje
-//	string_append(&rutaBitMap,puntoMontaje);
-//	string_append(&rutaBitMap,"Metadata/Bitmap.bin");
-//	archBitMap = fopen(rutaBitMap);
-//
-//
-//	fclose(archBitMap);
-//	free(rutaBitMap);
-//}
-
-
 #endif /* SRC_CONFIGURACIONES_H_ */

@@ -73,6 +73,7 @@ void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones,
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
 void funcionCreate(char* argumentos);
 int tamanioRegistros(char* nombreTabla);
+void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 
 
 void agregarALista(char* timestamp,char* key,char* value,t_list* head){
@@ -628,3 +629,21 @@ int tamanioRegistros(char* nombreTabla){
 
 return tamanioTotal;
 }
+
+void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
+	void liberarRegistro(registro* unRegistro) {
+		free(unRegistro->value);
+		free(unRegistro);
+	}
+
+	void liberarTabla(tablaMem* tabla) {
+		free(tabla->nombre);
+		list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistro);
+		free(tabla);
+	}
+
+	list_destroy_and_destroy_elements(memtable,(void*) liberarTabla);
+}
+
+
+
