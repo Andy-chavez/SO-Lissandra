@@ -13,6 +13,7 @@
 #include <sys/io.h>
 #include <fcntl.h>
 
+
 /* SELECT: FACU , INSERT: PABLO
  * void guardarRegistro(registro unRegistro, int particion, char* nombreTabla); //te guarda el registro en la memtable. PABLO
  * registro devolverRegistroDeLaMemtable(int key); //select e insert. PABLO
@@ -455,16 +456,13 @@ void funcionInsert(char* argumentos) {
 
 
 void printearBitmap(){
-	//Hace mal el recorrido!! en el mmap se guarda tal cual, falla el test bit me parece
 
 	int j;
-	for(j=0; j<3; j++){
-		bool bit = bitarray_test_bit(bitarrayDeBitmap, j);
+	for(j=0; j<cantDeBloques; j++){
+		bool bit = bitarray_test_bit(bitarray, j);
 		printf("%i \n", bit);
-	//j+=7;
 	}
 
-	//printf("\n");
 }
 
 void guardarInfoEnArchivo(char* ruta, char* info){
@@ -482,8 +480,8 @@ char* devolverBloqueLibre(){
 	int encontroBloque = 0;
 	char* numero;
 
-	for(i=0; i < 16; i++){
-		bool bit = bitarray_test_bit(bitarrayDeBitmap, i);
+	for(i=0; i < 64; i++){
+		bool bit = bitarray_test_bit(bitarray, i);
 
 		if(bit == 0){
 			encontroBloque = 1;
@@ -494,7 +492,7 @@ char* devolverBloqueLibre(){
 	}
 
 	if (encontroBloque == 1){
-		bitarray_set_bit(bitarrayDeBitmap, bloqueEncontrado);
+		bitarray_set_bit(bitarray, bloqueEncontrado);
 		numero = string_itoa(bloqueEncontrado);
 	}
 	return numero;
@@ -596,11 +594,20 @@ void funcionCreate(char* argumentos) {
 
 }
 
-
-int tamanioRegistros(){
+//hacerlo por tabla!! y que reciba el nombre de la tabla
+int tamanioRegistros(char* nombreTabla){
 
 	int tamanioTotal = 0;
 	int i = 0;
+
+	bool tieneElNombre(void *elemento){
+		return esIgualAlNombre(nombreTabla, elemento);
+	}
+
+	void* sumarRegistros(int valor , registro* registro ){
+		tamanioTotal = tamanioTotal + sizeof(registro->key)  + sizeof(registro->timestamp) + (strlen(registro->value) + 1);
+	}
+
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = 13;
@@ -634,28 +641,9 @@ int tamanioRegistros(){
 		list_add(memtable, tablaDePrueba2);
 		tamanioTotal = 0;
 
-	void* sumarRegistros(/*registro* registro1,*/int valor , registro* registro2 ){
+	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
 
-		tamanioTotal = tamanioTotal + sizeof(registro2->key)  + sizeof(registro2->timestamp) + (strlen(registro2->value) + 1);
-/*
-		if (i==0){
-			tamanioTotal = tamanioTotal + sizeof(registro1->key)  + sizeof(registro1->timestamp) + (strlen(registro1->value) + 1);
-		}else{
-			tamanioTotal = tamanioTotal + sizeof(registro2->key)  + sizeof(registro2->timestamp) + (strlen(registro2->value) + 1);
-		}
-		i++;
-
-	*/
-	}
-
-	void* sumatoriaDeTamanios(tablaMem* unaTabla){
-	//	registro* primerRegistro = list_get(unaTabla->lista,0);
-	//	tamanioTotal = tamanioTotal + sizeof(primerRegistro->key)  + sizeof(primerRegistro->timestamp) + (strlen(primerRegistro->value) + 1);
-		list_fold(unaTabla->lista, 0, sumarRegistros);
-	}
-
-	list_iterate(memtable, sumatoriaDeTamanios);
+	list_fold(encuentraTabla->lista, 0, sumarRegistros);
 
 return tamanioTotal;
-
 }

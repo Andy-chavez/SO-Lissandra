@@ -32,7 +32,7 @@ int tamanioValue;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
-t_bitarray* bitarrayDeBitmap;
+t_bitarray* bitarray;
 
 void leerConfig(char* ruta){
 	archivoDeConfig = config_create(ruta);
@@ -49,9 +49,8 @@ void inicializarArchivoBitmap(){
 	int i;
 
 	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wb");
-	//en el bitmap.bin va en formato binario
 
-	for(i=0; i < 3; i++){
+	for(i=0; i < 64; i++){
 		fputc(1,f);
 	}
 
@@ -64,9 +63,6 @@ void inicializarBitmap() {
 	int tamanio;
 	unsigned char* bitmap;
 
-	//FILE *f;
-	//f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap");
-
 	char* direccionBitmap = string_new();
 	string_append(&direccionBitmap, puntoMontaje);
 	string_append(&direccionBitmap, "Metadata/Bitmap.bin");
@@ -78,8 +74,7 @@ void inicializarBitmap() {
 
 	bitmap =  mmap(0, tamanio, PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);
 
-	//ver bien cual es el tamaño
-	bitarrayDeBitmap = bitarray_create_with_mode(bitmap,3/8, LSB_FIRST);
+	bitarray = bitarray_create_with_mode(bitmap,cantDeBloques/8, LSB_FIRST);
 
 	free(direccionBitmap);
 }
