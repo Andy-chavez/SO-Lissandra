@@ -46,7 +46,7 @@ typedef struct {
 */
 typedef struct {
 	char* nombre;
-	t_list* lista;
+	t_list* listaRegistros;
 } tablaMem;
 
 //Funciones
@@ -145,7 +145,7 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 		tablaMem* tabla = elemento;
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
-			list_add(tabla->lista, unRegistro);
+			list_add(tabla->listaRegistros, unRegistro);
 			log_info(logger, "Se añadio registro");
 			return true;
 		}else{
@@ -156,7 +156,7 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 }
 
 //Guarda un registro en la memtable
-void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) {
+void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 
 	bool buscarPorNombre(void *elemento){
 		return agregarRegistro(nombreTabla, unRegistro, elemento);
@@ -166,8 +166,8 @@ void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) 
 
 		tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
 						nuevaTabla->nombre = string_duplicate(nombreTabla);
-						nuevaTabla->lista = list_create();
-						list_add(nuevaTabla->lista, unRegistro);
+						nuevaTabla->listaRegistros = list_create();
+						list_add(nuevaTabla->listaRegistros, unRegistro);
 						list_add(memtable, nuevaTabla);
 						log_info(logger, "Se añadio la tabla a la memtable");
 	}
@@ -201,7 +201,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
-	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->lista, encontrarLaKey);
+	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
 		log_info(logger, "La key buscada no se encuentra la key en la memtable");
@@ -427,7 +427,7 @@ void funcionInsert(char* argumentos) {
 				registroDePrueba -> value= string_duplicate(value);
 				registroDePrueba -> timestamp = timestamp;
 
-  guardarRegistro(memtable, registroDePrueba, nombreTabla);
+  guardarRegistro(registroDePrueba, nombreTabla);
   log_info(logger, "Se guardo el registro");
 
   liberarDoblePuntero(argSeparados);
@@ -607,16 +607,16 @@ int tamanioRegistros(char* nombreTabla){
 
 		tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
 				tablaDePrueba-> nombre = string_duplicate("TABLA1");
-				tablaDePrueba->lista = list_create();
+				tablaDePrueba->listaRegistros = list_create();
 
-				list_add(tablaDePrueba->lista, registroDePrueba);
-				list_add(tablaDePrueba->lista, registroDePrueba2);
+				list_add(tablaDePrueba->listaRegistros, registroDePrueba);
+				list_add(tablaDePrueba->listaRegistros, registroDePrueba2);
 
 		tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
 				  tablaDePrueba2->nombre = string_duplicate("tablaB");
-				  tablaDePrueba2->lista = list_create();
+				  tablaDePrueba2->listaRegistros = list_create();
 
-		list_add(tablaDePrueba2->lista, registroDePrueba3);
+		list_add(tablaDePrueba2->listaRegistros, registroDePrueba3);
 		tamanioTotal = tamanioTotal + sizeof(registroDePrueba3->key) + sizeof(registroDePrueba3->timestamp) + (strlen(registroDePrueba3->value) + 1);
 		list_add(memtable, tablaDePrueba);
 		list_add(memtable, tablaDePrueba2);
@@ -624,7 +624,7 @@ int tamanioRegistros(char* nombreTabla){
 
 	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
 
-	list_fold(encuentraTabla->lista, 0, sumarRegistros);
+	list_fold(encuentraTabla->listaRegistros, 0, sumarRegistros);
 
 return tamanioTotal;
 }
