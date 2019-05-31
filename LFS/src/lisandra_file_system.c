@@ -26,7 +26,6 @@
 #include "funcionesLFS.h"
 
 
-
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
 				printf("INSERT\n");
@@ -177,12 +176,9 @@ int main(int argc, char* argv[]) {
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
 
-	int tamanio = tamanioRegistros("TABLA1");
-
 	inicializarArchivoBitmap();
 	inicializarBitmap();
-	bitarray_set_bit(bitarray, 2);
-	printearBitmap();
+	crearTemporal(120,2,"TABLA1");
 
 	funcionCreate("TABLA2 SC 2 60000");
 

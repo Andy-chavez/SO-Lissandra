@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/io.h>
 #include <fcntl.h>
+#include <math.h>
 
 
 /* SELECT: FACU , INSERT: PABLO
@@ -74,6 +75,8 @@ void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para l
 void funcionCreate(char* argumentos);
 int tamanioRegistros(char* nombreTabla);
 void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
+int obtenerCantTemporales(char* nombreTabla);
+int existeArchivo(char * filename);
 
 
 void agregarALista(char* timestamp,char* key,char* value,t_list* head){
@@ -448,7 +451,7 @@ void printearBitmap(){
 }
 
 void guardarInfoEnArchivo(char* ruta, char* info){
-	FILE *fp = fopen(ruta, "ab");
+	FILE *fp = fopen(ruta, "w");
 	if (fp != NULL){
 		fputs(info, fp);
 		fclose(fp);
@@ -518,7 +521,7 @@ void crearParticiones(char* ruta, int numeroParticiones) {
 		char* numeroParticion = string_itoa(i);
 
 		string_append(&rutaDeLaParticion, ruta);
-		string_append(&rutaDeLaParticion, "/Part");
+		string_append(&rutaDeLaParticion, "/part");
 		string_append(&rutaDeLaParticion, numeroParticion);
 		string_append(&rutaDeLaParticion, ".bin");
 
@@ -573,6 +576,7 @@ void funcionCreate(char* argumentos) {
 	crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
+	free(directorioTabla);
 
 }
 
@@ -621,6 +625,7 @@ int tamanioRegistros(char* nombreTabla){
 		tamanioTotal = tamanioTotal + sizeof(registroDePrueba3->key) + sizeof(registroDePrueba3->timestamp) + (strlen(registroDePrueba3->value) + 1);
 		list_add(memtable, tablaDePrueba);
 		list_add(memtable, tablaDePrueba2);
+
 		tamanioTotal = 0;
 
 	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
@@ -644,6 +649,131 @@ void liberarMemtable() { //no elimina toda la memtable sino las tablas y registr
 
 	list_destroy_and_destroy_elements(memtable,(void*) liberarTabla);
 }
+int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
+											//REUTILIZAR EN COMPACTACION
+	//puntoMontaje/Tables/TABLA1/1.tmp, suponemos que los temporales se hacen en orden
+	int cantTemporal = 0;
+	int existe;
+	do{
+
+		char* ruta = string_new();
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Tables/");
+		string_append(&ruta,nombreTabla);
+		string_append(&ruta,"/");
+		string_append(&ruta,string_itoa(cantTemporal));
+		string_append(&ruta,".tmp");
+		existe = existeArchivo(ruta);
+		if(existe==0) break;
+		free(ruta);
+		cantTemporal++;
+	}while(existe!=0);
+	return cantTemporal;
+}
+
+int existeArchivo(char * filename){
+    FILE *file;
+    if (file = fopen(filename, "r")){
+        fclose(file);
+        return 1;
+    }
+    return 0;
+}
+
+void crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
+
+	char* bloqueLibre;
+	char* rutaTmp = string_new();
+	int numeroTmp = obtenerCantTemporales(nombreTabla);
+	string_append(&rutaTmp, puntoMontaje);
+	string_append(&rutaTmp, "Tables/");
+	string_append(&rutaTmp, nombreTabla);
+	string_append(&rutaTmp, "/");
+	string_append(&rutaTmp, string_itoa(numeroTmp));
+	string_append(&rutaTmp,".tmp");
+
+	char* info = string_new();
+	string_append(&info,"SIZE=");
+	string_append(&info,string_itoa(size));
+	string_append(&info,"\n");
+	string_append(&info,"BLOCKS=[");
+
+	while(cantidadDeBloques>0){
+		char* bloqueLibre = devolverBloqueLibre();
+		string_append(&info,bloqueLibre);
+		cantidadDeBloques--;
+		if(cantidadDeBloques>0) string_append(&info,","); //si es el ultimo no quiero que me ponga una ,
+	}
+	string_append(&info,"]");
+	guardarInfoEnArchivo(rutaTmp, info);
+
+	free(info);
+	free(rutaTmp);
+}
+
+void dump(){
+	int tamanioTotalADumpear =0;
+	int cantBytesDumpeados = 0;
+	char* buffer = string_new();
+	void cargarRegistros(registro* unRegistro){
+		char* time = atoi(unRegistro->timestamp);
+		char* key = atoi(unRegistro->key);
+		string_append(&buffer,time);
+		string_append(&buffer,";");
+		string_append(&buffer,key);
+		string_append(&buffer,";");
+		string_append(&buffer,unRegistro->value);
+		string_append(&buffer,"\n");
+
+	}
+
+	void dumpearTabla(tablaMem* unaTabla){
+		tamanioTotalADumpear = tamanioRegistros(unaTabla->nombre); //56 y los bloques 30
+		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistros); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
+		char* rutaBloque = string_new();
+		log_info(logger,"Creando tmp");
+		//tamanioTotalADumpear = 120
+		//tamanioBloques = 64
+		//cantBloques=2
 
 
+
+		int cantBloquesNecesarios = (int) round(tamanioTotalADumpear/tamanioBloques);
+		crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
+
+
+		string_append(&rutaBloque,puntoMontaje);
+		string_append(&rutaBloque,"Bloques/");
+		char* numeroBloque = devolverBloqueLibre();
+		string_append(&rutaBloque,numeroBloque);
+		string_append(&rutaBloque,".bin"); //el primer bloque siempre se asigna
+		/*if(tamanioBuffer<=tamanioBloque){
+			FILE* fd = fopen(rutaBloque,"w");
+			fwrite(buffer,1,tamanioBuffer,fd);
+			fclose(fd);
+			//terminar tmp
+		}
+		//130 bytes
+		//bloques 64
+		//entra la primera vez
+		//desplazamiento = 64
+
+
+		else{
+			FILE* fd = fopen(rutaBloque,"w");
+			cantBytesDumpeados += tamanioBloques;
+			int desplazamiento =0;
+			while(cantBytesDumpeados<tamanioBuffer){
+				if()
+				fwrite(buffer+desplazamiento,tamanioBloques,)
+				cantBytesDumpeados += tamanioBloques;
+			}
+		}*/
+		free(rutaBloque);
+		free(buffer);
+	}
+
+	list_iterate(memtable,(void*)dumpearTabla);
+	liberarMemtable();
+}
 
