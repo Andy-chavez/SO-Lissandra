@@ -24,7 +24,6 @@
  * No olvidar de hacer la comparacion final, entre memtable,archivo temporal y FS
  *
 */
-#define CANTPARTICIONES 5 // esto esta en el metadata
 pthread_mutex_t mutexLog;
 
 typedef enum {
@@ -36,25 +35,6 @@ typedef enum {
 	JOURNAL,
 	SELECT
 } operacion;
-
-//typedef enum {
-//	SC,
-//	SH,
-//	EC
-//}consistencia;
-//
-//
-//typedef struct {
-//	time_t timestamp;
-//	u_int16_t key;
-//	char* value;
-//} registro;
-
-//typedef struct {
-//	consistencia tipoConsistencia;
-//	int cantParticiones;
-//	int tiempoCompactacion;
-//} metadata;
 
 /*
 typedef struct {
@@ -69,12 +49,6 @@ typedef struct {
 	t_list* lista;
 } tablaMem;
 
-
-
-//t_log* g_logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_ERROR);
-//t_config* g_config= config_create("LISANDRA.CONFIG"); //Por ahora lo dejo global deberiamos ver despues, y habria que liberarlos
-
-
 //Funciones
 
 
@@ -82,17 +56,24 @@ typedef struct {
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
 metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
-registro devolverRegistroDelFileSystem(int key,int particion,char* nombreTabla);
-int buscarEnBloque(int key,char* numeroDeBloque); //cambiar despues de nuevo a registro buscarEnBloque
-void agregarALista(char* timestamp,char* key,char* value,t_list* head);
-char* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros);
-void parserGeneral(char* operacionAParsear,char* argumentos);
-int largoBloque(char* numeroDeBloque);
+void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
+char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros);
+int largoBloque(char* numeroDeBloque); //este quizas no vaya
+bool estaLaKey(int key,void* elemento);
+bool esIgualAlNombre(char* nombreTabla,void * elemento);
+void* devolverMayor(registro* registro1, registro* registro2);
+bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento); //este es para memtable
+registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key);
+void liberarDoblePuntero(char** doblePuntero);
+registro* funcionSelect(char* argumentos);
+void funcionInsert(char* argumentos);
+void guardarInfoEnArchivo(char* ruta, char* info);
+char* devolverBloqueLibre(); //devuelve el numero del bloque libre
+void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion);
+void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
+void funcionCreate(char* argumentos);
+int tamanioRegistros(char* nombreTabla);
 
-
-//crearTabla(char* ruta){
-//
-//}
 
 void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	registro* guardarRegistro = malloc (sizeof(registro)) ;
@@ -239,7 +220,7 @@ return registroDeMayorTimestamp;
 
 }
 
-char* buscarEnBloque2(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 
 	/*bool encontrarLaKey(void *elemento){
@@ -372,7 +353,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	int sizeParticion=config_get_int_value(part,"SIZE");
 	char* buffer = string_new();
 	while(*(arrayDeBloques+i)!= NULL){
-		char* informacion = buscarEnBloque2(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
+		char* informacion = infoEnBloque(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
 		string_append(&buffer, informacion);
 		i++;
 	}
