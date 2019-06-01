@@ -20,7 +20,7 @@
 #include <commons/log.h>
 #include <commonsPropias/conexiones.h>
 #include "funcionesLFS.h"
-
+#include "parser.h"
 //#define CANTPARTICIONES 5 // esto esta en el metadata
 //
 //typedef enum {
@@ -144,14 +144,36 @@ void leerConsola() {
 	    printf ("Ingresa operacion\n");
 
 	    while ((leerConsola = getline(&linea, &len, stdin)) != -1){  //hay que hacer CTRL + D para salir del while
-	    parserGeneral(linea);
+	 //   parserGeneral(linea);
 	    }
 
 	    free (linea);  // free memory allocated by getline
 }
 
+void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
+
+	//queda todo medio desordenado ahora, se va a ir ordenando en la medida que vayamos discutiendo
+
+	//int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog);
+	//obtenerMetadata(nombreTabla);
+
+	t_list* memtable = list_create();
+
+	//para probar si anda el devolver registro
+	registro* unRegistro = devolverRegistroDeLaMemtable(memtable, nombreTabla, key);
+	printf("Printeo el value del registro encontrado: %d \n", unRegistro->key);
+
+	//para probar si anda el agregar registro
+    guardarRegistro(memtable, unRegistro, nombreTabla);
+
+
+}
+
+
 
 int main(int argc, char* argv[]) {
+
+	funcionInsert("tablaA", 13, "alo", 8000);
 
 	//obtenerMetadata("tablaA");
 	//int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
