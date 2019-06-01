@@ -38,9 +38,9 @@ void serializarYEnviarHandshake(int socket, int tamanioValue) {
 	free(bufferAEnviar);
 }
 
-registroParaComunicacion* deserializarRegistro(void* bufferRegistro) {
+registroConNombreTabla* deserializarRegistro(void* bufferRegistro) {
 	int desplazamiento = 4;
-	registroParaComunicacion* unRegistro = malloc(sizeof(registroParaComunicacion));
+	registroConNombreTabla* unRegistro = malloc(sizeof(registroConNombreTabla));
 	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
 
 	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
@@ -72,7 +72,7 @@ registroParaComunicacion* deserializarRegistro(void* bufferRegistro) {
 	return unRegistro;
 }
 
-void* serializarUnRegistro(registroParaComunicacion* unRegistro, int* tamanioBuffer) {
+void* serializarUnRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffer) {
 
 	int desplazamiento = 0;
 	int largoDeNombreTabla = strlen(unRegistro->nombreTabla) + 1;
@@ -116,7 +116,7 @@ void* serializarUnRegistro(registroParaComunicacion* unRegistro, int* tamanioBuf
 	return bufferRegistro;
 }
 
-void serializarYEnviarRegistro(int socket, registroParaComunicacion* unRegistro) {
+void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro) {
 	int tamanioAEnviar;
 	void* bufferAEnviar = serializarUnRegistro(unRegistro, &tamanioAEnviar);
 	enviar(socket, bufferAEnviar, tamanioAEnviar);
