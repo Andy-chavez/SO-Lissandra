@@ -8,14 +8,21 @@
 #ifndef SERIALIZACION_H_
 #define SERIALIZACION_H_
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <commons/collections/list.h>
 #include <time.h>
 #include <stdlib.h>
+#include "conexiones.h"
 
 typedef struct {
 	time_t timestamp;
 	u_int16_t key;
 	char* value;
-} registro;
+	char* nombreTabla;
+} registroConNombreTabla;
 
 typedef enum {
 	SC,
@@ -26,7 +33,9 @@ typedef enum {
 typedef enum {
 	OPERACIONLQL,
 	PAQUETEREGISTROS,
-	METADATA
+	UNREGISTRO,
+	METADATA,
+	HANDSHAKE
 } operacionProtocolo;
 
 typedef struct {
@@ -39,6 +48,7 @@ typedef struct {
 	int cantParticiones;
 	int tiempoCompactacion;
 } metadata;
+
 
 /*
  * Para saber que es lo que me estan mandando, utilizar
@@ -59,7 +69,7 @@ operacionProtocolo empezarDeserializacion(void **buffer);
  *
  * NOTA 2: Cuando no se use mas el buffer, realizar free!!!!
  */
-registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla);
+registroConNombreTabla* deserializarRegistro(void* bufferRegistro);
 
 /*
  * deserializa una metadata, devuelve un puntero a esa
@@ -83,18 +93,26 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion);
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  * Devuelve un buffer con ese registro serializado.
  */
-void* serializarRegistro(registro* unRegistro,char* nombreTabla);
+void* serializarRegistro(registroParaComunicacion* unRegistro, int* tamanioBuffer);
 
 /*
  * Serializa una operacionLQL. devuelve un buffer donde
  * se encuentra la operacion serializada.
  */
-void* serializarOperacionLQL(operacionLQL* unaOperacion);
+void* serializarOperacionLQL(operacionLQL* unaOperacion, int* tamanio);
 
 /*
  * Serializa una metadata. devuelve un buffer donde
  * se encuentra la metadata serializada.
  */
 void* serializarMetadata(metadata* unaMetadata);
+
+void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL);
+
+void* serializarHandshake(int tamanioValue, int* tamanioBuffer);
+
+void serializarYEnviarRegistro(int socket, registroParaComunicacion* unRegistro);
+
+int deserializarHandshake(void* bufferHandshake);
 
 #endif /* SERIALIZACION_H_ */

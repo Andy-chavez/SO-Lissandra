@@ -179,40 +179,32 @@ int calcularParticion(int key,int cantidadParticiones){
 //	return registroBuscado;
 //}
 
-/*
-bool esIgualAlNombre(char* nombreTabla,void * elemento){
-		tablaMem* varAuxiliar = elemento;
 
-		return string_equals_ignore_case(varAuxiliar->nombre, nombreTabla);
+
+ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
+		tablaMem* tabla = elemento;
+		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
+			list_add(tabla->lista, unRegistro);
+
+			return true;
+		}else{
+				return false;
+		}
 }
-
 
 //Guarda un registro en la memtable
-void guardarRegistro(registro unRegistro, char* nombreTabla) {
+void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) {
 
-	bool tieneElNombre(void *elemento){
-		return esIgualAlNombre(nombreTabla, elemento);
+	bool buscarPorNombre(void *elemento){
+		return agregarRegistro(nombreTabla, unRegistro, elemento);
 	}
-//OJO, la memtable tiene que ser una variable global, pero no me deja eclipse pq me dice que no es una constante
 
-	t_list* memtable = list_create();
-
-	// de prueba junto con lo que esta en el main
-//list_add(memtable, tablaDePrueba);
-
-	 tablaMem* tablaEncontrada = list_find(memtable, tieneElNombre);
-
-	 //Queda ver como sacar el numero de un elemento en la lista, no encontre por ahora una common que lo haga..
-	 /*
-		tablaEncontrada.sigRegistro = unRegistro;
-		list_replace(memTable, ..., varEncontrada);
+	tablaMem* tablaEncontrada = list_find(memtable, buscarPorNombre);
 
 }
-*/
-//en realidad si un registro tiene un siguiente registro que tiene un siguiente registro y asi..
-//no creo que esto vaya a funcar para esos casos, porque deberias decir sig registro sig registro key
-//hay alguna funcion que recorra una lista linkeada? usando eso, y manteniendo esta funcion de orden superior
-//deberia funcar calculo
+
+
+
 bool estaLaKey(int key,void* elemento){
 	registro* unRegistro = elemento;
 
@@ -228,7 +220,7 @@ bool esIgualAlNombre(char* nombreTabla,void * elemento){
 		return string_equals_ignore_case(tabla->nombre, nombreTabla);
 }
 
-registro* devolverRegistroDeLaMemtable(char* nombreTabla, int key){
+registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int key){
 
 	//esto no va por cada procedimiento obviamente, primero termino este par de funciones y ya lo pongo para q sea global
 
@@ -240,7 +232,6 @@ registro* devolverRegistroDeLaMemtable(char* nombreTabla, int key){
 		return esIgualAlNombre(nombreTabla, elemento);
 	}
 
-	t_list* memtable = list_create();
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 			registroDePrueba -> key = 13;
@@ -249,13 +240,13 @@ registro* devolverRegistroDeLaMemtable(char* nombreTabla, int key){
 
 
 			tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-			tablaDePrueba-> nombre = string_duplicate("alo");
+			tablaDePrueba-> nombre = string_duplicate("tablaA");
 			tablaDePrueba->lista = list_create();
 
 			list_add(tablaDePrueba->lista, registroDePrueba);
 
 			tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-						tablaDePrueba2-> nombre = string_duplicate("fuck");
+						tablaDePrueba2-> nombre = string_duplicate("tablaB");
 						tablaDePrueba2->lista = list_create();
 						list_add(tablaDePrueba2->lista, registroDePrueba);
 
@@ -267,7 +258,7 @@ registro* devolverRegistroDeLaMemtable(char* nombreTabla, int key){
 	registro* registroEncontrado = list_find(encuentraLista->lista, encontrarLaKey);
 
 
-	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
+//	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
 
 	return registroEncontrado;
 
