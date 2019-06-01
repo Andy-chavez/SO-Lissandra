@@ -16,13 +16,6 @@
 #include "kernel_configuraciones.h"
 #include "kernel_structs-basicos.h"
 
-/******************************VARIABLES GLOBALES******************************************/
-t_list* cola_proc_nuevos;  //use esta en el caso del run
-t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
-t_list* cola_proc_terminados;
-t_list* cola_proc_ejecutando;
-
-
 /******************************DECLARACIONES******************************************/
 void kernel_almacenar_en_cola(char*,char*);
 void kernel_agregar_cola_proc_nuevos(char*);
@@ -51,6 +44,45 @@ void kernel_add();
 void* kernel_cliente(void *archivo);
 
 /******************************IMPLEMENTACIONES******************************************/
+// _________________________________________.: OPERACIONES DE API :.____________________________________________
+void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
+	operacionLQL* opAux=splitear_operacion(operacion);
+	//void * aEnviar = serializarOperacionLQL(opAux);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	//enviar(socketClienteKernel, aEnviar, 39);
+	printf("\n\nEnviado\n\n");
+	cerrarConexion(socketClienteKernel);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+void kernel_select(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	//void * aEnviar = serializarOperacionLQL(opAux);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	//enviar(socketClienteKernel, aEnviar, 31);
+	printf("\nEnviado\n");
+	char* recibido = (char*)recibir(socketClienteKernel);
+	printf("\nEl valor recibido es: %s\n",recibido);
+	//recibir valor
+	//cerrarConexion(socketClienteKernel);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+void kernel_create(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	//void * aEnviar = serializarOperacionLQL(opAux);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	//enviar(socketClienteKernel, aEnviar, 39);
+	printf("\n\nEnviado\n\n");
+	//recibir valor
+	//cerrarConexion(socketClienteKernel);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+// _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 instruccion* obtener_ultima_instruccion(t_list* instruc){
 	int size = list_size(instruc);
 	instruccion *instrucAux = malloc(sizeof(instruccion));
@@ -99,8 +131,7 @@ void kernel_planificador(){
 	}
 	//cola_proc_listos
 }
-
-void kernel_agregar_cola_proc_nuevos(char*operacion){
+void kernel_crearPCB(char* operacion){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
 	pcb_auxiliar->operacion= malloc(sizeof(*operacion));
 	pcb_auxiliar->operacion = operacion;
@@ -108,71 +139,37 @@ void kernel_agregar_cola_proc_nuevos(char*operacion){
 	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
 	free(pcb_auxiliar->operacion);
 	free(pcb_auxiliar);
-}
-void kernel_almacenar_en_cola(char*operacion,char* argumentos){
-	string_to_upper(operacion);
-	if (string_equals_ignore_case(operacion, "RUN")) {
-		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n"); //poner esto en log aclarando el path
-		kernel_run(argumentos);
-	}
-	else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", operacion)){
-		kernel_agregar_cola_proc_nuevos(operacion);
-	}
-	else{
-		//loggear error de instruccion incorrecta
-	}
 
 }
-// _________________________________________.: PASAR A COMMONS PROPIAS :.____________________________________________
+void kernel_pasar_a_ready(){
+	while(!list_is_empty(cola_proc_nuevos)){ //TODO agregar semaforo
+		char* operacion =list_remove(cola_proc_nuevos,1);
+		string_to_upper(operacion);
+		if (string_contains( "RUN" ,operacion)) {
+			 //poner esto en log aclarando el path
+			kernel_run(operacion);
+		}
+		else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", operacion)){
+			kernel_crearPCB(operacion);
+		}
+		else{
+			log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
+		}
+	}
+}
+void kernel_almacenar_en_new(char*operacion){
 
-// _________________________________________.: OPERACIONES DE API :.____________________________________________
-void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
-	operacionLQL* opAux=splitear_operacion(operacion);
-	//void * aEnviar = serializarOperacionLQL(opAux);
-	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//enviar(socketClienteKernel, aEnviar, 39); //TODO serializacion
-	printf("\n\nEnviado\n\n");
-	cerrarConexion(socketClienteKernel);
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
+	list_add(cola_proc_nuevos, operacion);
+	//TODO loggear que operacion se agrego a new
 }
-void kernel_select(char* operacion){
-	operacionLQL* opAux=splitear_operacion(operacion);
-	//void * aEnviar = serializarOperacionLQL(opAux);
-	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//enviar(socketClienteKernel, aEnviar, 31); //TODO serializacion
-	printf("\nEnviado\n");
-	char* recibido = (char*)recibir(socketClienteKernel);
-	printf("\nEl valor recibido es: %s\n",recibido);
-	//recibir valor
-	//cerrarConexion(socketClienteKernel);
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
-}
-void kernel_create(char* operacion){
-	operacionLQL* opAux=splitear_operacion(operacion);
-	//void * aEnviar = serializarOperacionLQL(opAux);
-	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//enviar(socketClienteKernel, aEnviar, 39);
-	printf("\n\nEnviado\n\n");
-	//recibir valor
-	//cerrarConexion(socketClienteKernel);
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
-}
-// _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
+
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	//size_t largo = 0;
-	//getline(&linea, &largo, stdin);
 	linea = readline("");
 	//char** opYArg;
 	//opYArg = string_n_split(linea,2," ");
-	kernel_api(linea);
+	kernel_almacenar_en_new(linea);
 	//kernel_api(*opYArg,*(opYArg+1));
 	//printf("%s",opYArg);
 	//printf("%s",opYArg+1);
@@ -181,24 +178,27 @@ void kernel_consola(){
 	//free(*(opYArg+1));
 	//free(*(opYArg));
 	//free(opYArg); //tener en cuenta esa liberacion de punteros
-
-	//TODO crear proc nuevo, preguntar si run o no
 }
-void kernel_run(char* path){
-	FILE *archivoALeer= fopen(path, "r");
+void kernel_run(char* operacion){
+	char** opYArg;
+	opYArg = string_n_split(operacion ,2," ");
+	FILE *archivoALeer= fopen(*(opYArg+1), "r");
 	char *lineaLeida;
 	size_t limite = 250;
 	ssize_t leer;
 	lineaLeida = (char *)malloc(limite * sizeof(char));
 	if (archivoALeer == NULL){
-		log_error(kernel_configYLog->log,"No se pudo ejecutar el archivo solicitado, verifique su existencia\n");
+		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s, verifique existencia del archivo\n", operacion);
 		free(lineaLeida);
+		free(*(opYArg+1));
+		free(*(opYArg));
+		free(opYArg);
 		exit(EXIT_FAILURE);
 	}
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	pcb_auxiliar->operacion= malloc(sizeof("RUN"));
-	pcb_auxiliar->operacion = "RUN";
-	pcb_auxiliar->ejecutado = 1;
+	pcb_auxiliar->operacion= malloc(sizeof(operacion));
+	pcb_auxiliar->operacion = operacion;
+	pcb_auxiliar->ejecutado = 1 ;
 	pcb_auxiliar->instruccion =list_create();
 
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
@@ -206,7 +206,7 @@ void kernel_run(char* path){
 		operacion = string_n_split(lineaLeida,2," ");
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
-		instruccion_auxiliar->operacion= malloc(sizeof(*operacion)); //necesario?
+		instruccion_auxiliar->operacion= malloc(sizeof(*operacion));
 		instruccion_auxiliar->operacion= *operacion;
 //		instruccion_auxiliar->argumentos= malloc(sizeof(*(operacion+1)));
 //		instruccion_auxiliar->argumentos= *(operacion+1);
@@ -221,6 +221,9 @@ void kernel_run(char* path){
 	free(lineaLeida);
 	free(pcb_auxiliar->operacion);
 	free(pcb_auxiliar);
+	free(*(opYArg+1));
+	free(*(opYArg));
+	free(opYArg);
 	fclose(archivoALeer);
 }
 void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
@@ -280,11 +283,5 @@ void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 		printf("Mi no entender esa operacion\n");
 		}
 }
-
-//void* kernel_cliente(void *archivo){
-//	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
-//	 //aca tengo dudas de si dejar ese enviar o si puedo salir de la funcion
-//	 //enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
-//	cerrarConexion(socketClienteKernel); //Deberia de cerrar conexion? }
 
 #endif /* KERNEL_OPERACIONES_H_ */

@@ -15,44 +15,28 @@
 #include <string.h>
 #include "kernel_operaciones.h"
 
-#define CANTIDADCRITERIOS 2 //0-2
-#define STRONG 0
-#define HASH 1
-#define EVENTUAL 2
-
 /*
  * EJEMPLOS:
- * INSERT TABLA1 515 malesal 25-39=14
- * SELECT TABLA1 515 17+14= 31
- *
- *
+ * INSERT TABLA1 515 malesal
+ * SELECT TABLA1 515
+ * DESCRIBE TABLA1
+ * CREATE TABLA1 SC 7 1000
+ * DROP TABLA1
+ * METRICS
+ * JOURNAL
+ * ADD MEMORY 5 TO EC
  *
  */
-/*criterio *inicializarCriterios();
-
-criterio *inicializarCriterios(){
-	criterio *datos = malloc(3*sizeof(criterio));
-	datos[STRONG].unCriterio = SC; //Strong
-	datos[HASH].unCriterio = SH; //Hash
-	datos[EVENTUAL].unCriterio = EC; //Eventual
-	for(int iter=0; iter <= CANTIDADCRITERIOS; iter++){
-		datos[iter].memoriasAsociadas = malloc(sizeof(int));
-		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
-	}
-	return datos;
-}*/
 
 int main(int argc, char *argv[]){
-//	criterio *criterios;
-//	criterios = inicializarCriterios();
+
 	pthread_t threadConsola;
 /*	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
 */
-	//kernel_configYLog->config = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
 	//kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	//cola_proc_nuevos = list_create();
-	kernel_obtener_configuraciones(pathConfig);
+	kernel_inicializar(pathConfig);
 	pthread_create(&threadConsola, NULL,(void*) kernel_consola, NULL);
 	pthread_join(threadConsola, NULL);
 	//kernel_consola();

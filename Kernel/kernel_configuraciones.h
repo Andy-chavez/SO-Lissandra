@@ -9,21 +9,12 @@
 #define KERNEL_CONFIGURACIONES_H_
 #include <commons/config.h>
 #include "kernel_structs-basicos.h"
-// _________________________________________.: VARIABLES GLOBALES :.____________________________________________
-char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
-char* ipMemoria;
-char* puertoMemoria;
-configYLogs *kernel_configYLog;
-int quantumMax;
-int multiprocesamiento;
-int metadataRefresh;
-int sleepEjecucion;
 
 void liberarConfigYLogs();
-void kernel_obtener_configuraciones(char*);
+void kernel_inicializar(char*);
 
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
-void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
+void kernel_inicializar(char* path){
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(path);
 	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
@@ -33,6 +24,14 @@ void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
 	multiprocesamiento =(int)config_get_string_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
 	metadataRefresh = (int)config_get_string_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = (int)config_get_string_value(kernel_configYLog->config,"SLEEP_EJECUCION");
+	kernel_crearListas();
+}
+void kernel_crearListas(){
+	cola_proc_nuevos = list_create();
+	cola_proc_listos = list_create();
+	cola_proc_terminados = list_create();
+	cola_proc_ejecutando = list_create();
+	memorias = list_create();
 }
 void liberarConfigYLogs() {
 	free(kernel_configYLog->config);
