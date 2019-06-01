@@ -5,9 +5,6 @@
  *      Author: utnso
  */
 
-#ifndef SRC_COMPACTADOR_H_
-#define SRC_COMPACTADOR_H_
 
+#include "dump.h"
 
-
-#endif /* SRC_COMPACTADOR_H_ */

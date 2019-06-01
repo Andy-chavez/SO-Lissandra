@@ -23,7 +23,7 @@
 #include <commons/log.h>
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
-#include "funcionesLFS.h"
+#include "compactador.h"
 
 
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
@@ -178,6 +178,41 @@ int main(int argc, char* argv[]) {
 
 	inicializarArchivoBitmap();
 	inicializarBitmap();
+	registro* registroDePrueba = malloc(sizeof(registro));
+					registroDePrueba -> key = 13;
+					registroDePrueba -> value= string_duplicate("eloooooooooooooo");
+					registroDePrueba -> timestamp = 8000;
+	    registro* registroDePrueba2 = malloc(sizeof(registro));
+					  registroDePrueba2 -> key = 56;
+					  registroDePrueba2 -> value= string_duplicate("ghj");
+					  registroDePrueba2 -> timestamp = 1548421509;
+		registro* registroDePrueba4 = malloc(sizeof(registro));
+					  					  registroDePrueba2 -> key = 57;
+					  					  registroDePrueba2 -> value= string_duplicate("djskajksjaks");
+					  					  registroDePrueba2 -> timestamp = 1548421509;
+			registro* registroDePrueba3 = malloc(sizeof(registro));
+					  registroDePrueba3 -> key = 13;
+					  registroDePrueba3 -> value= string_duplicate("aloo");
+					  registroDePrueba3 -> timestamp = 9000;
+
+			tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
+					tablaDePrueba-> nombre = string_duplicate("TABLA1");
+					tablaDePrueba->listaRegistros = list_create();
+
+					list_add(tablaDePrueba->listaRegistros, registroDePrueba);
+					list_add(tablaDePrueba->listaRegistros, registroDePrueba2);
+					list_add(tablaDePrueba->listaRegistros, registroDePrueba4);
+
+			tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
+					  tablaDePrueba2->nombre = string_duplicate("TABLA2");
+					  tablaDePrueba2->listaRegistros = list_create();
+
+			list_add(tablaDePrueba2->listaRegistros, registroDePrueba3);
+			list_add(tablaDePrueba2->listaRegistros, registroDePrueba2);
+			list_add(tablaDePrueba2->listaRegistros, registroDePrueba);
+			list_add(memtable, tablaDePrueba);
+			list_add(memtable, tablaDePrueba2);
+	dump();
 	crearTemporal(120,2,"TABLA1");
 
 	funcionCreate("TABLA2 SC 2 60000");
