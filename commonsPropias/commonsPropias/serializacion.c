@@ -27,6 +27,7 @@ int deserializarHandshake(void* bufferHandshake){
 
 	memcpy(&tamanioDelValue, bufferHandshake + desplazamiento, sizeof(int));
 
+	free(bufferHandshake);
 	return tamanioDelValue;
 }
 
@@ -67,6 +68,7 @@ registroParaComunicacion* deserializarRegistro(void* bufferRegistro) {
 
 	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
 
+	free(bufferRegistro);
 	return unRegistro;
 }
 
@@ -141,6 +143,7 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 	memcpy(unaOperacion->parametros,bufferOperacion + desplazamiento, largoDeParametros);
 	desplazamiento += largoDeParametros;
 
+	free(bufferOperacion);
 	return unaOperacion;
 }
 
