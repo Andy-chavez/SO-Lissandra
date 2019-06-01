@@ -45,15 +45,17 @@ criterio *inicializarCriterios(){
 int main(int argc, char *argv[]){
 //	criterio *criterios;
 //	criterios = inicializarCriterios();
-/*  pthread_t threadCliente;
-	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
+	pthread_t threadConsola;
+/*	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
 */
 	//kernel_configYLog->config = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
 	//kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	//cola_proc_nuevos = list_create();
 	kernel_obtener_configuraciones(pathConfig);
-	kernel_consola();
+	pthread_create(&threadConsola, NULL,(void*) kernel_consola, NULL);
+	pthread_join(threadConsola, NULL);
+	//kernel_consola();
 //TODO frees de las colas
 //	liberarConfigYLogs(kernel_configYLog);
 	return EXIT_SUCCESS;
