@@ -93,8 +93,14 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion);
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  * Devuelve un buffer con ese registro serializado.
  */
-void* serializarRegistro(registroParaComunicacion* unRegistro, int* tamanioBuffer);
-
+void* serializarRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffer);
+/*
+ * Usar antes de serializar, pasandole un string para poder agilizar el armado de la operacion LQL
+ * Devuelve el struct operacionLQL completo a partir de un string
+ * con sus respectiva operacion y argumentos por separado
+ *
+ */
+operacionLQL* splitear_operacion(char* operacion);
 /*
  * Serializa una operacionLQL. devuelve un buffer donde
  * se encuentra la operacion serializada.
@@ -111,7 +117,7 @@ void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL);
 
 void* serializarHandshake(int tamanioValue, int* tamanioBuffer);
 
-void serializarYEnviarRegistro(int socket, registroParaComunicacion* unRegistro);
+void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro);
 
 int deserializarHandshake(void* bufferHandshake);
 

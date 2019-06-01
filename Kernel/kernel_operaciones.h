@@ -17,7 +17,6 @@
 #include "kernel_structs-basicos.h"
 
 /******************************VARIABLES GLOBALES******************************************/
-int quantumMax; //sacar esto de archivo de config
 t_list* cola_proc_nuevos;  //use esta en el caso del run
 t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
 t_list* cola_proc_terminados;
@@ -125,32 +124,13 @@ void kernel_almacenar_en_cola(char*operacion,char* argumentos){
 
 }
 // _________________________________________.: PASAR A COMMONS PROPIAS :.____________________________________________
-operacionLQL* splitear_operacion(char* operacion){
-	operacionLQL* operacionAux=malloc(sizeof(operacionLQL));
-	char** opSpliteada;
-	if(string_starts_with(operacion,"JOURNAL") || (string_starts_with(operacion,"DESCRIBE") && !string_contains(operacion," "))){
-		operacionAux->operacion=malloc(sizeof(operacion));
-		operacionAux->operacion=operacion;
-		operacionAux->parametros= NULL;
-	}
-	else{
-		opSpliteada = string_n_split(operacion,2," ");
-		operacionAux->operacion=malloc(sizeof(*(opSpliteada)));
-		operacionAux->operacion=*opSpliteada;
-		operacionAux->parametros=malloc(sizeof(*(opSpliteada+1)));
-		operacionAux->parametros=*(opSpliteada+1);
-		/*free(*(opSpliteada+1));
-		free(*(opSpliteada));
-		free(opSpliteada);*/
-	}
-	return operacionAux;
-}
+
 // _________________________________________.: OPERACIONES DE API :.____________________________________________
 void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
-	void * aEnviar = serializarOperacionLQL(opAux);
+	//void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	enviar(socketClienteKernel, aEnviar, 39); //TODO serializacion
+	//enviar(socketClienteKernel, aEnviar, 39); //TODO serializacion
 	printf("\n\nEnviado\n\n");
 	cerrarConexion(socketClienteKernel);
 	free(opAux->operacion);
@@ -159,9 +139,9 @@ void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la mem
 }
 void kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	void * aEnviar = serializarOperacionLQL(opAux);
+	//void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	enviar(socketClienteKernel, aEnviar, 31); //TODO serializacion
+	//enviar(socketClienteKernel, aEnviar, 31); //TODO serializacion
 	printf("\nEnviado\n");
 	char* recibido = (char*)recibir(socketClienteKernel);
 	printf("\nEl valor recibido es: %s\n",recibido);
@@ -173,9 +153,9 @@ void kernel_select(char* operacion){
 }
 void kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	void * aEnviar = serializarOperacionLQL(opAux);
+	//void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	enviar(socketClienteKernel, aEnviar, 39);
+	//enviar(socketClienteKernel, aEnviar, 39);
 	printf("\n\nEnviado\n\n");
 	//recibir valor
 	//cerrarConexion(socketClienteKernel);
