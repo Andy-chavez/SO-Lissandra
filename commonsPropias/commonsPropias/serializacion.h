@@ -22,7 +22,7 @@ typedef struct {
 	u_int16_t key;
 	char* value;
 	char* nombreTabla;
-} registroParaComunicacion;
+} registroConNombreTabla;
 
 typedef enum {
 	SC,
@@ -69,7 +69,7 @@ operacionProtocolo empezarDeserializacion(void **buffer);
  *
  * NOTA 2: Cuando no se use mas el buffer, realizar free!!!!
  */
-registroParaComunicacion* deserializarRegistro(void* bufferRegistro);
+registroConNombreTabla* deserializarRegistro(void* bufferRegistro);
 
 /*
  * deserializa una metadata, devuelve un puntero a esa
