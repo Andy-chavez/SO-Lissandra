@@ -47,6 +47,7 @@ typedef struct {
 	t_list* tablaSegmentos;
 	void *base;
 	void *limite;
+	int tamanioMaximoValue;
 	int *seeds;
 } memoria;
 
@@ -66,10 +67,12 @@ int socketLissandraFS;
 
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* configYLog) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
+	int tamanioMemoria = config_get_int_value(configYLog->config, "TAMANIOMEM");
 
-	nuevaMemoria->base = malloc(datosParaInicializar->tamanio);
-	memset(nuevaMemoria->base, 0, datosParaInicializar->tamanio);
-	nuevaMemoria->limite = nuevaMemoria->base + datosParaInicializar->tamanio;
+	nuevaMemoria->base = malloc(tamanioMemoria);
+	memset(nuevaMemoria->base, 0, tamanioMemoria);
+	nuevaMemoria->limite = nuevaMemoria->base + tamanioMemoria;
+	nuevaMemoria->tamanioMaximoValue = datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
 
 	if(nuevaMemoria == NULL || nuevaMemoria->base == NULL) {
@@ -197,17 +200,6 @@ void cambiarDatosEnMemoria(paginaEnTabla* paginaACambiar, pagina* paginaNueva) {
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
 
-char* concatenarParametros(char** parametros) {
-	char* parametro = malloc(strlen(*parametros) + 1);
-	memset(parametro, 0, strlen((*parametros)+1));
-	char** aux = parametros;
-	while(*aux != NULL) {
-		string_append_with_format(parametro, " %s",*(aux+1));
-		*(aux) = *(aux+1);
-	}
-	return parametro;
-}
-
 operacionLQL *armarOperacionLQL(char* nombreOperacion, char** parametros) {
 	operacionLQL *operacionARetornar = malloc(sizeof(operacionLQL));
 	operacionARetornar->operacion = nombreOperacion;
@@ -230,18 +222,20 @@ pagina* pedirRegistroLFS(char* operacion, char** parametros, char** nombreTabla)
 	return paginaEncontradaEnLFS;
 }
 
-pagina* crearPaginaNueva(char** parametros) {
+pagina* crearPaginaNueva(char* parametros) {
 	pagina* nuevaPagina = malloc(sizeof(pagina));
 
 	nuevaPagina->timestamp = time(NULL);
-	nuevaPagina->key = atoi(*(parametros+1));
-	nuevaPagina->value = *(parametros+2);
+	nuevaPagina->key = obtenerValorDe(parametros, 1);
+	nuevaPagina->value = obtenerValorDe(parametros, 2);
 
 	return nuevaPagina;
 }
 
-char* obtenerNombreDeTabla(char** parametros) {
-	return *parametros;
+void* obtenerValorDe(char* parametros, int lugarDelParametroBuscado) {
+	char** parametrosSpliteados = string_split(parametros, " ");
+	char* parametroBuscado = *(parametrosSpliteados + lugarDelParametroBuscado);
+	return parametroBuscado;
 }
 
 int obtenerTamanioValue(void* valueBuffer) {
@@ -301,9 +295,9 @@ char* valuePagina(segmento* unSegmento, int key){
 // ------------------------------------------------------------------------ //
 // OPERACIONESLQL //
 
-void selectLQL(char** parametrosDeSelect, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){
-	char* nombreTabla = obtenerNombreDeTabla(parametrosDeSelect);
-	int key = atoi(*(parametrosDeSelect + 1));
+void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){
+	char* nombreTabla = (char*) obtenerValorDe(operacionSelect->parametros, 1);
+	int key = *(int*) obtenerValorDe(operacionSelect->parametros, 2);
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
@@ -333,9 +327,9 @@ void selectLQL(char** parametrosDeSelect, configYLogs* configYLog, memoria* memo
 }
 
 
-void insertLQL(char** parametrosDeInsert, configYLogs* configYLog, memoria* memoriaPrincipal){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
-	char* nombreTabla = obtenerNombreDeTabla(parametrosDeInsert);
-	pagina* paginaNueva = crearPaginaNueva(parametrosDeInsert);
+void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* memoriaPrincipal){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
+	char* nombreTabla = (char*) obtenerValorDe(operacionInsert->parametros, 0);
+	pagina* paginaNueva = crearPaginaNueva(operacionInsert->parametros);
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 		paginaEnTabla* paginaEncontrada;

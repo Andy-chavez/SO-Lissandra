@@ -12,43 +12,13 @@
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
 
-
-operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
-	int desplazamiento = 0;
-	int tamanioOperacion,largoDeParametros;
-	operacionLQL* unaOperacion = malloc(sizeof(operacionLQL));
-
-	memcpy(&tamanioOperacion,bufferOperacion + desplazamiento, sizeof(int));
-	desplazamiento += sizeof(int);
-	unaOperacion->operacion = malloc(tamanioOperacion);
-
-	memcpy((unaOperacion->operacion),bufferOperacion + desplazamiento, tamanioOperacion);
-	desplazamiento += tamanioOperacion;
-
-	memcpy(&largoDeParametros ,bufferOperacion + desplazamiento, sizeof(int));
-	desplazamiento += sizeof(int);
-	unaOperacion->parametros = malloc(largoDeParametros);
-
-	memcpy(unaOperacion->parametros,bufferOperacion + desplazamiento, largoDeParametros);
-	desplazamiento += largoDeParametros;
-
-	return unaOperacion;
-}
-
-operacionProtocolo empezarDeserializacion(void **buffer) {
-	operacionProtocolo protocolo;
-	memcpy(&protocolo, *(buffer), sizeof(int));
-	*(buffer) += 4;
-	return protocolo;
-}
-
-void APIProtocolo(void* buffer, memoria* memoriaPrincipal, configYLogs* configYLog, int socketKernel) {
+void APIProtocolo(void* buffer, memoria* memoriaPrincipal, configYLogs* configYLog, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
 	case OPERACIONLQL:
 		log_info(configYLog->logger, "Recibi una operacionLQL, a ver que es?");
-		APIMemoria(deserializarOperacionLQL(buffer), memoriaPrincipal, configYLog, socketKernel);
+		APIMemoria(deserializarOperacionLQL(buffer), memoriaPrincipal, configYLog, socket);
 		break;
 	}
 }
@@ -56,12 +26,12 @@ void APIProtocolo(void* buffer, memoria* memoriaPrincipal, configYLogs* configYL
 void APIMemoria(operacionLQL* operacionAParsear, memoria* memoriaPrincipal, configYLogs* configYLog, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		log_info(configYLog->logger, "Recibi un INSERT");
-		insertLQL(string_split(operacionAParsear->parametros, " "), configYLog, memoriaPrincipal);
-		selectLQL(string_split("TABLA1 515", " "), configYLog, memoriaPrincipal, socketKernel);
+		insertLQL(operacionAParsear, configYLog, memoriaPrincipal);
+		selectLQL(operacionAParsear, configYLog, memoriaPrincipal, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		log_info(configYLog->logger, "Recibi un SELECT");
-		selectLQL(string_split(operacionAParsear->parametros, " "), configYLog, memoriaPrincipal, socketKernel);
+		selectLQL(operacionAParsear, configYLog, memoriaPrincipal, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		log_info(configYLog->logger, "Recibi un DESCRIBE");
@@ -81,32 +51,6 @@ void APIMemoria(operacionLQL* operacionAParsear, memoria* memoriaPrincipal, conf
 }
 //pthread_mutex_t mutexBufferLFS = 0;
 
-int deserializarHandshake(void* bufferHandshake){
-
-	int desplazamiento = 0;
-	int tamanioDelInt;
-	int tamanioDelValue;
-
-	memcpy(&tamanioDelInt, bufferHandshake + desplazamiento, sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(&tamanioDelValue, bufferHandshake + desplazamiento, sizeof(int));
-
-	return tamanioDelValue;
-}
-
-void* serializarHandshake(int tamanioValue){
-
-	int desplazamiento = 0;
-	void *buffer= malloc((sizeof(int))*2);
-	int tamanioInt= sizeof(int);
-	memcpy(buffer + desplazamiento, &tamanioInt, sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(buffer + desplazamiento, &tamanioValue, sizeof(int));
-	desplazamiento+= sizeof(int);
-
-	return buffer;
-}
-
 //------------------------------------------------------------------------
 
 void liberarConfigYLogs(configYLogs *archivos) {
@@ -117,7 +61,7 @@ void liberarConfigYLogs(configYLogs *archivos) {
 
 datosInicializacion* realizarHandshake(configYLogs* configYLog) {
 	socketLissandraFS = crearSocketLFS(configYLog);
-	operacionProtocolo operacionHandshake = NUEVACONEXIONMEMORIA;
+	operacionProtocolo operacionHandshake = HANDSHAKE;
 	//void* bufferParaEnviarOperacion = serializarHandshake((int) operacionHandshake);
 	//enviar(socketLissandraFS, (void*)operacionHandshake, sizeof(int)*2);
 
@@ -146,7 +90,7 @@ int crearSocketLFS(configYLogs* archivosDeConfigYLog) {
 void *servidorMemoria(void* arg, memoria* memoriaPrincipal){
 	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
 
-	int socketServidorMemoria = crearSocketServidor(config_get_string_value(archivosDeConfigYLog->config, "PUERTO"));
+	int socketServidorMemoria = crearSocketServidor(config_get_string_value(archivosDeConfigYLog->config, "IPMEMORIA"), config_get_string_value(archivosDeConfigYLog->config, "PUERTO"));
 
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
