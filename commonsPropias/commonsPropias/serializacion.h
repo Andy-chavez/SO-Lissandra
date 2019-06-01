@@ -21,7 +21,8 @@ typedef struct {
 	time_t timestamp;
 	u_int16_t key;
 	char* value;
-} registro;
+	char* nombreTabla;
+} registroParaComunicacion;
 
 typedef enum {
 	SC,
@@ -32,7 +33,9 @@ typedef enum {
 typedef enum {
 	OPERACIONLQL,
 	PAQUETEREGISTROS,
-	METADATA
+	UNREGISTRO,
+	METADATA,
+	HANDSHAKE
 } operacionProtocolo;
 
 typedef struct {
@@ -66,7 +69,7 @@ operacionProtocolo empezarDeserializacion(void **buffer);
  *
  * NOTA 2: Cuando no se use mas el buffer, realizar free!!!!
  */
-registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla);
+registroParaComunicacion* deserializarRegistro(void* bufferRegistro);
 
 /*
  * deserializa una metadata, devuelve un puntero a esa
@@ -90,7 +93,7 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion);
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  * Devuelve un buffer con ese registro serializado.
  */
-void* serializarRegistro(registro* unRegistro,char* nombreTabla);
+void* serializarRegistro(registroParaComunicacion* unRegistro, int* tamanioBuffer);
 
 /*
  * Serializa una operacionLQL. devuelve un buffer donde
@@ -104,7 +107,12 @@ void* serializarOperacionLQL(operacionLQL* unaOperacion, int* tamanio);
  */
 void* serializarMetadata(metadata* unaMetadata);
 
-void serializador_serializarYEnviarOperacionLQL(operacionLQL* operacionLQL, int socket);
-operacionLQL* serializador_recibirYDeserializarOperacionLQL(int socket);
+void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL);
+
+void* serializarHandshake(int tamanioValue, int* tamanioBuffer);
+
+void serializarYEnviarRegistro(int socket, registroParaComunicacion* unRegistro);
+
+int deserializarHandshake(void* bufferHandshake);
 
 #endif /* SERIALIZACION_H_ */

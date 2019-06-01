@@ -6,16 +6,47 @@ operacionProtocolo empezarDeserializacion(void **buffer) {
 	return protocolo;
 }
 
-registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
+void* serializarHandshake(int tamanioValue, int* tamanioBuffer){
+	int desplazamiento = 0;
+	operacionProtocolo protocoloHandshake = HANDSHAKE;
+	void *buffer= malloc((sizeof(int))*2);
+
+	memcpy(buffer + desplazamiento, &protocoloHandshake, sizeof(int));
+	desplazamiento += sizeof(int);
+	memcpy(buffer + desplazamiento, &tamanioValue, sizeof(int));
+	desplazamiento += sizeof(int);
+
+	*(tamanioBuffer) = desplazamiento;
+
+	return buffer;
+}
+
+int deserializarHandshake(void* bufferHandshake){
 	int desplazamiento = 4;
-	registro* unRegistro = malloc(sizeof(registro));
+	int tamanioDelValue;
+
+	memcpy(&tamanioDelValue, bufferHandshake + desplazamiento, sizeof(int));
+
+	return tamanioDelValue;
+}
+
+void serializarYEnviarHandshake(int socket, int tamanioValue) {
+	int tamanioBuffer;
+	void* bufferAEnviar = serializarHandshake(tamanioValue, &tamanioBuffer);
+	enviar(socket, bufferAEnviar, tamanioBuffer);
+	free(bufferAEnviar);
+}
+
+registroParaComunicacion* deserializarRegistro(void* bufferRegistro) {
+	int desplazamiento = 4;
+	registroParaComunicacion* unRegistro = malloc(sizeof(registroParaComunicacion));
 	int largoDeNombreTabla, tamanioTimestamp, tamanioKey, largoDeValue;
 
 	memcpy(&largoDeNombreTabla, bufferRegistro + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
-	*nombreTabla = malloc(largoDeNombreTabla);
+	unRegistro->nombreTabla = malloc(largoDeNombreTabla);
 
-	memcpy(*nombreTabla, bufferRegistro + desplazamiento, largoDeNombreTabla);
+	memcpy(unRegistro->nombreTabla, bufferRegistro + desplazamiento, largoDeNombreTabla);
 	desplazamiento+= largoDeNombreTabla;
 
 	memcpy(&tamanioTimestamp, bufferRegistro + desplazamiento, sizeof(int));
@@ -39,21 +70,25 @@ registro* deserializarRegistro(void* bufferRegistro, char** nombreTabla) {
 	return unRegistro;
 }
 
-void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
+void* serializarUnRegistro(registroParaComunicacion* unRegistro, int* tamanioBuffer) {
 
 	int desplazamiento = 0;
-	int largoDeNombreTabla = strlen(nombreTabla) + 1;
+	int largoDeNombreTabla = strlen(unRegistro->nombreTabla) + 1;
 	int largoDeValue = strlen(unRegistro->value) + 1;
+	operacionProtocolo protocoloRegistro = UNREGISTRO;
 	int tamanioKey = sizeof(u_int16_t);
 	int tamanioTimeStamp = sizeof(time_t);
-	int tamanioTotalBuffer = 4*sizeof(int) + largoDeNombreTabla + largoDeValue + tamanioKey + tamanioTimeStamp;
+	int tamanioTotalBuffer = 5*sizeof(int) + largoDeNombreTabla + largoDeValue + tamanioKey + tamanioTimeStamp;
 	void *bufferRegistro= malloc(tamanioTotalBuffer);
 
+	//protocolo
+	memcpy(bufferRegistro + desplazamiento, &protocoloRegistro, sizeof(int));
+	desplazamiento+= sizeof(int);
 	//Tamaño de nombre de tabla
 	memcpy(bufferRegistro + desplazamiento, &largoDeNombreTabla, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Nombre de tabla
-	memcpy(bufferRegistro + desplazamiento, nombreTabla, sizeof(char)*largoDeNombreTabla);
+	memcpy(bufferRegistro + desplazamiento, unRegistro->nombreTabla, largoDeNombreTabla);
 	desplazamiento+= sizeof(char)*largoDeNombreTabla;
 	//Tamaño de timestamp
 	memcpy(bufferRegistro + desplazamiento, &tamanioTimeStamp, tamanioTimeStamp);
@@ -73,7 +108,17 @@ void* serializarRegistro(registro* unRegistro,char* nombreTabla) {
 	//Nombre de value
 	memcpy(bufferRegistro + desplazamiento, unRegistro->value, largoDeValue);
 	desplazamiento+= largoDeValue;
+
+	*(tamanioBuffer) = desplazamiento;
+
 	return bufferRegistro;
+}
+
+void serializarYEnviarRegistro(int socket, registroParaComunicacion* unRegistro) {
+	int tamanioAEnviar;
+	void* bufferAEnviar = serializarUnRegistro(unRegistro, &tamanioAEnviar);
+	enviar(socket, bufferAEnviar, tamanioAEnviar);
+	free(bufferAEnviar);
 }
 
 //void *memcpy(void *dest, const void *src, size_t n);
@@ -133,10 +178,11 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL, int* tamanio) {
 	return bufferOperacion;
 }
 
-void serializador_serializarYEnviarOperacionLQL(operacionLQL* operacionLQL, int socket) {
+void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL) {
 	int tamanioBuffer;
 	void* bufferAEnviar = serializarOperacionLQL(operacionLQL, &tamanioBuffer);
 	enviar(socket, bufferAEnviar, tamanioBuffer);
+	free(bufferAEnviar);
 }
 
 /*
