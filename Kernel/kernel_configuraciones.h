@@ -14,6 +14,10 @@ char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel
 char* ipMemoria;
 char* puertoMemoria;
 configYLogs *kernel_configYLog;
+int quantumMax;
+int multiprocesamiento;
+int metadataRefresh;
+int sleepEjecucion;
 
 void liberarConfigYLogs();
 void kernel_obtener_configuraciones(char*);
@@ -25,6 +29,10 @@ void kernel_obtener_configuraciones(char* path){ //TODO agregar quantum
 	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
+	quantumMax = (int)config_get_string_value(kernel_configYLog->config,"QUANTUM");
+	multiprocesamiento =(int)config_get_string_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
+	metadataRefresh = (int)config_get_string_value(kernel_configYLog->config,"METADATA_REFRESH");
+	sleepEjecucion = (int)config_get_string_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 }
 void liberarConfigYLogs() {
 	free(kernel_configYLog->config);

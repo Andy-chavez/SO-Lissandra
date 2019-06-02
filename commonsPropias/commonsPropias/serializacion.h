@@ -94,7 +94,13 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion);
  * Devuelve un buffer con ese registro serializado.
  */
 void* serializarRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffer);
-
+/*
+ * Usar antes de serializar, pasandole un string para poder agilizar el armado de la operacion LQL
+ * Devuelve el struct operacionLQL completo a partir de un string
+ * con sus respectiva operacion y argumentos por separado
+ *
+ */
+operacionLQL* splitear_operacion(char* operacion);
 /*
  * Serializa una operacionLQL. devuelve un buffer donde
  * se encuentra la operacion serializada.
