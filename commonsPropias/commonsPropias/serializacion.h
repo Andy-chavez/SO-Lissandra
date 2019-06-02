@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <commons/collections/list.h>
+#include <commons/string.h>
 #include <time.h>
 #include <stdlib.h>
 #include "conexiones.h"
