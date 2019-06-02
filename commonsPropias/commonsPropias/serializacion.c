@@ -2,6 +2,9 @@
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
+	if(*buffer == NULL) {
+		return -1;
+	}
 	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
 	return protocolo;
 }

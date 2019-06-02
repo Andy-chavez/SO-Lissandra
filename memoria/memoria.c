@@ -25,7 +25,8 @@ int APIProtocolo(void* buffer, int socket) {
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
-	default:
+	case -1:
+		log_info(archivosDeConfigYLog->logger, "Se cerro una conexion con el socket");
 		return 0;
 	}
 }
@@ -74,6 +75,7 @@ void* trabajarConConexion(void* socket) {
 
 		hayMensaje = APIProtocolo(recibir(socketKernel), socketKernel);
 	}
+	pthread_exit(0);
 }
 
 datosInicializacion* realizarHandshake() {
@@ -148,7 +150,7 @@ void inicializarArchivosDeConfigYLog() {
 	archivosDeConfigYLog = malloc(sizeof(archivosDeConfigYLog));
 
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
-	archivosDeConfigYLog->config = config_create("memoria.config");
+	archivosDeConfigYLog->config = config_create("../memoria.config");
 }
 
 int main() {
