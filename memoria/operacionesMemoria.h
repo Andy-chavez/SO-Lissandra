@@ -229,14 +229,12 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	free(parametrosSpliteados);
 }
 
-void* obtenerValorDe(char* parametros, int lugarDelParametroBuscado) {
-	char** parametrosSpliteados = string_split(parametros, " ");
-	char* parametroBuscado = *(parametrosSpliteados + lugarDelParametroBuscado);
-	liberarParametrosSpliteados(parametrosSpliteados);
+void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
+	char* parametroBuscado = *(parametros + lugarDelParametroBuscado);
 	return (void*) parametroBuscado;
 }
 
-registro* crearRegistroNuevo(char* parametros) {
+registro* crearRegistroNuevo(char** parametros) {
 	registro* nuevaregistro = malloc(sizeof(registro));
 
 	nuevaregistro->timestamp = time(NULL);
@@ -304,15 +302,21 @@ char* valueRegistro(segmento* unSegmento, int key){
 // OPERACIONESLQL //
 
 void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){
-	char* nombreTabla = (char*) obtenerValorDe(operacionSelect->parametros, 0);
-	int key = *(uint16_t*) obtenerValorDe(operacionSelect->parametros, 1);
+	char** parametrosSpliteados = string_split(operacionSelect->parametros, " ");
+	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
+	int key = *(uint16_t*) obtenerValorDe(parametrosSpliteados, 1);
+
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
+
 		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,key)){
+
 			char* value = valueRegistro(unSegmento,key);
+
 			printf ("El valor es %s\n", value);
-			enviar(socketKernel, (void*) value, strlen(value) + 1);
+			int longitudValue = string_length(value) + 1;
+			enviar(socketKernel, (void*) value, longitudValue);
 			free(value);
 		}
 		else {
@@ -320,25 +324,31 @@ void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* 
 
 			if(guardarEnMemoria(registroLFS, memoriaPrincipal)) {
 				// TODO enviar(socketKernel, (void*) registroNuevo->value, strlen(registroNuevo->value) + 1);
-			} else {
+			}
+			else {
 				// TODO Dio error al guardar la pagina.
 			};
 
 			// TODO else journal();
 		}
-	} else {
+	}
+
+	else {
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
 		if(agregarSegmento(memoriaPrincipal, registroLFS, nombreTabla)){;
 		// TODO enviar(socketKernel, (void*) registroNuevo->value, strlen(registroNuevo->value) + 1);
-		} else {
+		}
+		else {
 			// TODO dio error al guardar el segmento.
 		}
 	}
 }
 
 void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* memoriaPrincipal){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
-	char* nombreTabla = (char*) obtenerValorDe(operacionInsert->parametros, 0);
-	registro* registroNuevo = crearRegistroNuevo(operacionInsert->parametros);
+	char** parametrosSpliteados = string_split(operacionInsert->parametros, " ");
+	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
+	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados);
+
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 		paginaEnTabla* paginaEncontrada;
@@ -352,7 +362,7 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 		log_info(configYLog->logger, "No existia el segmento, es nuevo!");
 		agregarSegmento(memoriaPrincipal,registroNuevo,nombreTabla);
 	}
-	liberarRegistro(registroNuevo);
+
 	log_info(configYLog->logger, "capaz lo hizo bien xd");
 }
 

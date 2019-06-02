@@ -3,7 +3,7 @@
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
 	if(*buffer == NULL) {
-		return -1;
+		return DESCONEXION;
 	}
 	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
 	return protocolo;

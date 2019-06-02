@@ -21,11 +21,11 @@ int APIProtocolo(void* buffer, int socket) {
 	switch(operacion) {
 	case OPERACIONLQL:
 		log_info(archivosDeConfigYLog->logger, "Recibi una operacionLQL, a ver que es?");
-		APIMemoria(deserializarOperacionLQL(buffer), memoriaPrincipal, socket);
+		APIMemoria(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
-	case -1:
+	case DESCONEXION:
 		log_info(archivosDeConfigYLog->logger, "Se cerro una conexion con el socket");
 		cerrarConexion(socket);
 		return 0;
@@ -74,11 +74,13 @@ void* trabajarConConexion(void* socket) {
 	int hayMensaje = 1;
 
 	while(hayMensaje) {
+		void* bufferRecepcion = recibir(socketKernel);
 		log_info(archivosDeConfigYLog->logger, "Recibi algo, A parsear!");
-
-		hayMensaje = APIProtocolo(recibir(socketKernel), socketKernel);
+		printf("\n\n hayMensaje = %d \n\n", hayMensaje);
+		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
 	}
-	pthread_exit(0);
+	return NULL;
+	//pthread_exit(0);
 }
 
 datosInicializacion* realizarHandshake() {
@@ -119,6 +121,7 @@ void *servidorMemoria(){
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
 		log_error(archivosDeConfigYLog->logger, "No se pudo inicializar el servidor de memoria");
+		return NULL;
 	}
 
 	log_info(archivosDeConfigYLog->logger, "Servidor Memoria en linea");
@@ -184,6 +187,7 @@ int main() {
 	liberarMemoria(memoriaPrincipal);
 	liberarConfigYLogs();
 	return 0;
+
 }
 
 
