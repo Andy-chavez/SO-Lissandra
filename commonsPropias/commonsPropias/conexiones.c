@@ -128,6 +128,7 @@ void *recibir(int unSocket) {
 	int bytesRecibidos = recv(unSocket, recibido, sizeof(int), MSG_WAITALL); // OJO, el flag dice que esto es bloqueante!
 
 	if(!bytesRecibidos || bytesRecibidos == -1)  {
+		free(recibido);
 		return NULL;
 	}
 
@@ -142,7 +143,8 @@ void *recibir(int unSocket) {
 		bytesRecibidosTotales += bytesRecibidos;
 	}
 
-	if(!bytesRecibidos || bytesRecibidos == -1)  {
+	if(!bytesRecibidos || bytesRecibidos == -1) {
+		free(recibido);
 		return NULL;
 	}
 
