@@ -34,7 +34,7 @@ typedef struct {
 
 typedef struct {
 	int numeroregistro;
-	void *unaregistro;
+	void *unRegistro;
 	flagModificado flag;
 } paginaEnTabla;
 
@@ -85,8 +85,8 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 }
 
 void liberarMemoria(memoria* memoriaPrincipal) {
-	void* liberarPaginas(paginaEnTabla* unaregistro) {
-		free(unaregistro);
+	void* liberarPaginas(paginaEnTabla* unRegistro) {
+		free(unRegistro);
 	}
 
 	void* liberarSegmentos(segmento* unSegmento) {
@@ -119,18 +119,22 @@ bool hayEspacioSuficientePara(memoria* memoria, int espacioPedido){
 	return (memoria->limite - encontrarEspacio(memoria)) > espacioPedido;
 }
 
-bufferDeregistro *armarBufferDePagina(registroConNombreTabla* unaregistro) {
+bufferDeregistro *armarBufferDePagina(registroConNombreTabla* unRegistro, memoria* memoriaPrincipal) {
 	bufferDeregistro* buffer = malloc(sizeof(bufferDeregistro));
-	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + strlen(unaregistro->value) + 1;
+	int tamanioValueRegistro = strlen(unRegistro->value) + 1;
+	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + memoriaPrincipal->tamanioMaximoValue;
 	buffer->buffer = malloc(buffer->tamanio);
 
-	memcpy(buffer->buffer, &(unaregistro->timestamp), sizeof(time_t));
+	memcpy(buffer->buffer, &(unRegistro->timestamp), sizeof(time_t));
 	int desplazamiento = sizeof(time_t);
 
-	memcpy(buffer->buffer + desplazamiento, &(unaregistro->key), sizeof(uint16_t));
+	memcpy(buffer->buffer + desplazamiento, &(unRegistro->key), sizeof(uint16_t));
 	desplazamiento += sizeof(uint16_t);
 
-	memcpy(buffer->buffer + desplazamiento, unaregistro->value, strlen(unaregistro->value) + 1);
+	memcpy(buffer->buffer + desplazamiento, unRegistro->value, tamanioValueRegistro);
+	desplazamiento += tamanioValueRegistro;
+	memset(buffer->buffer + desplazamiento, 1, memoriaPrincipal->tamanioMaximoValue - tamanioValueRegistro);
+
 	return buffer;
 }
 
@@ -139,8 +143,8 @@ void liberarBufferDeregistro(bufferDeregistro* buffer) {
 	free(buffer);
 }
 
-void* guardar(registroConNombreTabla* unaregistro, memoria* memoriaPrincipal) {
-	bufferDeregistro *bufferAGuardar = armarBufferDePagina(unaregistro);
+void* guardar(registroConNombreTabla* unRegistro, memoria* memoriaPrincipal) {
+	bufferDeregistro *bufferAGuardar = armarBufferDePagina(unRegistro, memoriaPrincipal->tamanioMaximoValue);
 	void *guardarDesde = encontrarEspacio(memoriaPrincipal);
 
 	memcpy(guardarDesde, bufferAGuardar->buffer, bufferAGuardar->tamanio);
@@ -163,7 +167,7 @@ void* guardarEnMemoria(registroConNombreTabla* unRegistro, memoria* memoriaPrinc
 int agregarSegmento(memoria* memoria,registro* primeraregistro,char* tabla ){
 
 	paginaEnTabla* primerregistro = malloc(sizeof(paginaEnTabla));
-	if(!(primerregistro->unaregistro = guardarEnMemoria(primeraregistro, memoria))) {
+	if(!(primerregistro->unRegistro = guardarEnMemoria(primeraregistro, memoria))) {
 		// TODO Avisar que no se pudo guardar en memoria.
 		return -1;
 	};
@@ -181,25 +185,25 @@ int agregarSegmento(memoria* memoria,registro* primeraregistro,char* tabla ){
 	return 0;
 }
 
-registro* leerDatosEnMemoria(paginaEnTabla* unaregistro) {
+registro* leerDatosEnMemoria(paginaEnTabla* unRegistro) {
 	registro* registroARetornar = malloc(sizeof(registro));
 
-	memcpy(&(registroARetornar->timestamp),(time_t*) unaregistro->unaregistro, sizeof(time_t));
+	memcpy(&(registroARetornar->timestamp),(time_t*) unRegistro->unRegistro, sizeof(time_t));
 	int desplazamiento = sizeof(time_t);
 
-	memcpy(&(registroARetornar->key), (uint16_t*) (unaregistro->unaregistro + desplazamiento), sizeof(uint16_t));
+	memcpy(&(registroARetornar->key), (uint16_t*) (unRegistro->unRegistro + desplazamiento), sizeof(uint16_t));
 	desplazamiento += sizeof(uint16_t);
 
-	int tamanioValue = obtenerTamanioValue((unaregistro->unaregistro + desplazamiento)) + 1;
+	int tamanioValue = obtenerTamanioValue((unRegistro->unRegistro + desplazamiento)) + 1;
 	registroARetornar->value = malloc(tamanioValue);
-	memcpy(registroARetornar->value, (unaregistro->unaregistro + desplazamiento), tamanioValue);
+	memcpy(registroARetornar->value, (unRegistro->unRegistro + desplazamiento), tamanioValue);
 
 	return registroARetornar;
 }
 
-void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
-	bufferDeregistro* bufferParaCambio = armarBufferDePagina(registroNuevo);
-	memcpy(registroACambiar->unaregistro, bufferParaCambio->buffer, bufferParaCambio->tamanio);
+void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo, memoria* memoriaPrincipal) {
+	bufferDeregistro* bufferParaCambio = armarBufferDePagina(registroNuevo, memoriaPrincipal->tamanioMaximoValue);
+	memcpy(registroACambiar->unRegistro, bufferParaCambio->buffer, bufferParaCambio->tamanio);
 	liberarBufferDeregistro(bufferParaCambio);
 }
 
@@ -243,9 +247,9 @@ int obtenerTamanioValue(void* valueBuffer) {
 	return tamanio;
 }
 
-void liberarregistro(registro* unaregistro) {
-	free(unaregistro->value);
-	free(unaregistro);
+void liberarregistro(registro* unRegistro) {
+	free(unRegistro->value);
+	free(unRegistro);
 }
 
 bool tienenIgualNombre(char* unNombre,char* otroNombre){
@@ -260,8 +264,8 @@ segmento* encontrarSegmentoPorNombre(memoria* memoria,char* tablaNombre){
 	return (segmento*) list_find(memoria->tablaSegmentos,(void*)segmentoDeIgualNombre);
 }
 
-bool igualKeyregistro(paginaEnTabla* unaregistro,int keyDada){
-	registro* registroReal = leerDatosEnMemoria(unaregistro);
+bool igualKeyregistro(paginaEnTabla* unRegistro,int keyDada){
+	registro* registroReal = leerDatosEnMemoria(unRegistro);
 	bool respuesta = registroReal->key == keyDada;
 
 	liberarregistro(registroReal);
@@ -269,8 +273,8 @@ bool igualKeyregistro(paginaEnTabla* unaregistro,int keyDada){
 }
 
 paginaEnTabla* encontrarregistroPorKey(segmento* unSegmento, int keyDada){
-	bool tieneIgualKeyQueDada(paginaEnTabla* unaregistro) {
-			return igualKeyregistro(unaregistro, keyDada);
+	bool tieneIgualKeyQueDada(paginaEnTabla* unRegistro) {
+			return igualKeyregistro(unRegistro, keyDada);
 	}
 
 	return (paginaEnTabla*) list_find(unSegmento->tablaregistros,(void*)tieneIgualKeyQueDada);
@@ -328,7 +332,7 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 		paginaEnTabla* paginaEncontrada;
 		if(paginaEncontrada = encontrarregistroPorKey(unSegmento,registroNuevo->key)){
-			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo);
+			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo, memoriaPrincipal);
 			paginaEncontrada->flag = SI;
 		}
 	}
