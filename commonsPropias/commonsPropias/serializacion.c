@@ -180,21 +180,19 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL, int* tamanio) {
 
 	return bufferOperacion;
 }
+
 operacionLQL* splitear_operacion(char* operacion){
-	operacionLQL* operacionAux=malloc(sizeof(operacionLQL));
+	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
 	char** opSpliteada;
-	if(string_starts_with(operacion,"JOURNAL") || (string_starts_with(operacion,"DESCRIBE") && !string_contains(operacion," "))){
-		operacionAux->operacion=malloc(sizeof(operacion));
-		operacionAux->operacion=operacion;
-		operacionAux->parametros= NULL;
-	}
-	else{
-		opSpliteada = string_n_split(operacion,2," ");
-		operacionAux->operacion=malloc(sizeof(*(opSpliteada)));
-		operacionAux->operacion=*opSpliteada;
-		operacionAux->parametros=malloc(sizeof(*(opSpliteada+1)));
-		operacionAux->parametros=*(opSpliteada+1);
-	}
+
+	// Para hacerlo mas facil, lo dejo sin el if, ya que
+	// si no vienen mas parametros, operacionAux->parametros queda
+	// apuntando en NULL (El ultimo parametro de string_n_split). Se podria utilizar
+	// ese puntero para diferenciar un DESCRIBE solo con el otro tipo de DESCRIBE.
+	opSpliteada = string_n_split(operacion,2," ");
+	operacionAux->operacion=*opSpliteada;
+	operacionAux->parametros=*(opSpliteada+1);
+
 	return operacionAux;
 }
 
