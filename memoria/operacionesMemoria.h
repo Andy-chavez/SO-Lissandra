@@ -33,14 +33,14 @@ typedef struct {
 } registro;
 
 typedef struct {
-	int numeroregistro;
+	int numeroPagina;
 	void *unRegistro;
 	flagModificado flag;
 } paginaEnTabla;
 
 typedef struct {
 	char *nombreTabla;
-	t_list* tablaregistros;
+	t_list* tablaPaginas;
 } segmento;
 
 typedef struct {
@@ -84,17 +84,17 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	return nuevaMemoria;
 }
 
-void liberarMemoria(memoria* memoriaPrincipal) {
+void* liberarSegmentos(segmento* unSegmento) {
 	void* liberarPaginas(paginaEnTabla* unRegistro) {
 		free(unRegistro);
 	}
 
-	void* liberarSegmentos(segmento* unSegmento) {
 		free(unSegmento->nombreTabla);
-		list_destroy_and_destroy_elements(unSegmento->tablaregistros, liberarPaginas);
+		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
 		free(unSegmento);
 	}
 
+void liberarMemoria(memoria* memoriaPrincipal) {
 	free(memoriaPrincipal->base);
 	list_destroy_and_destroy_elements(memoriaPrincipal->tablaSegmentos, liberarSegmentos);
 	free(memoriaPrincipal);
@@ -165,25 +165,42 @@ void* guardarEnMemoria(registroConNombreTabla* unRegistro, memoria* memoriaPrinc
 	}
 
 }
-int agregarSegmento(memoria* memoria,registro* primeraregistro,char* tabla ){
 
-	paginaEnTabla* primerregistro = malloc(sizeof(paginaEnTabla));
-	if(!(primerregistro->unRegistro = guardarEnMemoria(primeraregistro, memoria))) {
+paginaEnTabla* crearPaginaParaSegmento(memoria* memoria, registro* unRegistro) {
+	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
+
+	if(!(pagina->unRegistro = guardarEnMemoria(unRegistro, memoria))) {
 		// TODO Avisar que no se pudo guardar en memoria.
-		return -1;
+		return NULL;
 	};
-	primerregistro->numeroregistro = 0;
+	pagina->flag = NO;
 
+	return pagina;
+}
+
+int agregarSegmento(memoria* memoria,registro* primerRegistro,char* tabla ){
+
+	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(memoria, primerRegistro);
+
+	if(!primeraPagina) {
+		return -1;
+	}
+
+	primeraPagina->numeroPagina = 0;
 	segmento* segmentoNuevo = malloc(sizeof(segmento));
 	segmentoNuevo->nombreTabla = tabla;
-	segmentoNuevo->tablaregistros = list_create();
-
-
-	list_add(segmentoNuevo->tablaregistros, primerregistro);
-
+	segmentoNuevo->tablaPaginas = list_create();
 	list_add(memoria->tablaSegmentos, segmentoNuevo);
 
+	list_add(segmentoNuevo->tablaPaginas, primeraPagina);
+
 	return 0;
+}
+
+agregarPaginaEnSegmento(memoria* memoria, segmento* unSegmento, registro* unRegistro) {
+	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(memoria, unRegistro);
+	paginaParaAgregar->numeroPagina = list_size(unSegmento);
+	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
 }
 
 registro* leerDatosEnMemoria(paginaEnTabla* unRegistro) {
@@ -206,6 +223,17 @@ void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNu
 	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, memoriaPrincipal->tamanioMaximoValue);
 	memcpy(registroACambiar->unRegistro, bufferParaCambio->buffer, bufferParaCambio->tamanio);
 	liberarbufferDePagina(bufferParaCambio);
+}
+
+int obtenerTamanioValue(void* valueBuffer) {
+	int tamanio = 0;
+	char prueba = *((char*) valueBuffer);
+	while(prueba != '\0') {
+		tamanio++;
+		valueBuffer++;
+		prueba = *((char*) valueBuffer);
+	}
+	return tamanio;
 }
 
 // ------------------------------------------------------------------------ //
@@ -244,17 +272,6 @@ registro* crearRegistroNuevo(char** parametros) {
 	return nuevaregistro;
 }
 
-int obtenerTamanioValue(void* valueBuffer) {
-	int tamanio = 0;
-	char prueba = *((char*) valueBuffer);
-	while(prueba != '\0') {
-		tamanio++;
-		valueBuffer++;
-		prueba = *((char*) valueBuffer);
-	}
-	return tamanio;
-}
-
 void liberarRegistro(registro* unRegistro) {
 	free(unRegistro->value);
 	free(unRegistro);
@@ -285,7 +302,7 @@ paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 			return igualKeyRegistro(unRegistro, keyDada);
 	}
 
-	return (paginaEnTabla*) list_find(unSegmento->tablaregistros,(void*)tieneIgualKeyQueDada);
+	return (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
 }
 char* valueRegistro(segmento* unSegmento, int key){
 	paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,key);
@@ -355,6 +372,8 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,registroNuevo->key)){
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo, memoriaPrincipal);
 			paginaEncontrada->flag = SI;
+		} else {
+			agregarPaginaEnSegmento(memoriaPrincipal, unSegmento, registroNuevo);
 		}
 	}
 
