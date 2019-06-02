@@ -185,13 +185,15 @@ operacionLQL* splitear_operacion(char* operacion){
 	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
 	char** opSpliteada;
 
-	// Para hacerlo mas facil, lo dejo sin el if, ya que
-	// si no vienen mas parametros, operacionAux->parametros queda
-	// apuntando en NULL (El ultimo parametro de string_n_split). Se podria utilizar
-	// ese puntero para diferenciar un DESCRIBE solo con el otro tipo de DESCRIBE.
-	opSpliteada = string_n_split(operacion,2," ");
-	operacionAux->operacion=*opSpliteada;
-	operacionAux->parametros=*(opSpliteada+1);
+	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE")) {
+		operacionAux->operacion = operacion;
+		operacionAux->parametros = "ALL";
+	} else {
+		opSpliteada = string_n_split(operacion,2," ");
+		operacionAux->operacion=*opSpliteada;
+		operacionAux->parametros=*(opSpliteada+1);
+	}
+
 
 	return operacionAux;
 }
