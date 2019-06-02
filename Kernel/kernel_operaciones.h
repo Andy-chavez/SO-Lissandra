@@ -158,10 +158,14 @@ void kernel_crearPCB(char* operacion){
 void kernel_pasar_a_ready(){
 	//sem_wait(hayNew); //TODO sem_BINARIO
 	char* operacion = malloc(sizeof(list_get(cola_proc_nuevos,1)));
+	if (list_is_empty(cola_proc_listos)){ //TODO semaforo que solucione esto para sacarlo
+		return ;
+	}
 	pthread_mutex_lock(&colaNuevos);
 	operacion = (char*)list_remove(cola_proc_nuevos,1);
 	pthread_mutex_unlock(&colaNuevos);
 	string_to_upper(operacion);
+
 	if (string_contains( "RUN" ,operacion)) {
 		 //poner esto en log aclarando el path
 		kernel_run(operacion);

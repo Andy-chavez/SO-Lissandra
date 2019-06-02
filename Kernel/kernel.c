@@ -40,16 +40,17 @@ int main(int argc, char *argv[]){
 	//cola_proc_nuevos = list_create();
 	//kernel_inicializar(pathConfig);
 	kernel_crearListas();
+	kernel_inicializarSemaforos();
 	//sem_init(hayNew,0,0);
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
-	pthread_join(threadConsola,NULL);
+	pthread_join(threadConsola, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
-	pthread_join(threadNew_Ready, NULL);
+	pthread_join(threadNew_Ready,NULL);
 	//sem_destroy(hayNew);
 //	pthread_create(&threadPlanificador, NULL,(void*) kernel_consola, NULL);
 //	pthread_join(threadPlanificador, NULL);
 	//kernel_consola();
 //TODO frees de las colas
-	liberarConfigYLogs(kernel_configYLog);
+	//liberarConfigYLogs(kernel_configYLog);
 	return EXIT_SUCCESS;
 }
