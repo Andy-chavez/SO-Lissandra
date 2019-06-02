@@ -209,7 +209,7 @@ void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNu
 }
 
 // ------------------------------------------------------------------------ //
-// OPERACIONES SOBRE LISTAS, TABLAS Y registroS //
+// OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
 
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 	serializarYEnviarOperacionLQL(socketLissandraFS, operacion);
@@ -220,10 +220,19 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 	return paginaEncontradaEnLFS;
 }
 
+void liberarParametrosSpliteados(char** parametrosSpliteados) {
+	int i = 0;
+	while(*(parametrosSpliteados + i)) {
+		free(*(parametrosSpliteados + i));
+		i++;
+	}
+	free(parametrosSpliteados);
+}
 
 void* obtenerValorDe(char* parametros, int lugarDelParametroBuscado) {
 	char** parametrosSpliteados = string_split(parametros, " ");
 	char* parametroBuscado = *(parametrosSpliteados + lugarDelParametroBuscado);
+	liberarParametrosSpliteados(parametrosSpliteados);
 	return (void*) parametroBuscado;
 }
 
@@ -304,6 +313,7 @@ void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* 
 			char* value = valueRegistro(unSegmento,key);
 			printf ("El valor es %s\n", value);
 			enviar(socketKernel, (void*) value, strlen(value) + 1);
+			free(value);
 		}
 		else {
 			registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
@@ -342,6 +352,7 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 		log_info(configYLog->logger, "No existia el segmento, es nuevo!");
 		agregarSegmento(memoriaPrincipal,registroNuevo,nombreTabla);
 	}
+	liberarRegistro(registroNuevo);
 	log_info(configYLog->logger, "capaz lo hizo bien xd");
 }
 

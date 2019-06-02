@@ -9,6 +9,12 @@ operacionProtocolo empezarDeserializacion(void **buffer) {
 	return protocolo;
 }
 
+void liberarOperacionLQL(operacionLQL* operacion) {
+	free(operacion->operacion);
+	free(operacion->parametros);
+	free(operacion);
+}
+
 void* serializarHandshake(int tamanioValue, int* tamanioBuffer){
 	int desplazamiento = 0;
 	operacionProtocolo protocoloHandshake = HANDSHAKE;

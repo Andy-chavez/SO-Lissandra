@@ -27,8 +27,10 @@ int APIProtocolo(void* buffer, int socket) {
 	// por ahora va a ser el default, ver como arreglarlo
 	case -1:
 		log_info(archivosDeConfigYLog->logger, "Se cerro una conexion con el socket");
+		cerrarConexion(socket);
 		return 0;
 	}
+	free(buffer);
 }
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
@@ -55,15 +57,16 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else {
 		log_error(archivosDeConfigYLog->logger, "No pude entender la operacion");
 	}
+	liberarOperacionLQL(operacionAParsear);
 }
 //pthread_mutex_t mutexBufferLFS = 0; Podriamos usar semaphore.h que es mejor!
 
 //------------------------------------------------------------------------
 
-void liberarConfigYLogs(configYLogs *archivos) {
-	config_destroy(archivos->config);
-	log_destroy(archivos->logger);
-	free(archivos);
+void liberarConfigYLogs() {
+	log_destroy(archivosDeConfigYLog->logger);
+	config_destroy(archivosDeConfigYLog->config);
+	free(archivosDeConfigYLog);
 }
 
 void* trabajarConConexion(void* socket) {
@@ -116,21 +119,24 @@ void *servidorMemoria(){
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
 		log_error(archivosDeConfigYLog->logger, "No se pudo inicializar el servidor de memoria");
-		pthread_exit(0);
 	}
 
 	log_info(archivosDeConfigYLog->logger, "Servidor Memoria en linea");
 
-	while(1){
+	int valgrind = 1;
+	while(valgrind){
 		int socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
 			log_error(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
+			valgrind = 0;
 			continue;
 		}
-		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
+		/*if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
 			log_error(archivosDeConfigYLog->logger, "No se pudo crear un hilo para trabajar con el socket");
 		};
-		//void* buffer = envioDePrueba("hola");
+		*/
+		trabajarConConexion(&socketKernel);
+		valgrind = 0;
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -158,12 +164,15 @@ int main() {
 	inicializarArchivosDeConfigYLog();
 
 	datosInicializacion* datosDeInicializacion;
-	if(!(datosDeInicializacion = realizarHandshake())) return -1;
+	if(!(datosDeInicializacion = realizarHandshake())) {
+		liberarConfigYLogs();
+		return -1;
+	};
 
 	memoriaPrincipal = inicializarMemoria(datosDeInicializacion, archivosDeConfigYLog);
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
-	servidorMemoria((void*) archivosDeConfigYLog);
+	servidorMemoria();
 	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, archivosDeConfigYLog);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, archivosDeConfigYLog);
@@ -173,7 +182,7 @@ int main() {
 	//pthread_detach(threadTimedGossiping);
 
 	liberarMemoria(memoriaPrincipal);
-	liberarConfigYLogs(archivosDeConfigYLog);
+	liberarConfigYLogs();
 	return 0;
 }
 
