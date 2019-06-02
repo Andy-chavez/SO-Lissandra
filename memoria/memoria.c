@@ -12,44 +12,50 @@
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
 
-void APIProtocolo(void* buffer, memoria* memoriaPrincipal, configYLogs* configYLog, int socket) {
+memoria* memoriaPrincipal;
+configYLogs *archivosDeConfigYLog;
+
+int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
 	case OPERACIONLQL:
-		log_info(configYLog->logger, "Recibi una operacionLQL, a ver que es?");
-		APIMemoria(deserializarOperacionLQL(buffer), memoriaPrincipal, configYLog, socket);
-		break;
+		log_info(archivosDeConfigYLog->logger, "Recibi una operacionLQL, a ver que es?");
+		APIMemoria(deserializarOperacionLQL(buffer), memoriaPrincipal, socket);
+		return 1;
+	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
+	// por ahora va a ser el default, ver como arreglarlo
+	default:
+		return 0;
 	}
 }
 
-void APIMemoria(operacionLQL* operacionAParsear, memoria* memoriaPrincipal, configYLogs* configYLog, int socketKernel) {
+void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
-		log_info(configYLog->logger, "Recibi un INSERT");
-		insertLQL(operacionAParsear, configYLog, memoriaPrincipal);
-		selectLQL(operacionAParsear, configYLog, memoriaPrincipal, socketKernel);
+		log_info(archivosDeConfigYLog->logger, "Recibi un INSERT");
+		insertLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
-		log_info(configYLog->logger, "Recibi un SELECT");
-		selectLQL(operacionAParsear, configYLog, memoriaPrincipal, socketKernel);
+		log_info(archivosDeConfigYLog->logger, "Recibi un SELECT");
+		selectLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
-		log_info(configYLog->logger, "Recibi un DESCRIBE");
+		log_info(archivosDeConfigYLog->logger, "Recibi un DESCRIBE");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
-		log_info(configYLog->logger, "Recibi un CREATE");
+		log_info(archivosDeConfigYLog->logger, "Recibi un CREATE");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
-		log_info(configYLog->logger, "Recibi un DROP");
+		log_info(archivosDeConfigYLog->logger, "Recibi un DROP");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
-		log_info(configYLog->logger, "Recibi un JOURNAL");
+		log_info(archivosDeConfigYLog->logger, "Recibi un JOURNAL");
 		}
 	else {
-		log_error(configYLog->logger, "No pude entender la operacion");
+		log_error(archivosDeConfigYLog->logger, "No pude entender la operacion");
 	}
 }
-//pthread_mutex_t mutexBufferLFS = 0;
+//pthread_mutex_t mutexBufferLFS = 0; Podriamos usar semaphore.h que es mejor!
 
 //------------------------------------------------------------------------
 
@@ -59,11 +65,25 @@ void liberarConfigYLogs(configYLogs *archivos) {
 	free(archivos);
 }
 
-datosInicializacion* realizarHandshake(configYLogs* configYLog) {
-	socketLissandraFS = crearSocketLFS(configYLog);
+void* trabajarConConexion(void* socket) {
+	int socketKernel = *(int*) socket;
+	int hayMensaje = 1;
+
+	while(hayMensaje) {
+		log_info(archivosDeConfigYLog->logger, "Recibi algo, A parsear!");
+
+		hayMensaje = APIProtocolo(recibir(socketKernel), socketKernel);
+	}
+}
+
+datosInicializacion* realizarHandshake() {
+	socketLissandraFS = crearSocketLFS();
+	if(socketLissandraFS == -1) {
+		log_error(archivosDeConfigYLog->logger,"No se pudo conectar con LFS");
+		return NULL;
+	}
 	operacionProtocolo operacionHandshake = HANDSHAKE;
-	//void* bufferParaEnviarOperacion = serializarHandshake((int) operacionHandshake);
-	//enviar(socketLissandraFS, (void*)operacionHandshake, sizeof(int)*2);
+	serializarYEnviarHandshake(socketLissandraFS, 0);
 
 	void* bufferHandshake = recibir(socketLissandraFS);
 
@@ -79,7 +99,7 @@ void liberarDatosDeInicializacion(datosInicializacion* datos) {
 	free(datos);
 }
 
-int crearSocketLFS(configYLogs* archivosDeConfigYLog) {
+int crearSocketLFS() {
 	char* fileSystemIP = config_get_string_value(archivosDeConfigYLog->config, "IPFILESYSTEM");
 	char* fileSystemPuerto = config_get_string_value(archivosDeConfigYLog->config, "PUERTOFILESYSTEM");
 
@@ -87,10 +107,9 @@ int crearSocketLFS(configYLogs* archivosDeConfigYLog) {
 	return socketClienteLFS;
 }
 
-void *servidorMemoria(void* arg, memoria* memoriaPrincipal){
-	configYLogs *archivosDeConfigYLog = (configYLogs*) arg;
-
+void *servidorMemoria(){
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(archivosDeConfigYLog->config, "IPMEMORIA"), config_get_string_value(archivosDeConfigYLog->config, "PUERTO"));
+	pthread_t threadID;
 
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
@@ -106,13 +125,10 @@ void *servidorMemoria(void* arg, memoria* memoriaPrincipal){
 			log_error(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			continue;
 		}
+		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
+			log_error(archivosDeConfigYLog->logger, "No se pudo crear un hilo para trabajar con el socket");
+		};
 		//void* buffer = envioDePrueba("hola");
-		void* mensaje = recibir(socketKernel); // interface( deserializarOperacion( buffer , 1 ) )
-		log_info(archivosDeConfigYLog->logger, "Recibi algo, A parsear!");
-		APIProtocolo(mensaje, memoriaPrincipal, archivosDeConfigYLog, socketKernel);
-
-		free(mensaje);
-		cerrarConexion(socketKernel);
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -128,26 +144,29 @@ void pedirALFS(operacionLQL* operacion){
 
 }
 
-int main() {
-	pthread_t threadServer; //threadCliente, threadTimedJournal, threadTimedGossiping;
-	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
+void inicializarArchivosDeConfigYLog() {
+	archivosDeConfigYLog = malloc(sizeof(archivosDeConfigYLog));
 
-	archivosDeConfigYLog->config = config_create("memoria.config");
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
+	archivosDeConfigYLog->config = config_create("memoria.config");
+}
 
-	datosInicializacion* datosDeInicializacion = realizarHandshake(archivosDeConfigYLog);
+int main() {
+	pthread_t threadServer; // threadTimedJournal, threadTimedGossiping;
+	inicializarArchivosDeConfigYLog();
 
-	memoria* memoriaPrincipal = inicializarMemoria(datosDeInicializacion, archivosDeConfigYLog);
+	datosInicializacion* datosDeInicializacion;
+	if(!(datosDeInicializacion = realizarHandshake())) return -1;
+
+	memoriaPrincipal = inicializarMemoria(datosDeInicializacion, archivosDeConfigYLog);
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
-	servidorMemoria((void*) archivosDeConfigYLog, memoriaPrincipal);
+	servidorMemoria((void*) archivosDeConfigYLog);
 	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) archivosDeConfigYLog);
-	//pthread_create(&threadCliente, NULL, clienteKernel, archivosDeConfigYLog);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, archivosDeConfigYLog);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, archivosDeConfigYLog);
 
 	//pthread_join(threadServer, NULL);
-	//pthread_detach(threadCliente);
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
 

@@ -54,7 +54,7 @@ typedef struct {
 typedef struct {
 	void* buffer;
 	int tamanio;
-} bufferDeregistro;
+} bufferDePagina;
 
 typedef struct {
 	int tamanio;
@@ -100,14 +100,16 @@ void liberarMemoria(memoria* memoriaPrincipal) {
 	free(memoriaPrincipal);
 }
 
-int calcularEspacio(registroConNombreTabla* unRegistro) {
+int calcularEspacioParaUnRegistro(memoria* memoriaPrincipal) {
+	// TODO cambiar para que solo calcule una vez, ya que el espacio necesario es unico y no varia.
 	int timeStamp = sizeof(time_t);
 	int key = sizeof(uint16_t);
-	int value = strlen(unRegistro->value) + 1;
+	int value = memoriaPrincipal->tamanioMaximoValue;
 	return timeStamp + key + value;
 }
 
 void* encontrarEspacio(memoria* memoriaPrincipal) {
+	// TODO cambiar para que encuentre pagina por pagina.
 	void* espacioLibre = memoriaPrincipal->base;
 	while(*((int*) espacioLibre) != 0) {
 		espacioLibre++;
@@ -115,14 +117,14 @@ void* encontrarEspacio(memoria* memoriaPrincipal) {
 	return espacioLibre;
 }
 
-bool hayEspacioSuficientePara(memoria* memoria, int espacioPedido){
-	return (memoria->limite - encontrarEspacio(memoria)) > espacioPedido;
+bool hayEspacioSuficienteParaUnRegistro(memoria* memoria){
+	return (memoria->limite - encontrarEspacio(memoria)) > calcularEspacioParaUnRegistro(memoria);
 }
 
-bufferDeregistro *armarBufferDePagina(registroConNombreTabla* unRegistro, memoria* memoriaPrincipal) {
-	bufferDeregistro* buffer = malloc(sizeof(bufferDeregistro));
+bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tamanioValueMaximo) {
+	bufferDePagina* buffer = malloc(sizeof(bufferDePagina));
 	int tamanioValueRegistro = strlen(unRegistro->value) + 1;
-	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + memoriaPrincipal->tamanioMaximoValue;
+	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + tamanioValueMaximo;
 	buffer->buffer = malloc(buffer->tamanio);
 
 	memcpy(buffer->buffer, &(unRegistro->timestamp), sizeof(time_t));
@@ -133,36 +135,35 @@ bufferDeregistro *armarBufferDePagina(registroConNombreTabla* unRegistro, memori
 
 	memcpy(buffer->buffer + desplazamiento, unRegistro->value, tamanioValueRegistro);
 	desplazamiento += tamanioValueRegistro;
-	memset(buffer->buffer + desplazamiento, 1, memoriaPrincipal->tamanioMaximoValue - tamanioValueRegistro);
+	memset(buffer->buffer + desplazamiento, 1, tamanioValueMaximo - tamanioValueRegistro);
 
 	return buffer;
 }
 
-void liberarBufferDeregistro(bufferDeregistro* buffer) {
+void liberarbufferDePagina(bufferDePagina* buffer) {
 	free(buffer->buffer);
 	free(buffer);
 }
 
 void* guardar(registroConNombreTabla* unRegistro, memoria* memoriaPrincipal) {
-	bufferDeregistro *bufferAGuardar = armarBufferDePagina(unRegistro, memoriaPrincipal->tamanioMaximoValue);
+	bufferDePagina *bufferAGuardar = armarBufferDePagina(unRegistro, memoriaPrincipal->tamanioMaximoValue);
 	void *guardarDesde = encontrarEspacio(memoriaPrincipal);
 
 	memcpy(guardarDesde, bufferAGuardar->buffer, bufferAGuardar->tamanio);
 
-	liberarBufferDeregistro(bufferAGuardar);
+	liberarbufferDePagina(bufferAGuardar);
 
 	return guardarDesde;
 }
 
 void* guardarEnMemoria(registroConNombreTabla* unRegistro, memoria* memoriaPrincipal) {
-	int espacioNecesario = calcularEspacio(unRegistro);
 
-	if(hayEspacioSuficientePara(memoriaPrincipal, espacioNecesario)){
+	if(hayEspacioSuficienteParaUnRegistro(memoriaPrincipal)){
 		return guardar(unRegistro, memoriaPrincipal);
-
 	} else {
 		return NULL;
 	}
+
 }
 int agregarSegmento(memoria* memoria,registro* primeraregistro,char* tabla ){
 
@@ -202,9 +203,9 @@ registro* leerDatosEnMemoria(paginaEnTabla* unRegistro) {
 }
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo, memoria* memoriaPrincipal) {
-	bufferDeregistro* bufferParaCambio = armarBufferDePagina(registroNuevo, memoriaPrincipal->tamanioMaximoValue);
+	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, memoriaPrincipal->tamanioMaximoValue);
 	memcpy(registroACambiar->unRegistro, bufferParaCambio->buffer, bufferParaCambio->tamanio);
-	liberarBufferDeregistro(bufferParaCambio);
+	liberarbufferDePagina(bufferParaCambio);
 }
 
 // ------------------------------------------------------------------------ //
@@ -223,7 +224,7 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 void* obtenerValorDe(char* parametros, int lugarDelParametroBuscado) {
 	char** parametrosSpliteados = string_split(parametros, " ");
 	char* parametroBuscado = *(parametrosSpliteados + lugarDelParametroBuscado);
-	return parametroBuscado;
+	return (void*) parametroBuscado;
 }
 
 registro* crearRegistroNuevo(char* parametros) {
@@ -231,7 +232,7 @@ registro* crearRegistroNuevo(char* parametros) {
 
 	nuevaregistro->timestamp = time(NULL);
 	nuevaregistro->key = *(uint16_t*) obtenerValorDe(parametros, 1);
-	nuevaregistro->value = *(time_t*) obtenerValorDe(parametros, 2);
+	nuevaregistro->value = (char*) obtenerValorDe(parametros, 2);
 
 	return nuevaregistro;
 }
@@ -247,7 +248,7 @@ int obtenerTamanioValue(void* valueBuffer) {
 	return tamanio;
 }
 
-void liberarregistro(registro* unRegistro) {
+void liberarRegistro(registro* unRegistro) {
 	free(unRegistro->value);
 	free(unRegistro);
 }
@@ -264,29 +265,29 @@ segmento* encontrarSegmentoPorNombre(memoria* memoria,char* tablaNombre){
 	return (segmento*) list_find(memoria->tablaSegmentos,(void*)segmentoDeIgualNombre);
 }
 
-bool igualKeyregistro(paginaEnTabla* unRegistro,int keyDada){
+bool igualKeyRegistro(paginaEnTabla* unRegistro,int keyDada){
 	registro* registroReal = leerDatosEnMemoria(unRegistro);
 	bool respuesta = registroReal->key == keyDada;
 
-	liberarregistro(registroReal);
+	liberarRegistro(registroReal);
 	return respuesta;
 }
 
-paginaEnTabla* encontrarregistroPorKey(segmento* unSegmento, int keyDada){
+paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 	bool tieneIgualKeyQueDada(paginaEnTabla* unRegistro) {
-			return igualKeyregistro(unRegistro, keyDada);
+			return igualKeyRegistro(unRegistro, keyDada);
 	}
 
 	return (paginaEnTabla*) list_find(unSegmento->tablaregistros,(void*)tieneIgualKeyQueDada);
 }
-char* valueregistro(segmento* unSegmento, int key){
-	paginaEnTabla* paginaEncontrada = encontrarregistroPorKey(unSegmento,key);
+char* valueRegistro(segmento* unSegmento, int key){
+	paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,key);
 
 	registro* registroReal = leerDatosEnMemoria(paginaEncontrada);
 	char* value = malloc(strlen(registroReal->value) + 1);
 	memcpy(value, registroReal->value, strlen(registroReal->value) + 1);
 
-	liberarregistro(registroReal);
+	liberarRegistro(registroReal);
 	return value;
 }
 
@@ -294,13 +295,13 @@ char* valueregistro(segmento* unSegmento, int key){
 // OPERACIONESLQL //
 
 void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){
-	char* nombreTabla = (char*) obtenerValorDe(operacionSelect->parametros, 1);
-	int key = *(int*) obtenerValorDe(operacionSelect->parametros, 2);
+	char* nombreTabla = (char*) obtenerValorDe(operacionSelect->parametros, 0);
+	int key = *(uint16_t*) obtenerValorDe(operacionSelect->parametros, 1);
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 	paginaEnTabla* paginaEncontrada;
-		if(paginaEncontrada = encontrarregistroPorKey(unSegmento,key)){
-			char* value = valueregistro(unSegmento,key);
+		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,key)){
+			char* value = valueRegistro(unSegmento,key);
 			printf ("El valor es %s\n", value);
 			enviar(socketKernel, (void*) value, strlen(value) + 1);
 		}
@@ -310,18 +311,18 @@ void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* 
 			if(guardarEnMemoria(registroLFS, memoriaPrincipal)) {
 				// TODO enviar(socketKernel, (void*) registroNuevo->value, strlen(registroNuevo->value) + 1);
 			} else {
-				// TODO Dio error al guardar
+				// TODO Dio error al guardar la pagina.
 			};
 
 			// TODO else journal();
 		}
 	} else {
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
-		int espacioNecesario = calcularEspacio(registroLFS);
-		if(hayEspacioSuficientePara(memoriaPrincipal, espacioNecesario)){
-			agregarSegmento(memoriaPrincipal, registroLFS, nombreTabla);
-		}
+		if(agregarSegmento(memoriaPrincipal, registroLFS, nombreTabla)){;
 		// TODO enviar(socketKernel, (void*) registroNuevo->value, strlen(registroNuevo->value) + 1);
+		} else {
+			// TODO dio error al guardar el segmento.
+		}
 	}
 }
 
@@ -331,7 +332,7 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
 		paginaEnTabla* paginaEncontrada;
-		if(paginaEncontrada = encontrarregistroPorKey(unSegmento,registroNuevo->key)){
+		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,registroNuevo->key)){
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo, memoriaPrincipal);
 			paginaEncontrada->flag = SI;
 		}
