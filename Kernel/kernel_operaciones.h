@@ -98,16 +98,22 @@ void kernel_planificador(){
 		//TODO poner semaforo
 		pcb* pcb_auxiliar = malloc(sizeof(pcb));
 		//pcb_auxiliar->instruccion =list_create();
+		pthread_mutex_lock(&colaListos);
 		pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,1);
+		pthread_mutex_unlock(&colaListos);
 		if( pcb_auxiliar->instruccion == NULL){
 			if(pcb_auxiliar->ejecutado ==1){
+				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
+				pthread_mutex_unlock(&colaTerminados);
 				free(pcb_auxiliar);
 			}
 			else{
 				pcb_auxiliar->ejecutado=1;
 				kernel_api(pcb_auxiliar->operacion);
+				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
+				pthread_mutex_unlock(&colaTerminados);
 				free(pcb_auxiliar);
 			}
 		}
@@ -122,62 +128,67 @@ void kernel_planificador(){
 				instruc->ejecutado = 1;
 				kernel_api(instruc->operacion);
 			}
-			if(!instruccion_no_ejecutada(obtener_ultima_instruccion(pcb_auxiliar->instruccion)))
+			if(!instruccion_no_ejecutada(obtener_ultima_instruccion(pcb_auxiliar->instruccion))){
+				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados, pcb_auxiliar);
-			else
+				pthread_mutex_unlock(&colaTerminados);
+
+			}
+			else{
+				pthread_mutex_lock(&colaListos);
 				list_add(cola_proc_listos, pcb_auxiliar);
+				pthread_mutex_unlock(&colaListos);
+			}
 		}
 		free(pcb_auxiliar);
 	}
-	//cola_proc_listos
 }
 void kernel_crearPCB(char* operacion){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
 	pcb_auxiliar->operacion= malloc(sizeof(*operacion));
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 0;
-	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
+	pthread_mutex_lock(&colaNuevos);
+	list_add(cola_proc_nuevos,pcb_auxiliar);
+	pthread_mutex_unlock(&colaNuevos);
 	free(pcb_auxiliar->operacion);
 	free(pcb_auxiliar);
 
 }
 void kernel_pasar_a_ready(){
-	while(!list_is_empty(cola_proc_nuevos)){ //TODO agregar semaforo
-		char* operacion =list_remove(cola_proc_nuevos,1);
-		string_to_upper(operacion);
-		if (string_contains( "RUN" ,operacion)) {
-			 //poner esto en log aclarando el path
-			kernel_run(operacion);
-		}
-		else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", operacion)){
-			kernel_crearPCB(operacion);
-		}
-		else{
-			log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
-		}
+	//sem_wait(hayNew); //TODO sem_BINARIO
+	char* operacion = malloc(sizeof(list_get(cola_proc_nuevos,1)));
+	pthread_mutex_lock(&colaNuevos);
+	operacion = (char*)list_remove(cola_proc_nuevos,1);
+	pthread_mutex_unlock(&colaNuevos);
+	string_to_upper(operacion);
+	if (string_contains( "RUN" ,operacion)) {
+		 //poner esto en log aclarando el path
+		kernel_run(operacion);
+	}
+	else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", operacion)){
+		kernel_crearPCB(operacion);
+	}
+	else{
+		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
 	}
 }
 void kernel_almacenar_en_new(char*operacion){
 
+	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_nuevos, operacion);
+	pthread_mutex_unlock(&colaNuevos);
+	free(operacion);
+	//sem_post(hayNew);
 	//TODO loggear que operacion se agrego a new
 }
 
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	linea = readline("");
-	//char** opYArg;
-	//opYArg = string_n_split(linea,2," ");
+	linea = readline(""); //TODO agregar while para leer de consola
 	kernel_almacenar_en_new(linea);
-	//kernel_api(*opYArg,*(opYArg+1));
-	//printf("%s",opYArg);
-	//printf("%s",opYArg+1);
-	//kernel_almacenar_en_cola(*opYArg,*(opYArg+1));
-	free(linea);
-	//free(*(opYArg+1));
-	//free(*(opYArg));
-	//free(opYArg); //tener en cuenta esa liberacion de punteros
+	//free(linea);
 }
 void kernel_run(char* operacion){
 	char** opYArg;
@@ -202,22 +213,17 @@ void kernel_run(char* operacion){
 	pcb_auxiliar->instruccion =list_create();
 
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
-		char** operacion;
-		operacion = string_n_split(lineaLeida,2," ");
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
-		instruccion_auxiliar->operacion= malloc(sizeof(*operacion));
-		instruccion_auxiliar->operacion= *operacion;
-//		instruccion_auxiliar->argumentos= malloc(sizeof(*(operacion+1)));
-//		instruccion_auxiliar->argumentos= *(operacion+1);
-
-
+		instruccion_auxiliar->operacion= malloc(sizeof(lineaLeida));
+		instruccion_auxiliar->operacion= lineaLeida;
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 		free(instruccion_auxiliar->operacion);
 		free(instruccion_auxiliar);
-
 	}
-	list_add(cola_proc_nuevos,pcb_auxiliar); //TODO agregar mutex
+	pthread_mutex_lock(&colaNuevos);
+	list_add(cola_proc_nuevos,pcb_auxiliar);
+	pthread_mutex_unlock(&colaNuevos);
 	free(lineaLeida);
 	free(pcb_auxiliar->operacion);
 	free(pcb_auxiliar);
@@ -229,27 +235,10 @@ void kernel_run(char* operacion){
 void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
 	if(string_starts_with(operacionAParsear, "INSERT")) {
-		//	printf("INSERT\n");
 		kernel_insert(operacionAParsear);
-//TODO
-		/*
-			*en otra funcion* -> kernel_insert();
-			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
-			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
-			hacer recibir para tener la rta
-			cerrarConexion(socketClienteKernel);
-			*/
 	}
 	else if (string_starts_with(operacionAParsear, "SELECT")) {
-			//printf("SELECT\n");
 			kernel_select(operacionAParsear);
-			/*
-			*en otra funcion* -> kernel_select();
-			int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
-			enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
-			hacer recibir para tener la rta
-			cerrarConexion(socketClienteKernel);
-			*/
 	}
 	else if (string_starts_with(operacionAParsear, "DESCRIBE")) {
 		printf("DESCRIBE\n");

@@ -31,16 +31,25 @@
 int main(int argc, char *argv[]){
 
 	pthread_t threadConsola;
+	pthread_t threadNew_Ready;
+//	pthread_t threadPlanificador;
 /*	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
 */
 	//kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	//cola_proc_nuevos = list_create();
-	kernel_inicializar(pathConfig);
-	pthread_create(&threadConsola, NULL,(void*) kernel_consola, NULL);
-	pthread_join(threadConsola, NULL);
+	//kernel_inicializar(pathConfig);
+	kernel_crearListas();
+	//sem_init(hayNew,0,0);
+	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_join(threadConsola,NULL);
+	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
+	pthread_join(threadNew_Ready, NULL);
+	//sem_destroy(hayNew);
+//	pthread_create(&threadPlanificador, NULL,(void*) kernel_consola, NULL);
+//	pthread_join(threadPlanificador, NULL);
 	//kernel_consola();
 //TODO frees de las colas
-//	liberarConfigYLogs(kernel_configYLog);
+	liberarConfigYLogs(kernel_configYLog);
 	return EXIT_SUCCESS;
 }

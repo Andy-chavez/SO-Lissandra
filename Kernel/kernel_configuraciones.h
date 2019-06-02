@@ -14,6 +14,18 @@ void liberarConfigYLogs();
 void kernel_inicializar(char*);
 
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
+void kernel_inicializarSemaforos(){
+	pthread_mutex_init(&colaNuevos, NULL);
+	pthread_mutex_init(&colaListos, NULL);
+	pthread_mutex_init(&colaTerminados, NULL);
+}
+void kernel_crearListas(){
+	cola_proc_nuevos = list_create();
+	cola_proc_listos = list_create();
+	cola_proc_terminados = list_create();
+	cola_proc_ejecutando = list_create();
+	memorias = list_create();
+}
 void kernel_inicializar(char* path){
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(path);
@@ -25,13 +37,6 @@ void kernel_inicializar(char* path){
 	metadataRefresh = (int)config_get_string_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = (int)config_get_string_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 	kernel_crearListas();
-}
-void kernel_crearListas(){
-	cola_proc_nuevos = list_create();
-	cola_proc_listos = list_create();
-	cola_proc_terminados = list_create();
-	cola_proc_ejecutando = list_create();
-	memorias = list_create();
 }
 void liberarConfigYLogs() {
 	free(kernel_configYLog->config);

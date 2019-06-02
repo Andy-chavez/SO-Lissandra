@@ -12,6 +12,7 @@
 #include <commons/collections/list.h>
 #include <commonsPropias/serializacion.h>
 #include <stdlib.h>
+#include <semaphore.h>
 
 /******************************STRUCTS******************************************/
 typedef struct{
@@ -70,6 +71,10 @@ t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es
 t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;
+//sem_t* hayNew;
+pthread_mutex_t colaNuevos;
+pthread_mutex_t colaListos;
+pthread_mutex_t colaTerminados;
 char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 char* ipMemoria;
 char* puertoMemoria;
