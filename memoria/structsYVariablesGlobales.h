@@ -64,5 +64,6 @@ sem_t mutex_operacion;
 sem_t binario_socket;
 memoria* memoriaPrincipal;
 configYLogs *archivosDeConfigYLog;
+int tamanioDeUnRegistroEnMemoria;
 
 #endif

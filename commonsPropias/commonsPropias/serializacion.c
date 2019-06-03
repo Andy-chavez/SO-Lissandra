@@ -286,13 +286,16 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 }
 
 char* string_trim_quotation(char* string) {
-	char *stringRespuesta = malloc(strlen(string) - 1);
-
+	char* stringRespuesta = malloc(strlen(string) - 1);
+	char* aux = string + 1;
 	int i = 1;
 	while(*(string + i) != '"') {
-		*(stringRespuesta + (i - 1)) = *(string + i);
 		i++;
 	}
-	*(stringRespuesta + (i - 1)) = '\0';
+	i--;
+	size_t tamanioString = i;
+	strncpy(stringRespuesta, aux, tamanioString);
+	*(stringRespuesta + i) = '\0';
+	free(string);
 	return stringRespuesta;
 };

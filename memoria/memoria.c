@@ -34,11 +34,11 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un INSERT");
-		insertLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal, socketKernel);
+		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un SELECT");
-		selectLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal, socketKernel);
+		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un DESCRIBE");
@@ -71,12 +71,10 @@ void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
 	sem_post(&binario_socket);
 	int hayMensaje = 1;
-	printf("\n\n%d, entro con el socket %d\n\n", hayMensaje, socketKernel);
 
 	while(hayMensaje) {
 		sem_wait(&mutex_operacion);
 		void* bufferRecepcion = recibir(socketKernel);
-		printf("\n\n%d %d\n\n", pthread_self(), socketKernel);
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
 		sem_post(&mutex_operacion);
 	}
@@ -131,7 +129,6 @@ void *servidorMemoria(){
 	while(valgrind){
 		sem_wait(&binario_socket);
 		socketKernel = aceptarCliente(socketServidorMemoria);
-		printf("\n acepte al cliente %d \n", socketKernel);
 		if(socketKernel == -1) {
 			log_error(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			valgrind = 0;
@@ -140,7 +137,6 @@ void *servidorMemoria(){
 		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
 			log_error(archivosDeConfigYLog->logger, "No se pudo crear un hilo para trabajar con el socket");
 		}
-		printf("\n\n creo thread con %d \n\n", socketKernel);
 		pthread_detach(threadID);
 	}
 
@@ -160,7 +156,7 @@ void pedirALFS(operacionLQL* operacion){
 void inicializarArchivosDeConfigYLog() {
 	archivosDeConfigYLog = malloc(sizeof(configYLogs));
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
-	archivosDeConfigYLog->config = config_create("../memoria.config");
+	archivosDeConfigYLog->config = config_create("memoria.config");
 }
 
 int main() {
