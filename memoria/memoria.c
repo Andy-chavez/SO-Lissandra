@@ -36,7 +36,7 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un INSERT");
-		insertLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal);
+		insertLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un SELECT");
