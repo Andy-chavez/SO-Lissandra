@@ -101,7 +101,6 @@ void liberarMemoria(memoria* memoriaPrincipal) {
 }
 
 int calcularEspacioParaUnRegistro(memoria* memoriaPrincipal) {
-	// TODO cambiar para que solo calcule una vez, ya que el espacio necesario es unico y no varia.
 	int timeStamp = sizeof(time_t);
 	int key = sizeof(uint16_t);
 	int value = memoriaPrincipal->tamanioMaximoValue;
@@ -109,10 +108,10 @@ int calcularEspacioParaUnRegistro(memoria* memoriaPrincipal) {
 }
 
 void* encontrarEspacio(memoria* memoriaPrincipal) {
-	// TODO cambiar para que encuentre pagina por pagina.
 	void* espacioLibre = memoriaPrincipal->base;
+	int espacioParaUnRegistro = calcularEspacioParaUnRegistro(memoriaPrincipal);
 	while(*((int*) espacioLibre) != 0) {
-		espacioLibre++;
+		espacioLibre = espacioLibre + espacioParaUnRegistro;
 	}
 	return espacioLibre;
 }
@@ -135,7 +134,6 @@ bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tama
 
 	memcpy(buffer->buffer + desplazamiento, unRegistro->value, tamanioValueRegistro);
 	desplazamiento += tamanioValueRegistro;
-	memset(buffer->buffer + desplazamiento, 1, tamanioValueMaximo - tamanioValueRegistro);
 
 	return buffer;
 }
