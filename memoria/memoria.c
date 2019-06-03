@@ -11,16 +11,14 @@
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
-
-memoria* memoriaPrincipal;
-configYLogs *archivosDeConfigYLog;
+#include "structsYVariablesGlobales.h"
 
 int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
 	case OPERACIONLQL:
-		log_info(archivosDeConfigYLog->logger, "Recibi una operacionLQL, a ver que es?");
+		log_info(archivosDeConfigYLog->logger, "Recibi una operacionLQL");
 		APIMemoria(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
@@ -36,11 +34,11 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un INSERT");
-		insertLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal, socketKernel);
+		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un SELECT");
-		selectLQL(operacionAParsear, archivosDeConfigYLog, memoriaPrincipal, socketKernel);
+		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		log_info(archivosDeConfigYLog->logger, "Recibi un DESCRIBE");
@@ -71,16 +69,17 @@ void liberarConfigYLogs() {
 
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
+	sem_post(&binario_socket);
 	int hayMensaje = 1;
 
 	while(hayMensaje) {
+		sem_wait(&mutex_operacion);
 		void* bufferRecepcion = recibir(socketKernel);
-		log_info(archivosDeConfigYLog->logger, "Recibi algo, A parsear!");
-		printf("\n\n hayMensaje = %d \n\n", hayMensaje);
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
+		sem_post(&mutex_operacion);
 	}
-	return NULL;
-	//pthread_exit(0);
+
+	pthread_exit(0);
 }
 
 datosInicializacion* realizarHandshake() {
@@ -117,7 +116,7 @@ int crearSocketLFS() {
 void *servidorMemoria(){
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(archivosDeConfigYLog->config, "IPMEMORIA"), config_get_string_value(archivosDeConfigYLog->config, "PUERTO"));
 	pthread_t threadID;
-
+	int socketKernel;
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
 		log_error(archivosDeConfigYLog->logger, "No se pudo inicializar el servidor de memoria");
@@ -128,18 +127,17 @@ void *servidorMemoria(){
 
 	int valgrind = 1;
 	while(valgrind){
-		int socketKernel = aceptarCliente(socketServidorMemoria);
+		sem_wait(&binario_socket);
+		socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
 			log_error(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			valgrind = 0;
 			continue;
 		}
-		/*if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
+		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
 			log_error(archivosDeConfigYLog->logger, "No se pudo crear un hilo para trabajar con el socket");
-		};
-		*/
-		trabajarConConexion(&socketKernel);
-		valgrind = 0;
+		}
+		pthread_detach(threadID);
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -156,8 +154,7 @@ void pedirALFS(operacionLQL* operacion){
 }
 
 void inicializarArchivosDeConfigYLog() {
-	archivosDeConfigYLog = malloc(sizeof(archivosDeConfigYLog));
-
+	archivosDeConfigYLog = malloc(sizeof(configYLogs));
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
 	archivosDeConfigYLog->config = config_create("memoria.config");
 }
@@ -165,6 +162,8 @@ void inicializarArchivosDeConfigYLog() {
 int main() {
 	pthread_t threadServer; // threadTimedJournal, threadTimedGossiping;
 	inicializarArchivosDeConfigYLog();
+	sem_init(&mutex_operacion, 0, 1);
+	sem_init(&binario_socket, 0, 1);
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {
