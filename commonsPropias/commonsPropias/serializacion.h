@@ -123,4 +123,7 @@ void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro);
 
 int deserializarHandshake(void* bufferHandshake);
 
+// si bien no tiene nada que ver, nos va a servir a todos
+char* string_trim_quotation(char* string);
+
 #endif /* SERIALIZACION_H_ */
