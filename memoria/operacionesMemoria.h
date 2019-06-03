@@ -386,15 +386,14 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo, memoriaPrincipal);
 			paginaEncontrada->flag = SI;
 		} else {
+			// TODO control
 			agregarPaginaEnSegmento(memoriaPrincipal, unSegmento, registroNuevo);
 		}
 	}
 
 	else{
-		log_info(configYLog->logger, "No existia el segmento, es nuevo!");
+		// TODO control
 		agregarSegmento(memoriaPrincipal,registroNuevo,nombreTabla);
 	}
-
-	log_info(configYLog->logger, "capaz lo hizo bien xd");
 }
 

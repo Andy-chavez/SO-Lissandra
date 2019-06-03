@@ -20,7 +20,7 @@ int APIProtocolo(void* buffer, int socket) {
 
 	switch(operacion) {
 	case OPERACIONLQL:
-		log_info(archivosDeConfigYLog->logger, "Recibi una operacionLQL, a ver que es?");
+		log_info(archivosDeConfigYLog->logger, "Recibi una operacionLQL");
 		APIMemoria(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
@@ -75,8 +75,6 @@ void* trabajarConConexion(void* socket) {
 
 	while(hayMensaje) {
 		void* bufferRecepcion = recibir(socketKernel);
-		log_info(archivosDeConfigYLog->logger, "Recibi algo, A parsear!");
-		printf("\n\n hayMensaje = %d \n\n", hayMensaje);
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
 	}
 	return NULL;
@@ -134,11 +132,10 @@ void *servidorMemoria(){
 			valgrind = 0;
 			continue;
 		}
-		/*if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
+		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
 			log_error(archivosDeConfigYLog->logger, "No se pudo crear un hilo para trabajar con el socket");
 		};
-		*/
-		trabajarConConexion(&socketKernel);
+
 		valgrind = 0;
 	}
 
