@@ -11,9 +11,7 @@
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
-
-memoria* memoriaPrincipal;
-configYLogs *archivosDeConfigYLog;
+#include "structsYVariablesGlobales.h"
 
 int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
@@ -71,14 +69,19 @@ void liberarConfigYLogs() {
 
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
+	sem_post(&binario_socket);
 	int hayMensaje = 1;
+	printf("\n\n%d, entro con el socket %d\n\n", hayMensaje, socketKernel);
 
 	while(hayMensaje) {
+		sem_wait(&mutex_operacion);
 		void* bufferRecepcion = recibir(socketKernel);
+		printf("\n\n%d %d\n\n", pthread_self(), socketKernel);
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
+		sem_post(&mutex_operacion);
 	}
-	return NULL;
-	//pthread_exit(0);
+
+	pthread_exit(0);
 }
 
 datosInicializacion* realizarHandshake() {
@@ -115,7 +118,7 @@ int crearSocketLFS() {
 void *servidorMemoria(){
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(archivosDeConfigYLog->config, "IPMEMORIA"), config_get_string_value(archivosDeConfigYLog->config, "PUERTO"));
 	pthread_t threadID;
-
+	int socketKernel;
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
 		log_error(archivosDeConfigYLog->logger, "No se pudo inicializar el servidor de memoria");
@@ -126,7 +129,9 @@ void *servidorMemoria(){
 
 	int valgrind = 1;
 	while(valgrind){
-		int socketKernel = aceptarCliente(socketServidorMemoria);
+		sem_wait(&binario_socket);
+		socketKernel = aceptarCliente(socketServidorMemoria);
+		printf("\n acepte al cliente %d \n", socketKernel);
 		if(socketKernel == -1) {
 			log_error(archivosDeConfigYLog->logger, "ERROR: Socket Defectuoso");
 			valgrind = 0;
@@ -134,9 +139,9 @@ void *servidorMemoria(){
 		}
 		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
 			log_error(archivosDeConfigYLog->logger, "No se pudo crear un hilo para trabajar con el socket");
-		};
-
-		valgrind = 0;
+		}
+		printf("\n\n creo thread con %d \n\n", socketKernel);
+		pthread_detach(threadID);
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -153,15 +158,16 @@ void pedirALFS(operacionLQL* operacion){
 }
 
 void inicializarArchivosDeConfigYLog() {
-	archivosDeConfigYLog = malloc(sizeof(archivosDeConfigYLog));
-
+	archivosDeConfigYLog = malloc(sizeof(configYLogs));
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
-	archivosDeConfigYLog->config = config_create("memoria.config");
+	archivosDeConfigYLog->config = config_create("../memoria.config");
 }
 
 int main() {
 	pthread_t threadServer; // threadTimedJournal, threadTimedGossiping;
 	inicializarArchivosDeConfigYLog();
+	sem_init(&mutex_operacion, 0, 1);
+	sem_init(&binario_socket, 0, 1);
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {

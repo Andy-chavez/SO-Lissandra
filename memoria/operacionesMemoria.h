@@ -4,63 +4,7 @@
  *  Created on: 4 may. 2019
  *      Author: utnso
  */
-
-#include <time.h>
-#include <inttypes.h>
-#include <commons/config.h>
-#include <commons/log.h>
-#include <stdlib.h>
-#include <commons/collections/list.h>
-#include <pthread.h>
-#include <commons/string.h>
-#include <stdbool.h>
-#include <stdio.h>
-
-typedef struct {
-	t_config* config;
-	t_log* logger;
-} configYLogs;
-
-typedef enum {
-	NO,
-	SI
-} flagModificado;
-
-typedef struct {
-	time_t timestamp;
-	uint16_t key;
-	char* value;
-} registro;
-
-typedef struct {
-	int numeroPagina;
-	void *unRegistro;
-	flagModificado flag;
-} paginaEnTabla;
-
-typedef struct {
-	char *nombreTabla;
-	t_list* tablaPaginas;
-} segmento;
-
-typedef struct {
-	t_list* tablaSegmentos;
-	void *base;
-	void *limite;
-	int tamanioMaximoValue;
-	int *seeds;
-} memoria;
-
-typedef struct {
-	void* buffer;
-	int tamanio;
-} bufferDePagina;
-
-typedef struct {
-	int tamanio;
-} datosInicializacion;
-
-int socketLissandraFS;
+#include "structsYVariablesGlobales.h"
 
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE MEMORIA PRINCIPAL //
@@ -123,7 +67,7 @@ bool hayEspacioSuficienteParaUnRegistro(memoria* memoria){
 bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tamanioValueMaximo) {
 	bufferDePagina* buffer = malloc(sizeof(bufferDePagina));
 	int tamanioValueRegistro = strlen(unRegistro->value) + 1;
-	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + tamanioValueMaximo;
+	buffer->tamanio = sizeof(time_t) + sizeof(uint16_t) + strlen(unRegistro->value) + 1;
 	buffer->buffer = malloc(buffer->tamanio);
 
 	memcpy(buffer->buffer, &(unRegistro->timestamp), sizeof(time_t));
@@ -361,13 +305,17 @@ void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* 
 
 	else {
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
-		if(agregarSegmento(memoriaPrincipal, registroLFS, nombreTabla)){;
+		if(agregarSegmento(memoriaPrincipal, registroLFS, nombreTabla)){
 		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
 			enviarYLogearMensajeError(configYLog->logger, socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
 		}
 	}
+	/*
+	size_t length = config_get_int_value(configYLog->config, "TAMANIOMEM");
+	mem_hexdump(memoriaPrincipal->base, length);
+	*/
 }
 
 void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
@@ -395,5 +343,11 @@ void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* 
 		// TODO control
 		agregarSegmento(memoriaPrincipal,registroNuevo,nombreTabla);
 	}
+	liberarRegistro(registroNuevo);
+	//test
+	/*
+	size_t length = config_get_int_value(configYLog->config, "TAMANIOMEM");
+	mem_hexdump(memoriaPrincipal->base, length);
+	*/
 }
 

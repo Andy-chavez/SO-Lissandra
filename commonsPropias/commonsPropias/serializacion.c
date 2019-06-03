@@ -286,7 +286,7 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 }
 
 char* string_trim_quotation(char* string) {
-	char *stringRespuesta = malloc(strlen(string) - 2);
+	char *stringRespuesta = malloc(strlen(string) - 1);
 
 	int i = 1;
 	while(*(string + i) != '"') {
