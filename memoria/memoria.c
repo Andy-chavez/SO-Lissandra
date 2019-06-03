@@ -159,7 +159,7 @@ void inicializarArchivosDeConfigYLog() {
 	archivosDeConfigYLog = malloc(sizeof(archivosDeConfigYLog));
 
 	archivosDeConfigYLog->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
-	archivosDeConfigYLog->config = config_create("../memoria.config");
+	archivosDeConfigYLog->config = config_create("memoria.config");
 }
 
 int main() {
