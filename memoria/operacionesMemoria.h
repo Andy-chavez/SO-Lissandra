@@ -260,15 +260,18 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 	return (void*) parametroBuscado;
 }
 
-registro* crearRegistroNuevo(char** parametros) {
-	registro* nuevaregistro = malloc(sizeof(registro));
+registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
+	registro* nuevoRegistro = malloc(sizeof(registro));
 
-	nuevaregistro->timestamp = time(NULL);
-	nuevaregistro->key = *(uint16_t*) obtenerValorDe(parametros, 1);
 	char* aux = (char*) obtenerValorDe(parametros, 2);
-	nuevaregistro->value = string_trim_quotation(aux);
+	if((strlen(nuevoRegistro->value = string_trim_quotation(aux)) + 1) > tamanioMaximoValue) {
+		return NULL;
+	};
 
-	return nuevaregistro;
+	nuevoRegistro->timestamp = time(NULL);
+	nuevoRegistro->key = *(uint16_t*) obtenerValorDe(parametros, 1);
+
+	return nuevoRegistro;
 }
 
 void liberarRegistro(registro* unRegistro) {
@@ -367,10 +370,14 @@ void selectLQL(operacionLQL *operacionSelect, configYLogs* configYLog, memoria* 
 	}
 }
 
-void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* memoriaPrincipal){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
+void insertLQL(operacionLQL* operacionInsert, configYLogs* configYLog, memoria* memoriaPrincipal, int socketKernel){ //la memoria no se bien como tratarla, por ahora la paso para que "funque"
 	char** parametrosSpliteados = string_n_split(operacionInsert->parametros, 3, " ");
 	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
-	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados);
+	registro* registroNuevo;
+	if(!(registroNuevo = crearRegistroNuevo(parametrosSpliteados, memoriaPrincipal->tamanioMaximoValue))) {
+		enviarYLogearMensajeError(configYLog->logger, socketKernel, "ERROR: El value era mayor al tamanio maximo del value posible.");
+		return;
+	}
 
 	segmento* unSegmento;
 	if(unSegmento = encontrarSegmentoPorNombre(memoriaPrincipal,nombreTabla)){
