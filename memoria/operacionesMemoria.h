@@ -265,7 +265,8 @@ registro* crearRegistroNuevo(char** parametros) {
 
 	nuevaregistro->timestamp = time(NULL);
 	nuevaregistro->key = *(uint16_t*) obtenerValorDe(parametros, 1);
-	nuevaregistro->value = (char*) obtenerValorDe(parametros, 2);
+	char* aux = (char*) obtenerValorDe(parametros, 2);
+	nuevaregistro->value = string_trim_quotation(aux);
 
 	return nuevaregistro;
 }
