@@ -18,6 +18,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
+	sem_init(&hayNew,0,0);
 }
 void kernel_crearListas(){
 	cola_proc_nuevos = list_create();

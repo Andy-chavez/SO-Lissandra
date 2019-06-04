@@ -156,11 +156,11 @@ void kernel_crearPCB(char* operacion){
 
 }
 void kernel_pasar_a_ready(){
-	//sem_wait(hayNew); //TODO sem_BINARIO
-	char* operacion = malloc(sizeof(list_get(cola_proc_nuevos,1)));
-	if (list_is_empty(cola_proc_listos)){ //TODO semaforo que solucione esto para sacarlo
-		return ;
-	}
+	sem_wait(&hayNew); //TODO sem_BINARIO
+	char* operacion = NULL;
+//	if (list_is_empty(cola_proc_listos)){ //TODO semaforo que solucione esto para sacarlo
+//		return ;
+//	}
 	pthread_mutex_lock(&colaNuevos);
 	operacion = (char*)list_remove(cola_proc_nuevos,1);
 	pthread_mutex_unlock(&colaNuevos);
@@ -176,6 +176,7 @@ void kernel_pasar_a_ready(){
 	else{
 		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
 	}
+	free(operacion);
 }
 void kernel_almacenar_en_new(char*operacion){
 
@@ -183,7 +184,7 @@ void kernel_almacenar_en_new(char*operacion){
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
 	free(operacion);
-	//sem_post(hayNew);
+	sem_post(&hayNew);
 	//TODO loggear que operacion se agrego a new
 }
 

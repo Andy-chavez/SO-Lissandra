@@ -71,7 +71,7 @@ t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es
 t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;
-//sem_t* hayNew;
+sem_t hayNew;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;

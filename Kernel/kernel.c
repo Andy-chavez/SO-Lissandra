@@ -32,6 +32,7 @@ int main(int argc, char *argv[]){
 
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
+	pthread_t threadRoundRobin;
 //	pthread_t threadPlanificador;
 /*	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
 	pthread_join(threadCliente, NULL);
@@ -39,13 +40,15 @@ int main(int argc, char *argv[]){
 	//kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	//cola_proc_nuevos = list_create();
 	//kernel_inicializar(pathConfig);
+
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
-	//sem_init(hayNew,0,0);
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
 	pthread_join(threadNew_Ready,NULL);
+	pthread_create(&threadRoundRobin, NULL,(void*) kernel_planificador, NULL);
+	pthread_join(threadRoundRobin,NULL);
 	//sem_destroy(hayNew);
 //	pthread_create(&threadPlanificador, NULL,(void*) kernel_consola, NULL);
 //	pthread_join(threadPlanificador, NULL);
