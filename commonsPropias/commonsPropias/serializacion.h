@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <commons/collections/list.h>
+#include <commons/string.h>
 #include <time.h>
 #include <stdlib.h>
 #include "conexiones.h"
@@ -35,7 +36,8 @@ typedef enum {
 	PAQUETEREGISTROS,
 	UNREGISTRO,
 	METADATA,
-	HANDSHAKE
+	HANDSHAKE,
+	DESCONEXION
 } operacionProtocolo;
 
 typedef struct {
@@ -120,5 +122,8 @@ void* serializarHandshake(int tamanioValue, int* tamanioBuffer);
 void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro);
 
 int deserializarHandshake(void* bufferHandshake);
+
+// si bien no tiene nada que ver, nos va a servir a todos
+char* string_trim_quotation(char* string);
 
 #endif /* SERIALIZACION_H_ */

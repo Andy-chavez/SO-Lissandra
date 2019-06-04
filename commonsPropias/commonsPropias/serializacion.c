@@ -2,8 +2,17 @@
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
+	if(*buffer == NULL) {
+		return DESCONEXION;
+	}
 	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
 	return protocolo;
+}
+
+void liberarOperacionLQL(operacionLQL* operacion) {
+	free(operacion->operacion);
+	free(operacion->parametros);
+	free(operacion);
 }
 
 void* serializarHandshake(int tamanioValue, int* tamanioBuffer){
@@ -180,21 +189,21 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL, int* tamanio) {
 
 	return bufferOperacion;
 }
+
 operacionLQL* splitear_operacion(char* operacion){
-	operacionLQL* operacionAux=malloc(sizeof(operacionLQL));
+	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
 	char** opSpliteada;
-	if(string_starts_with(operacion,"JOURNAL") || (string_starts_with(operacion,"DESCRIBE") && !string_contains(operacion," "))){
-		operacionAux->operacion=malloc(sizeof(operacion));
-		operacionAux->operacion=operacion;
-		operacionAux->parametros= NULL;
-	}
-	else{
+
+	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE")) {
+		operacionAux->operacion = operacion;
+		operacionAux->parametros = "ALL";
+	} else {
 		opSpliteada = string_n_split(operacion,2," ");
-		operacionAux->operacion=malloc(sizeof(*(opSpliteada)));
 		operacionAux->operacion=*opSpliteada;
-		operacionAux->parametros=malloc(sizeof(*(opSpliteada+1)));
 		operacionAux->parametros=*(opSpliteada+1);
 	}
+
+
 	return operacionAux;
 }
 
@@ -275,3 +284,18 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 
 	return unMetadata;
 }
+
+char* string_trim_quotation(char* string) {
+	char* stringRespuesta = malloc(strlen(string) - 1);
+	char* aux = string + 1;
+	int i = 1;
+	while(*(string + i) != '"') {
+		i++;
+	}
+	i--;
+	size_t tamanioString = i;
+	strncpy(stringRespuesta, aux, tamanioString);
+	*(stringRespuesta + i) = '\0';
+	free(string);
+	return stringRespuesta;
+};
