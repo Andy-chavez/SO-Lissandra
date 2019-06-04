@@ -7,11 +7,11 @@
 #include "structsYVariablesGlobales.h"
 
 // ------------------------------------------------------------------------ //
-// OPERACIONES SOBRE MEMORIA PRINCIPAL //
+// 1) INICIALIZACIONES //
 
-memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* archivosDeConfigYLog) {
+memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* ARCHIVOS_DE_CONFIG_Y_LOG) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
-	int tamanioMemoria = config_get_int_value(archivosDeConfigYLog->config, "TAMANIOMEM");
+	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
 
 	nuevaMemoria->base = malloc(tamanioMemoria);
 	memset(nuevaMemoria->base, 0, tamanioMemoria);
@@ -19,16 +19,33 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	nuevaMemoria->tamanioMaximoValue = datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
 
-	tamanioDeUnRegistroEnMemoria = calcularEspacioParaUnRegistro(nuevaMemoria->tamanioMaximoValue);
+
+	TAMANIO_UN_REGISTRO_EN_MEMORIA = calcularEspacioParaUnRegistro(nuevaMemoria->tamanioMaximoValue);
 
 	if(nuevaMemoria == NULL || nuevaMemoria->base == NULL) {
-		log_error(archivosDeConfigYLog->logger, "hubo un error al inicializar la memoria");
+		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "hubo un error al inicializar la memoria");
 		return NULL;
 	}
 
-	log_info(archivosDeConfigYLog->logger, "Memoria inicializada.");
+	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Memoria inicializada.");
 	return nuevaMemoria;
 }
+
+void inicializarArchivos() {
+	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
+	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
+	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
+}
+
+void inicializarSemaforos() {
+	sem_init(&MUTEX_OPERACION, 0, 1);
+	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
+	sem_init(&MUTEX_LOG, 0, 1);
+	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
+}
+
+// ------------------------------------------------------------------------ //
+// 2) OPERACIONES SOBRE MEMORIA PRINCIPAL //
 
 void* liberarSegmentos(segmento* unSegmento) {
 	void* liberarPaginas(paginaEnTabla* unRegistro) {
@@ -41,9 +58,9 @@ void* liberarSegmentos(segmento* unSegmento) {
 	}
 
 void liberarMemoria() {
-	free(memoriaPrincipal->base);
-	list_destroy_and_destroy_elements(memoriaPrincipal->tablaSegmentos, liberarSegmentos);
-	free(memoriaPrincipal);
+	free(MEMORIA_PRINCIPAL->base);
+	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmentos);
+	free(MEMORIA_PRINCIPAL);
 }
 
 int calcularEspacioParaUnRegistro(int tamanioMaximo) {
@@ -54,15 +71,15 @@ int calcularEspacioParaUnRegistro(int tamanioMaximo) {
 }
 
 void* encontrarEspacio() {
-	void* espacioLibre = memoriaPrincipal->base;
+	void* espacioLibre = MEMORIA_PRINCIPAL->base;
 	while(*((int*) espacioLibre) != 0) {
-		espacioLibre = espacioLibre + tamanioDeUnRegistroEnMemoria;
+		espacioLibre = espacioLibre + TAMANIO_UN_REGISTRO_EN_MEMORIA;
 	}
 	return espacioLibre;
 }
 
 bool hayEspacioSuficienteParaUnRegistro(){
-	return (memoriaPrincipal->limite - encontrarEspacio()) > tamanioDeUnRegistroEnMemoria;
+	return (MEMORIA_PRINCIPAL->limite - encontrarEspacio()) > TAMANIO_UN_REGISTRO_EN_MEMORIA;
 }
 
 bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tamanioValueMaximo) {
@@ -89,7 +106,8 @@ void liberarbufferDePagina(bufferDePagina* buffer) {
 }
 
 void* guardar(registroConNombreTabla* unRegistro) {
-	bufferDePagina *bufferAGuardar = armarBufferDePagina(unRegistro, memoriaPrincipal->tamanioMaximoValue);
+	bufferDePagina *bufferAGuardar = armarBufferDePagina(unRegistro, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+
 	void *guardarDesde = encontrarEspacio();
 
 	memcpy(guardarDesde, bufferAGuardar->buffer, bufferAGuardar->tamanio);
@@ -126,28 +144,35 @@ int agregarSegmento(registro* primerRegistro,char* tabla ){
 	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(primerRegistro);
 
 	if(!primeraPagina) {
-		return -1;
+		return 0;
 	}
 
 	primeraPagina->numeroPagina = 0;
 	segmento* segmentoNuevo = malloc(sizeof(segmento));
 	segmentoNuevo->nombreTabla = string_duplicate(tabla);
 	segmentoNuevo->tablaPaginas = list_create();
-	list_add(memoriaPrincipal->tablaSegmentos, segmentoNuevo);
+
+	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
 
 	list_add(segmentoNuevo->tablaPaginas, primeraPagina);
 
-	return 0;
+	return 1;
+}
+
+
+int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS) {
+	return agregarSegmento(registroLFS, registroLFS->nombreTabla);
 }
 
 void agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel) {
 	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(unRegistro);
 	if(!paginaParaAgregar) {
-		enviarYLogearMensajeError(archivosDeConfigYLog->logger, socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
+		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
 		return;
 	}
-	paginaParaAgregar->numeroPagina = list_size(unSegmento);
+
 	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
+	enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
 }
 
 registro* leerDatosEnMemoria(paginaEnTabla* unRegistro) {
@@ -167,7 +192,7 @@ registro* leerDatosEnMemoria(paginaEnTabla* unRegistro) {
 }
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
-	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, memoriaPrincipal->tamanioMaximoValue);
+	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 	memcpy(registroACambiar->unRegistro, bufferParaCambio->buffer, bufferParaCambio->tamanio);
 	liberarbufferDePagina(bufferParaCambio);
 }
@@ -184,16 +209,25 @@ int obtenerTamanioValue(void* valueBuffer) {
 }
 
 // ------------------------------------------------------------------------ //
-// OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
+// 3) OPERACIONES CON LISSANDRA FILE SYSTEM //
+
+void* pedirALFS(operacionLQL *operacion) {
+	sem_wait(&MUTEX_SOCKET_LFS);
+	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
+	void* buffer = recibir(SOCKET_LFS);
+	sem_post(&MUTEX_SOCKET_LFS);
+	return buffer;
+}
 
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
-	serializarYEnviarOperacionLQL(socketLissandraFS, operacion);
-
-	void* bufferRespuesta = recibir(socketLissandraFS);
-	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRespuesta);
+	void* bufferRegistroConTabla = pedirALFS(operacion);
+	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
 
 	return paginaEncontradaEnLFS;
 }
+
+// ------------------------------------------------------------------------ //
+// 4) OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
 
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	int i = 0;
@@ -211,7 +245,7 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 
 registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 	registro* nuevoRegistro = malloc(sizeof(registro));
-	// TODO ver como resolver el malicioso free de fucking aca
+
 	char* aux = (char*) obtenerValorDe(parametros, 2);
 	nuevoRegistro->value = string_trim_quotation(aux);
 	if(strlen(nuevoRegistro->value + 1) > tamanioMaximoValue){
@@ -241,7 +275,7 @@ segmento* encontrarSegmentoPorNombre(char* tablaNombre){
 		return tienenIgualNombre(unSegmento->nombreTabla, tablaNombre);
 	}
 
-	return (segmento*) list_find(memoriaPrincipal->tablaSegmentos, (void*)segmentoDeIgualNombre);
+	return (segmento*) list_find(MEMORIA_PRINCIPAL->tablaSegmentos, (void*)segmentoDeIgualNombre);
 }
 
 bool igualKeyRegistro(paginaEnTabla* unRegistro,int keyDada){
@@ -271,12 +305,20 @@ char* valueRegistro(segmento* unSegmento, int key){
 }
 
 void enviarYLogearMensajeError(t_log *logger, int socket, char* mensaje) {
+	sem_wait(&MUTEX_LOG);
 	log_error(logger, mensaje);
+	sem_post(&MUTEX_LOG);
 	enviar(socket, mensaje, strlen(mensaje) + 1);
 }
 
+void enviarYLogearInfo(t_log *logger, int socket, char* mensaje) {
+	sem_wait(&MUTEX_LOG);
+	log_info(logger, mensaje);
+	sem_post(&MUTEX_LOG);
+	enviar(socket, mensaje, strlen(mensaje) + 1);
+}
 // ------------------------------------------------------------------------ //
-// OPERACIONESLQL //
+// 5) OPERACIONESLQL //
 
 void liberarRecursosSelectLQL(char* nombreTabla, int *key) {
 	free(nombreTabla);
@@ -296,41 +338,46 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,key)){
 
 			char* value = valueRegistro(unSegmento,key);
+			char *mensaje = string_new();
+			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", value);
 
-			printf ("El valor es %s\n", value);
-			int longitudValue = string_length(value) + 1;
-			enviar(socketKernel, (void*) value, longitudValue);
+			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, mensaje);
 			free(value);
+			free(mensaje);
 		}
 		else {
+			// Pedir a LFS un registro para guardar el registro en segmento encontrado.
+
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-				enviarYLogearMensajeError(archivosDeConfigYLog->logger, socketKernel, "ERROR: No se encontro el registro en LFS, o hubo un error al buscarlo.");
+				enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: No se encontro el registro en LFS, o hubo un error al buscarlo.");
 			}
 			else if(guardarEnMemoria(registroLFS)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 			}
 			else {
-				enviarYLogearMensajeError(archivosDeConfigYLog->logger, socketKernel, "ERROR: Hubo un error al guardar el registro LFS en la memoria.");
+				enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al guardar el registro LFS en la memoria.");
 			};
-			// TODO else journal();
 		}
 	}
 
 	else {
+		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
-		if(agregarSegmento(registroLFS, nombreTabla)){
+		if(agregarSegmentoConNombreDeLFS(registroLFS)){
 		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
-			enviarYLogearMensajeError(archivosDeConfigYLog->logger, socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+			enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
 		}
 	}
+	// TODO else journal();
+
 	liberarRecursosSelectLQL(nombreTabla, keyString);
 	liberarParametrosSpliteados(parametrosSpliteados); // Por alguna magica razon no me deja liberarlos dentro de la funcion de liberar Recursos
 	/*
-	size_t length = config_get_int_value(archivosDeConfigYLog->config, "TAMANIOMEM");
-	mem_hexdump(memoriaPrincipal->base, length);
+	size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
+	mem_hexdump(MEMORIA_PRINCIPAL->base, length);
 	*/
 }
 
@@ -343,9 +390,10 @@ void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro, char** pa
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	char** parametrosSpliteados = string_n_split(operacionInsert->parametros, 3, " ");
 	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
-	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados, memoriaPrincipal->tamanioMaximoValue);
+	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+
 	if(!registroNuevo) {
-		enviarYLogearMensajeError(archivosDeConfigYLog->logger, socketKernel, "ERROR: El value era mayor al tamanio maximo del value posible.");
+		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: El value era mayor al tamanio maximo del value posible.");
 		free(nombreTabla);
 		liberarParametrosSpliteados(parametrosSpliteados);
 		return;
@@ -357,17 +405,36 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,registroNuevo->key)){
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo);
 			paginaEncontrada->flag = SI;
+
+			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
 		} else {
 			agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel);
 		}
 	}
 
-	else{
-		agregarSegmento(registroNuevo,nombreTabla);
+	else {
+		if(agregarSegmento(registroNuevo,nombreTabla)) {
+			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
+		} else {
+			enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+		};
 	}
-	liberarRecursosInsertLQL(nombreTabla, registroNuevo, parametrosSpliteados);
-	size_t length = config_get_int_value(archivosDeConfigYLog->config, "TAMANIOMEM");
-	mem_hexdump(memoriaPrincipal->base, length);
+	// TODO else journal();
 
+	liberarRecursosInsertLQL(nombreTabla, registroNuevo, parametrosSpliteados);
+	/*size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
+	mem_hexdump(MEMORIA_PRINCIPAL->base, length);
+*/
 }
 
+void createLQL(operacionLQL* operacionCreate, int socketKernel) {
+	char* mensaje = (char*) pedirALFS(operacionCreate);
+
+	if(!mensaje) {
+		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
+	}
+
+	enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, mensaje);
+
+	free(mensaje);
+}

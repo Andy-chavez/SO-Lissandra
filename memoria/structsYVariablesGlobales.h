@@ -58,12 +58,19 @@ typedef struct {
 	int tamanio;
 } datosInicializacion;
 
-int socketLissandraFS;
 
-sem_t mutex_operacion;
-sem_t binario_socket;
-memoria* memoriaPrincipal;
-configYLogs *archivosDeConfigYLog;
-int tamanioDeUnRegistroEnMemoria;
+int SOCKET_LFS;
+
+int TAMANIO_UN_REGISTRO_EN_MEMORIA;
+
+sem_t MUTEX_LOG;
+sem_t MUTEX_OPERACION;
+sem_t BINARIO_SOCKET_KERNEL;
+sem_t MUTEX_SOCKET_LFS;
+
+memoria* MEMORIA_PRINCIPAL;
+
+configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
+
 
 #endif
