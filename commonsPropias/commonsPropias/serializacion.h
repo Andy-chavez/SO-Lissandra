@@ -36,7 +36,8 @@ typedef enum {
 	PAQUETEREGISTROS,
 	UNREGISTRO,
 	METADATA,
-	HANDSHAKE
+	HANDSHAKE,
+	DESCONEXION
 } operacionProtocolo;
 
 typedef struct {

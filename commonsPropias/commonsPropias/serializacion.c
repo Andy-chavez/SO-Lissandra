@@ -2,8 +2,17 @@
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
+	if(*buffer == NULL) {
+		return DESCONEXION;
+	}
 	memcpy(&protocolo, *buffer, sizeof(operacionProtocolo));
 	return protocolo;
+}
+
+void liberarOperacionLQL(operacionLQL* operacion) {
+	free(operacion->operacion);
+	free(operacion->parametros);
+	free(operacion);
 }
 
 void* serializarHandshake(int tamanioValue, int* tamanioBuffer){
@@ -275,3 +284,18 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 
 	return unMetadata;
 }
+
+char* string_trim_quotation(char* string) {
+	char* stringRespuesta = malloc(strlen(string) - 1);
+	char* aux = string + 1;
+	int i = 1;
+	while(*(string + i) != '"') {
+		i++;
+	}
+	i--;
+	size_t tamanioString = i;
+	strncpy(stringRespuesta, aux, tamanioString);
+	*(stringRespuesta + i) = '\0';
+	free(string);
+	return stringRespuesta;
+};
