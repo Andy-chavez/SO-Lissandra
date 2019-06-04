@@ -19,6 +19,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	nuevaMemoria->tamanioMaximoValue = datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
 
+
 	TAMANIO_UN_REGISTRO_EN_MEMORIA = calcularEspacioParaUnRegistro(nuevaMemoria->tamanioMaximoValue);
 
 	if(nuevaMemoria == NULL || nuevaMemoria->base == NULL) {
@@ -90,6 +91,7 @@ void liberarbufferDePagina(bufferDePagina* buffer) {
 
 void* guardar(registroConNombreTabla* unRegistro) {
 	bufferDePagina *bufferAGuardar = armarBufferDePagina(unRegistro, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+
 	void *guardarDesde = encontrarEspacio();
 
 	memcpy(guardarDesde, bufferAGuardar->buffer, bufferAGuardar->tamanio);
@@ -133,12 +135,14 @@ int agregarSegmento(registro* primerRegistro,char* tabla ){
 	segmento* segmentoNuevo = malloc(sizeof(segmento));
 	segmentoNuevo->nombreTabla = string_duplicate(tabla);
 	segmentoNuevo->tablaPaginas = list_create();
+
 	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
 
 	list_add(segmentoNuevo->tablaPaginas, primeraPagina);
 
 	return 0;
 }
+
 
 int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS) {
 	return agregarSegmento(registroLFS, registroLFS->nombreTabla);
@@ -190,6 +194,7 @@ int obtenerTamanioValue(void* valueBuffer) {
 
 // ------------------------------------------------------------------------ //
 // OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
+
 
 void* pedirALFS(operacionLQL *operacion) {
 	sem_wait(&MUTEX_SOCKET_LFS);
@@ -388,7 +393,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 		}
 	}
 
-	else{
+	else {
 		if(agregarSegmento(registroNuevo,nombreTabla)) {
 			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
 		} else {

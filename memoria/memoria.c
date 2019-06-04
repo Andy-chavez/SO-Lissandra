@@ -119,6 +119,7 @@ void *servidorMemoria(){
 	int socketKernel;
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
+
 		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "No se pudo inicializar el servidor de memoria");
 		return NULL;
 	}
@@ -127,6 +128,7 @@ void *servidorMemoria(){
 
 	int valgrind = 1;
 	while(valgrind){
+
 		sem_wait(&BINARIO_SOCKET_KERNEL);
 		socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
@@ -175,7 +177,6 @@ int main() {
 	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) ARCHIVOS_DE_CONFIG_Y_LOG);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
-
 	//pthread_join(threadServer, NULL);
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);

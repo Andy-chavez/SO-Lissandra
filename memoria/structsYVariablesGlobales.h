@@ -58,14 +58,19 @@ typedef struct {
 	int tamanio;
 } datosInicializacion;
 
+
 int SOCKET_LFS;
+
+int TAMANIO_UN_REGISTRO_EN_MEMORIA;
 
 sem_t MUTEX_LOG;
 sem_t MUTEX_OPERACION;
 sem_t BINARIO_SOCKET_KERNEL;
 sem_t MUTEX_SOCKET_LFS;
+
 memoria* MEMORIA_PRINCIPAL;
+
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
-int TAMANIO_UN_REGISTRO_EN_MEMORIA;
+
 
 #endif
