@@ -78,10 +78,12 @@ int crearSocketServidor(char *ip, char *puerto) {
 	if(socketServidor == -1) {
 		log_error(logger, "Hubo un error en la creacion del socket");
 		freeaddrinfo(infoDireccionServidor);
+		log_destroy(logger);
 		return -1;
 	} else if(intentarBindeo == -1) {
 		log_error(logger, "Hubo un error en el bindeo del socket");
 		freeaddrinfo(infoDireccionServidor);
+		log_destroy(logger);
 		return -1;
 	}
 

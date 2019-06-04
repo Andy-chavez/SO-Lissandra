@@ -7,7 +7,7 @@
 #include "structsYVariablesGlobales.h"
 
 // ------------------------------------------------------------------------ //
-// OPERACIONES SOBRE MEMORIA PRINCIPAL //
+// 1) INICIALIZACIONES //
 
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* ARCHIVOS_DE_CONFIG_Y_LOG) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
@@ -30,6 +30,22 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Memoria inicializada.");
 	return nuevaMemoria;
 }
+
+void inicializarArchivos() {
+	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
+	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
+	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
+}
+
+void inicializarSemaforos() {
+	sem_init(&MUTEX_OPERACION, 0, 1);
+	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
+	sem_init(&MUTEX_LOG, 0, 1);
+	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
+}
+
+// ------------------------------------------------------------------------ //
+// 2) OPERACIONES SOBRE MEMORIA PRINCIPAL //
 
 void* liberarSegmentos(segmento* unSegmento) {
 	void* liberarPaginas(paginaEnTabla* unRegistro) {
@@ -193,8 +209,7 @@ int obtenerTamanioValue(void* valueBuffer) {
 }
 
 // ------------------------------------------------------------------------ //
-// OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
-
+// 3) OPERACIONES CON LISSANDRA FILE SYSTEM //
 
 void* pedirALFS(operacionLQL *operacion) {
 	sem_wait(&MUTEX_SOCKET_LFS);
@@ -210,6 +225,9 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 
 	return paginaEncontradaEnLFS;
 }
+
+// ------------------------------------------------------------------------ //
+// 4) OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
 
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	int i = 0;
@@ -300,7 +318,7 @@ void enviarYLogearInfo(t_log *logger, int socket, char* mensaje) {
 	enviar(socket, mensaje, strlen(mensaje) + 1);
 }
 // ------------------------------------------------------------------------ //
-// OPERACIONESLQL //
+// 5) OPERACIONESLQL //
 
 void liberarRecursosSelectLQL(char* nombreTabla, int *key) {
 	free(nombreTabla);
@@ -320,11 +338,12 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,key)){
 
 			char* value = valueRegistro(unSegmento,key);
+			char *mensaje = string_new();
+			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", value);
 
-			printf ("El valor es %s\n", value);
-			int longitudValue = string_length(value) + 1;
-			enviar(socketKernel, (void*) value, longitudValue);
+			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, mensaje);
 			free(value);
+			free(mensaje);
 		}
 		else {
 			// Pedir a LFS un registro para guardar el registro en segmento encontrado.
@@ -410,8 +429,12 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 
 void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 	char* mensaje = (char*) pedirALFS(operacionCreate);
+
 	if(!mensaje) {
 		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
 	}
+
 	enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, mensaje);
+
+	free(mensaje);
 }

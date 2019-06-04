@@ -45,7 +45,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
 		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un CREATE");
-		//createLQL();
+		createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
 		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DROP");
@@ -144,19 +144,6 @@ void *servidorMemoria(){
 
 	cerrarConexion(socketServidorMemoria);
 
-}
-
-void inicializarArchivos() {
-	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
-	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
-	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
-}
-
-void inicializarSemaforos() {
-	sem_init(&MUTEX_OPERACION, 0, 1);
-	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
-	sem_init(&MUTEX_LOG, 0, 1);
-	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
 }
 
 int main() {
