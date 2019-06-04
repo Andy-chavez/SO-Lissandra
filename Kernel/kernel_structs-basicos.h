@@ -12,7 +12,9 @@
 #include <commons/collections/list.h>
 #include <commonsPropias/serializacion.h>
 #include <stdlib.h>
+#include <semaphore.h>
 
+/******************************STRUCTS******************************************/
 typedef struct{
 	char* operacion;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
@@ -26,13 +28,7 @@ typedef struct{
 	//t_list* instruccion_siguiente;
 	//TODO agregar mas campos 2
 }instruccion;
-/*typedef enum {
-	SC, // UNA
-	SH, // MUCHAS
-	EC  // MUCHAS
-}criterios;
-*/
-typedef struct{
+/*typedef struct{
 	int numeroDeMemoria;
 	consistencia *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
 }memoria;
@@ -41,13 +37,17 @@ typedef struct{
 	consistencia unCriterio;
 	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
 }criterio;
-
+*/
+typedef struct{
+	int memoria;
+	consistencia consistencias[3];
+}memoria;
 typedef struct{
 	char* nombreDeTabla;
-	consistencia criterioDeTabla;
+	consistencia consistenciaDeTabla;
 }tabla; //ver si es necesario agregar algo mas
 
-typedef enum {
+/*typedef enum {
 	INSERT,
 	CREATE,
 	DESCRIBETABLE,
@@ -59,10 +59,30 @@ typedef enum {
 	METRICS,
 	ADD
 }caso;
-
+*/
 typedef struct {
 	t_config* config;
 	t_log* log;
 } configYLogs;
+
+/******************************VARIABLES GLOBALES******************************************/
+t_list* cola_proc_nuevos;  //use esta en el caso del run
+t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
+t_list* cola_proc_terminados;
+t_list* cola_proc_ejecutando;
+t_list* memorias;
+sem_t hayNew;
+pthread_mutex_t colaNuevos;
+pthread_mutex_t colaListos;
+pthread_mutex_t colaTerminados;
+char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
+char* ipMemoria;
+char* puertoMemoria;
+configYLogs *kernel_configYLog;
+int quantumMax;
+int multiprocesamiento;
+int metadataRefresh;
+int sleepEjecucion;
+
 
 #endif /* KERNEL_STRUCTS_BASICOS_H_ */
