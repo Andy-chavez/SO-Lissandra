@@ -19,6 +19,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	sem_init(&hayNew,0,0);
+	sem_init(&hayReady,0,0);
 }
 void kernel_crearListas(){
 	cola_proc_nuevos = list_create();
@@ -38,6 +39,7 @@ void kernel_inicializar(char* path){
 	metadataRefresh = (int)config_get_string_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = (int)config_get_string_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 	kernel_crearListas();
+	kernel_inicializarSemaforos();
 }
 void liberarConfigYLogs() {
 	free(kernel_configYLog->config);
@@ -47,6 +49,7 @@ void liberarConfigYLogs() {
 	free(ipMemoria);
 	free(puertoMemoria);
 	free(kernel_configYLog);
+
 }
 
 #endif /* KERNEL_CONFIGURACIONES_H_ */

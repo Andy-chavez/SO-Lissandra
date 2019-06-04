@@ -47,37 +47,52 @@ void* kernel_cliente(void *archivo);
 // _________________________________________.: OPERACIONES DE API :.____________________________________________
 void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
-	//void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//enviar(socketClienteKernel, aEnviar, 39);
+	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
 	printf("\n\nEnviado\n\n");
+	char * recibido= (char*) recibir(socketClienteKernel);
+	printf("\n\nValor recibido:%s\n\n",recibido);
 	cerrarConexion(socketClienteKernel);
+	free(recibido);
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
 }
 void kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	//void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//enviar(socketClienteKernel, aEnviar, 31);
-	printf("\nEnviado\n");
-	char* recibido = (char*)recibir(socketClienteKernel);
-	printf("\nEl valor recibido es: %s\n",recibido);
-	//recibir valor
-	//cerrarConexion(socketClienteKernel);
+	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+	printf("\n\nEnviado\n\n");
+	char * recibido= (char*) recibir(socketClienteKernel);
+	printf("\n\nValor recibido:%s\n\n",recibido);
+	cerrarConexion(socketClienteKernel);
+	free(recibido);
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
 }
 void kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	//void * aEnviar = serializarOperacionLQL(opAux);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//enviar(socketClienteKernel, aEnviar, 39);
+	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
 	printf("\n\nEnviado\n\n");
-	//recibir valor
-	//cerrarConexion(socketClienteKernel);
+	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
+	printf("\n\nValor recibido:%s\n\n",recibido);
+	cerrarConexion(socketClienteKernel);
+	free(recibido);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+void kernel_drop(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+	printf("\n\nEnviado\n\n");
+	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
+	printf("\n\nValor recibido:%s\n\n",recibido);
+	cerrarConexion(socketClienteKernel);
+	free(recibido);
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -94,14 +109,15 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 	return instruc->ejecutado==0;
 }
 void kernel_planificador(){
-	while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
+	sem_wait(&hayReady);
+	//while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
 		//TODO poner semaforo
-		pcb* pcb_auxiliar = malloc(sizeof(pcb));
-		//pcb_auxiliar->instruccion =list_create();
-		pthread_mutex_lock(&colaListos);
-		pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,1);
-		pthread_mutex_unlock(&colaListos);
-		if( pcb_auxiliar->instruccion == NULL){
+	pcb* pcb_auxiliar = malloc(sizeof(pcb));
+	pthread_mutex_lock(&colaListos);
+	pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,0);
+	pthread_mutex_unlock(&colaListos);
+	printf("%s\n", pcb_auxiliar->operacion);
+	if(pcb_auxiliar->instruccion == NULL){
 			if(pcb_auxiliar->ejecutado ==1){
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
@@ -140,50 +156,50 @@ void kernel_planificador(){
 				pthread_mutex_unlock(&colaListos);
 			}
 		}
+		free(pcb_auxiliar->operacion);
 		free(pcb_auxiliar);
-	}
 }
 void kernel_crearPCB(char* operacion){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	pcb_auxiliar->operacion= malloc(sizeof(*operacion));
+	//pcb_auxiliar->operacion= malloc(sizeof(*operacion));
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 0;
+	pcb_auxiliar->instruccion = NULL;
 	pthread_mutex_lock(&colaNuevos);
-	list_add(cola_proc_nuevos,pcb_auxiliar);
+	list_add(cola_proc_listos,pcb_auxiliar);
 	pthread_mutex_unlock(&colaNuevos);
-	free(pcb_auxiliar->operacion);
-	free(pcb_auxiliar);
+	sem_post(&hayReady);
+	//free(pcb_auxiliar->operacion);
+	//free(pcb_auxiliar);
 
 }
 void kernel_pasar_a_ready(){
-	sem_wait(&hayNew); //TODO sem_BINARIO
-	char* operacion = NULL;
-//	if (list_is_empty(cola_proc_listos)){ //TODO semaforo que solucione esto para sacarlo
-//		return ;
-//	}
+	sem_wait(&hayNew);
 	pthread_mutex_lock(&colaNuevos);
-	operacion = (char*)list_remove(cola_proc_nuevos,1);
+	//char* operacion = malloc(sizeof((char*)list_remove(cola_proc_nuevos,1))); stringlength
+	char* operacion = NULL;
+	operacion =(char*) list_remove(cola_proc_nuevos,0);
+	//printf("%d\n", operacion);
+	//list_remove_and_destroy_element(cola_proc_nuevos,0,free);
 	pthread_mutex_unlock(&colaNuevos);
-	string_to_upper(operacion);
-
-	if (string_contains( "RUN" ,operacion)) {
+	char** opAux = string_n_split(operacion,2,""); //todo cambiar esto porque va a romper dps sino, mejor hacer switch
+	string_to_upper(*opAux);
+	if (string_contains( "RUN" ,*opAux)) {
 		 //poner esto en log aclarando el path
 		kernel_run(operacion);
 	}
-	else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", operacion)){
+	else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", *opAux)){ //splitear y comparar
 		kernel_crearPCB(operacion);
 	}
 	else{
 		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
 	}
-	free(operacion);
 }
 void kernel_almacenar_en_new(char*operacion){
 
 	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
-	free(operacion);
 	sem_post(&hayNew);
 	//TODO loggear que operacion se agrego a new
 }
@@ -191,9 +207,10 @@ void kernel_almacenar_en_new(char*operacion){
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	linea = readline(""); //TODO agregar while para leer de consola
-	kernel_almacenar_en_new(linea);
-	//free(linea);
+	//while((linea = readline(""))!= NULL)
+	 //TODO agregar while para leer de consola
+	linea = readline("");
+		kernel_almacenar_en_new(linea);
 }
 void kernel_run(char* operacion){
 	char** opYArg;
@@ -229,6 +246,7 @@ void kernel_run(char* operacion){
 	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_nuevos,pcb_auxiliar);
 	pthread_mutex_unlock(&colaNuevos);
+	sem_post(&hayReady);
 	free(lineaLeida);
 	free(pcb_auxiliar->operacion);
 	free(pcb_auxiliar);
