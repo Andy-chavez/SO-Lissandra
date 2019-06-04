@@ -149,7 +149,7 @@ void *servidorMemoria(){
 void inicializarArchivos() {
 	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
 	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
-	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("../memoria.config");
+	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
 }
 
 void inicializarSemaforos() {
@@ -172,6 +172,7 @@ int main() {
 
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion, ARCHIVOS_DE_CONFIG_Y_LOG);
 	liberarDatosDeInicializacion(datosDeInicializacion);
+
 
 	servidorMemoria();
 	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) ARCHIVOS_DE_CONFIG_Y_LOG);

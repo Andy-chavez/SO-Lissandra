@@ -128,7 +128,7 @@ int agregarSegmento(registro* primerRegistro,char* tabla ){
 	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(primerRegistro);
 
 	if(!primeraPagina) {
-		return -1;
+		return 0;
 	}
 
 	primeraPagina->numeroPagina = 0;
@@ -140,7 +140,7 @@ int agregarSegmento(registro* primerRegistro,char* tabla ){
 
 	list_add(segmentoNuevo->tablaPaginas, primeraPagina);
 
-	return 0;
+	return 1;
 }
 
 
