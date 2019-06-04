@@ -41,20 +41,23 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DESCRIBE");
+		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DESCRIBE. WIP");
+		// TODO
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
 		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un CREATE");
 		createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DROP");
+		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DROP. WIP");
+		// TODO
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un JOURNAL");
+		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un JOURNAL. WIP");
+		// TODO
 		}
 	else {
-		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "No pude entender la operacion");
+		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "No pude entender la operacion");
 	}
 	liberarOperacionLQL(operacionAParsear);
 }
@@ -159,7 +162,6 @@ int main() {
 
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion, ARCHIVOS_DE_CONFIG_Y_LOG);
 	liberarDatosDeInicializacion(datosDeInicializacion);
-
 
 	servidorMemoria();
 	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) ARCHIVOS_DE_CONFIG_Y_LOG);
