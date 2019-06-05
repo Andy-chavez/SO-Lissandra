@@ -7,7 +7,19 @@
 #include "structsYVariablesGlobales.h"
 
 // ------------------------------------------------------------------------ //
-// 1) INICIALIZACIONES //
+// 1) INICIALIZACIONES Y FINALIZACIONES //
+
+void inicializarProcesoMemoria() {
+	inicializarArchivos();
+	inicializarSemaforos();
+}
+
+void empezarFinalizacion() {
+	crearSocketCliente(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IPMEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
+	sem_wait(&MUTEX_PROCESO_ABIERTO);
+	PROCESO_ABIERTO = 0;
+	sem_post(&MUTEX_PROCESO_ABIERTO);
+}
 
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* ARCHIVOS_DE_CONFIG_Y_LOG) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
@@ -42,6 +54,8 @@ void inicializarSemaforos() {
 	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
 	sem_init(&MUTEX_LOG, 0, 1);
 	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
+	sem_init(&MUTEX_PROCESO_ABIERTO, 0, 1);
+	sem_init(&BINARIO_PROCESO_ABIERTO, 0, 1);
 }
 
 // ------------------------------------------------------------------------ //
