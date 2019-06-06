@@ -69,7 +69,7 @@ typedef struct {
 
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;  //use esta en el caso del run
-t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
+t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;

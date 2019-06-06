@@ -11,9 +11,11 @@
 #include <commons/string.h>
 #include "kernel_structs-basicos.h"
 
+void kernel_inicializarSemaforos();
+void kernel_crearListas();
 void liberarConfigYLogs();
 void kernel_inicializar();
-
+void kernel_finalizar();
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
@@ -51,7 +53,38 @@ void liberarConfigYLogs() {
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
 	free(kernel_configYLog);
+}
+void destruirSemaforos(){
+	sem_destroy(&hayNew);
+	sem_destroy(&hayReady);
+	pthread_mutex_destroy(&colaNuevos);
+	pthread_mutex_destroy(&colaListos);
+	pthread_mutex_destroy(&colaTerminados);
+}
+void liberarColas(pcb* element){
+	free(element->operacion);
+	free(element);
+}
+void liberarPCB(pcb* elemento) {
 
+	void liberarInstrucciones(instruccion* listaIns) {
+		free(listaIns->operacion);
+		free(listaIns);
+	}
+
+	free(elemento->operacion);
+	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
+	free(elemento);
+}
+void liberarListas(){
+	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
+	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
+	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
+}
+void kernel_finalizar(){
+	liberarConfigYLogs();
+	liberarListas();
+	destruirSemaforos();
 }
 
 #endif /* KERNEL_CONFIGURACIONES_H_ */
