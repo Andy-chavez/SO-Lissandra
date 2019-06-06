@@ -156,7 +156,7 @@ void kernel_roundRobin(){
 			}
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
-			for(int quantum=0;quantum++;quantum<quantumMax){
+			for(int quantum=0;quantum<quantumMax;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					kernel_api(pcb_auxiliar->operacion);
 					pcb_auxiliar->ejecutado=1;
@@ -183,7 +183,6 @@ void kernel_roundRobin(){
 }
 void kernel_crearPCB(char* operacion){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	//pcb_auxiliar->operacion= malloc(sizeof(*operacion));
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 0;
 	pcb_auxiliar->instruccion = NULL;
@@ -191,23 +190,16 @@ void kernel_crearPCB(char* operacion){
 	list_add(cola_proc_listos,pcb_auxiliar);
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayReady);
-	//free(pcb_auxiliar->operacion);
-	//free(pcb_auxiliar);
-
 }
 void kernel_pasar_a_ready(){
 	sem_wait(&hayNew);
 	pthread_mutex_lock(&colaNuevos);
-	//char* operacion = malloc(sizeof((char*)list_remove(cola_proc_nuevos,1))); stringlength
 	char* operacion = NULL;
 	operacion =(char*) list_remove(cola_proc_nuevos,0);
-	//printf("%d\n", operacion);
-	//list_remove_and_destroy_element(cola_proc_nuevos,0,free);
 	pthread_mutex_unlock(&colaNuevos);
-	//char** opAux = string_n_split(operacion,2,""); //todo cambiar esto porque va a romper dps sino, mejor hacer switch
+
 	string_to_upper(operacion);
 	if (string_contains( operacion, "RUN")) {
-		 //poner esto en log aclarando el path
 		kernel_run(operacion);
 	}
 	else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") || string_contains(operacion, "CREATE") ||
@@ -217,9 +209,6 @@ void kernel_pasar_a_ready(){
 	}
 	else{
 		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
-		//free(*opAux);
-		//free(*(opAux+1));
-		//free(opAux);
 	}
 }
 // ---------------.: THREAD CONSOLA A NEW :.---------------
@@ -235,10 +224,11 @@ void kernel_almacenar_en_new(char*operacion){
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	//while((linea = readline(""))!= NULL)
+	//while((linea = readline(""))!= NULL){
 	 //TODO agregar while para leer de consola
-	linea = readline("");
+		linea = readline("");
 		kernel_almacenar_en_new(linea);
+	//}
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_run(char* operacion){
@@ -286,6 +276,7 @@ void kernel_run(char* operacion){
 }
 void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
+	printf("%s\n\n", operacionAParsear);
 	if(string_contains(operacionAParsear, "INSERT")) {
 		kernel_insert(operacionAParsear);
 	}
