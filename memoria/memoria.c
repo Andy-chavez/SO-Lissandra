@@ -34,22 +34,25 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
-		insertLQL(operacionAParsear, socketKernel);
-		/*
-		if(esInsertEjecutable(operacionAParsear->parametros)) insertLQL(operacionAParsear, socketKernel);
-		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
-		*/
+		if(esInsertEjecutable(operacionAParsear->parametros)) {
+			insertLQL(operacionAParsear, socketKernel);
+		}
+		else {
+			enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
+		}
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
-		selectLQL(operacionAParsear, socketKernel);
+		if(esSelectEjecutable(operacionAParsear->parametros)) selectLQL(operacionAParsear, socketKernel);
+		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
+		// describeLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE");
-		createLQL(operacionAParsear, socketKernel);
+		// createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
@@ -61,6 +64,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
 	liberarOperacionLQL(operacionAParsear);
+	sleep((config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM") + 500) / 1000); // pasaje a segundos del retardo
 }
 
 //------------------------------------------------------------------------
@@ -105,25 +109,27 @@ void liberarDatosDeInicializacion(datosInicializacion* datos) {
 
 int crearSocketLFS() {
 	char* fileSystemIP = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IPFILESYSTEM");
-	char* fileSystemPuerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTOFILESYSTEM");
+	char* fileSystemPuerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO_FS");
 
 	int socketClienteLFS = crearSocketCliente(fileSystemIP,fileSystemPuerto);
 	return socketClienteLFS;
 }
 
 void* manejarConsola() {
-	char* comando = NULL;
+	enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada.");
 	while(1) {
-		enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada. Por favor, ingrese un comando LQL:");
+		char* comando = NULL;
+		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
 		comando = readline(">");
 		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
 		APIMemoria(splitear_operacion(comando), -1);
 		sem_post(&MUTEX_OPERACION);
+		free(comando);
 	}
 }
 
 void *servidorMemoria() {
-	int socketServidorMemoria = crearSocketServidor(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IPMEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
+	int socketServidorMemoria = crearSocketServidor(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 	pthread_t threadConexion;
 	int socketKernel;
 	if(socketServidorMemoria == -1) {

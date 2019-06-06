@@ -16,7 +16,7 @@ void inicializarProcesoMemoria() {
 
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* ARCHIVOS_DE_CONFIG_Y_LOG) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
-	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
+	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 
 	nuevaMemoria->base = malloc(tamanioMemoria);
 	memset(nuevaMemoria->base, 0, tamanioMemoria);
@@ -338,11 +338,23 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 
 // ------------------------------------------------------------------------ //
 // 5) CHECKS A OPERACIONESLQL //
-/*
+
 int esInsertEjecutable(char* parametros) {
-	char** parametrosSpliteados = string_n_split();
+	char** parametrosSpliteados = string_split(parametros, " ");
+	if(!atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) != "0"){
+		return 0;
+	}
+	return 1;
 }
-*/
+
+int esSelectEjecutable(char* parametros) {
+	char** parametrosSpliteados = string_split(parametros, " ");
+	if(!atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) != "0"){
+		return 0;
+	}
+	return 1;
+}
+
 
 // ------------------------------------------------------------------------ //
 // 6) OPERACIONESLQL //
