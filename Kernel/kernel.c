@@ -34,11 +34,11 @@ int main(int argc, char *argv[]){
 	pthread_t threadNew_Ready;
 	pthread_t threadRoundRobin;
 
-	kernel_inicializar(pathConfig);
+	kernel_inicializar();
 
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
-	pthread_create(&threadRoundRobin, NULL,(void*) kernel_planificador, NULL);
+	pthread_create(&threadRoundRobin, NULL,(void*) kernel_roundRobin, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadRoundRobin,NULL);

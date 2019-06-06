@@ -8,10 +8,11 @@
 #ifndef KERNEL_CONFIGURACIONES_H_
 #define KERNEL_CONFIGURACIONES_H_
 #include <commons/config.h>
+#include <commons/string.h>
 #include "kernel_structs-basicos.h"
 
 void liberarConfigYLogs();
-void kernel_inicializar(char*);
+void kernel_inicializar();
 
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 void kernel_inicializarSemaforos(){
@@ -28,26 +29,27 @@ void kernel_crearListas(){
 	cola_proc_ejecutando = list_create();
 	memorias = list_create();
 }
-void kernel_inicializar(char* path){
+void kernel_inicializar(){
 	kernel_configYLog= malloc(sizeof(configYLogs));
-	kernel_configYLog->config = config_create(path);
+	kernel_configYLog->config = config_create(pathConfig);
 	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
-	quantumMax = (int)config_get_string_value(kernel_configYLog->config,"QUANTUM");
-	multiprocesamiento =(int)config_get_string_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
-	metadataRefresh = (int)config_get_string_value(kernel_configYLog->config,"METADATA_REFRESH");
-	sleepEjecucion = (int)config_get_string_value(kernel_configYLog->config,"SLEEP_EJECUCION");
+	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
+	multiprocesamiento =config_get_int_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
+	metadataRefresh = config_get_int_value(kernel_configYLog->config,"METADATA_REFRESH");
+	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
 }
 void liberarConfigYLogs() {
-	free(kernel_configYLog->config);
-	free(kernel_configYLog->log);
+//	free(pathConfig);
+//	free(kernel_configYLog->config);
+//	free(kernel_configYLog->log);
+//	free(ipMemoria);
+//	free(puertoMemoria);
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
-	free(ipMemoria);
-	free(puertoMemoria);
 	free(kernel_configYLog);
 
 }

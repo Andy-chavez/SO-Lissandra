@@ -28,20 +28,22 @@ typedef struct{
 	//t_list* instruccion_siguiente;
 	//TODO agregar mas campos 2
 }instruccion;
-/*typedef struct{
-	int numeroDeMemoria;
-	consistencia *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
-}memoria;
 
-typedef struct{
-	consistencia unCriterio;
-	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
-}criterio;
-*/
+//typedef struct{
+//	int numeroDeMemoria;
+//	consistencia *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
+//}memoria;
+//
+//typedef struct{
+//	consistencia unCriterio;
+//	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
+//}criterio;
+
 typedef struct{
 	int memoria;
 	consistencia consistencias[3];
 }memoria;
+
 typedef struct{
 	char* nombreDeTabla;
 	consistencia consistenciaDeTabla;

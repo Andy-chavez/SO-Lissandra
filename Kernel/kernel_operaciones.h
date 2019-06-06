@@ -31,7 +31,7 @@ void kernel_api(char*);
  * add -> agregar memoria a un criterio @MEMORIA tengo que avisarles?
  *
  */
-void kernel_planificador();
+void kernel_roundRobin();
 void kernel_insert();
 void kernel_select();
 void kernel_describe();
@@ -44,7 +44,7 @@ void kernel_add();
 void* kernel_cliente(void *archivo);
 
 /******************************IMPLEMENTACIONES******************************************/
-// _________________________________________.: OPERACIONES DE API :.____________________________________________
+// _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
@@ -97,10 +97,30 @@ void kernel_drop(char* operacion){
 	free(opAux->parametros);
 	free(opAux);
 }
+// _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
+void kernel_journal(){
+	operacionLQL* opAux=splitear_operacion("JOURNAL");
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+	printf("\n\nEnviado\n\n");
+	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
+	printf("\n\nValor recibido:%s\n\n",recibido);
+	cerrarConexion(socketClienteKernel);
+	free(recibido);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+}
+void kernel_metrics(){ //todo dps
+	printf("Not yet");
+}
+void kernel_add(){
+
+}
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 instruccion* obtener_ultima_instruccion(t_list* instruc){
 	int size = list_size(instruc);
-	instruccion *instrucAux = malloc(sizeof(instruccion));
+	instruccion *instrucAux;//= malloc(sizeof(instruccion));
 	instrucAux = list_get(instruc,size);
 	return instrucAux;
 }
@@ -108,21 +128,23 @@ instruccion* obtener_ultima_instruccion(t_list* instruc){
 bool instruccion_no_ejecutada(instruccion* instruc){
 	return instruc->ejecutado==0;
 }
-void kernel_planificador(){
+// ---------------.: THREAD ROUND ROBIN :.---------------
+void kernel_roundRobin(){
 	sem_wait(&hayReady);
 	//while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
 		//TODO poner semaforo
-	pcb* pcb_auxiliar = malloc(sizeof(pcb));
+	//while(1){
+	pcb* pcb_auxiliar;// = malloc(sizeof(pcb));
 	pthread_mutex_lock(&colaListos);
 	pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,0);
 	pthread_mutex_unlock(&colaListos);
-	printf("%s\n", pcb_auxiliar->operacion);
+	//printf("%s\n", pcb_auxiliar->operacion);
 	if(pcb_auxiliar->instruccion == NULL){
 			if(pcb_auxiliar->ejecutado ==1){
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
-				free(pcb_auxiliar);
+				//free(pcb_auxiliar);
 			}
 			else{
 				pcb_auxiliar->ejecutado=1;
@@ -130,7 +152,7 @@ void kernel_planificador(){
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
-				free(pcb_auxiliar);
+				//free(pcb_auxiliar);
 			}
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
@@ -144,20 +166,20 @@ void kernel_planificador(){
 				instruc->ejecutado = 1;
 				kernel_api(instruc->operacion);
 			}
-			if(!instruccion_no_ejecutada(obtener_ultima_instruccion(pcb_auxiliar->instruccion))){
-				pthread_mutex_lock(&colaTerminados);
-				list_add(cola_proc_terminados, pcb_auxiliar);
-				pthread_mutex_unlock(&colaTerminados);
-
-			}
-			else{
+			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada)){
 				pthread_mutex_lock(&colaListos);
 				list_add(cola_proc_listos, pcb_auxiliar);
 				pthread_mutex_unlock(&colaListos);
 			}
+			else{
+				pthread_mutex_lock(&colaTerminados);
+				list_add(cola_proc_terminados, pcb_auxiliar);
+				pthread_mutex_unlock(&colaTerminados);
+			}
 		}
-		free(pcb_auxiliar->operacion);
-		free(pcb_auxiliar);
+	//}
+//		free(pcb_auxiliar->operacion);
+//		free(pcb_auxiliar);
 }
 void kernel_crearPCB(char* operacion){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
@@ -182,19 +204,25 @@ void kernel_pasar_a_ready(){
 	//printf("%d\n", operacion);
 	//list_remove_and_destroy_element(cola_proc_nuevos,0,free);
 	pthread_mutex_unlock(&colaNuevos);
-	char** opAux = string_n_split(operacion,2,""); //todo cambiar esto porque va a romper dps sino, mejor hacer switch
-	string_to_upper(*opAux);
-	if (string_contains( "RUN" ,*opAux)) {
+	//char** opAux = string_n_split(operacion,2,""); //todo cambiar esto porque va a romper dps sino, mejor hacer switch
+	string_to_upper(operacion);
+	if (string_contains( operacion, "RUN")) {
 		 //poner esto en log aclarando el path
 		kernel_run(operacion);
 	}
-	else if(string_contains("SELECTINSERTCREATEDESCRIBEDROPJOURNALMETRICSADD", *opAux)){ //splitear y comparar
+	else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") || string_contains(operacion, "CREATE") ||
+			 string_contains(operacion, "DESCRIBE") || string_contains(operacion, "DROP") ||
+			 string_contains(operacion, "JOURNAL") || string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")){ //splitear y comparar
 		kernel_crearPCB(operacion);
 	}
 	else{
 		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
+		//free(*opAux);
+		//free(*(opAux+1));
+		//free(opAux);
 	}
 }
+// ---------------.: THREAD CONSOLA A NEW :.---------------
 void kernel_almacenar_en_new(char*operacion){
 
 	pthread_mutex_lock(&colaNuevos);
@@ -212,24 +240,25 @@ void kernel_consola(){
 	linea = readline("");
 		kernel_almacenar_en_new(linea);
 }
+// ---------------.: THREAD NEW A READY :.---------------
 void kernel_run(char* operacion){
 	char** opYArg;
 	opYArg = string_n_split(operacion ,2," ");
-	FILE *archivoALeer= fopen(*(opYArg+1), "r");
-	char *lineaLeida;
-	size_t limite = 250;
-	ssize_t leer;
-	lineaLeida = (char *)malloc(limite * sizeof(char));
-	if (archivoALeer == NULL){
-		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s, verifique existencia del archivo\n", operacion);
-		free(lineaLeida);
+	string_to_lower(*(opYArg+1));
+	FILE *archivoALeer;
+	if ((archivoALeer= fopen((*(opYArg+1)), "r")) == NULL){
+		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s %s, verifique existencia del archivo\n", *opYArg, *(opYArg+1) ); //operacion);
 		free(*(opYArg+1));
 		free(*(opYArg));
 		free(opYArg);
 		exit(EXIT_FAILURE);
 	}
+	char *lineaLeida;
+	size_t limite = 250;
+	ssize_t leer;
+	lineaLeida = NULL;
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	pcb_auxiliar->operacion= malloc(sizeof(operacion));
+	//pcb_auxiliar->operacion= malloc(sizeof(operacion));
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 1 ;
 	pcb_auxiliar->instruccion =list_create();
@@ -237,57 +266,57 @@ void kernel_run(char* operacion){
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
-		instruccion_auxiliar->operacion= malloc(sizeof(lineaLeida));
+		//instruccion_auxiliar->operacion= malloc(sizeof(lineaLeida));
 		instruccion_auxiliar->operacion= lineaLeida;
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
-		free(instruccion_auxiliar->operacion);
-		free(instruccion_auxiliar);
+		//free(instruccion_auxiliar->operacion);
+		//free(instruccion_auxiliar);
 	}
 	pthread_mutex_lock(&colaNuevos);
-	list_add(cola_proc_nuevos,pcb_auxiliar);
+	list_add(cola_proc_listos,pcb_auxiliar);
 	pthread_mutex_unlock(&colaNuevos);
-	sem_post(&hayReady);
 	free(lineaLeida);
-	free(pcb_auxiliar->operacion);
-	free(pcb_auxiliar);
+//	free(pcb_auxiliar->operacion);
+//	free(pcb_auxiliar);
 	free(*(opYArg+1));
 	free(*(opYArg));
 	free(opYArg);
 	fclose(archivoALeer);
+	sem_post(&hayReady);
 }
 void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
-	if(string_starts_with(operacionAParsear, "INSERT")) {
+	if(string_contains(operacionAParsear, "INSERT")) {
 		kernel_insert(operacionAParsear);
 	}
-	else if (string_starts_with(operacionAParsear, "SELECT")) {
+	else if (string_contains(operacionAParsear, "SELECT")) {
 			kernel_select(operacionAParsear);
 	}
-	else if (string_starts_with(operacionAParsear, "DESCRIBE")) {
+	else if (string_contains(operacionAParsear, "DESCRIBE")) {
 		printf("DESCRIBE\n");
 //TODO			kernel_describe();
 	}
-	else if (string_starts_with(operacionAParsear, "CREATE")) {
+	else if (string_contains(operacionAParsear, "CREATE")) {
 		printf("CREATE\n");
 //TODO			kernel_create();
 	}
-	else if (string_starts_with(operacionAParsear, "DROP")) {
+	else if (string_contains(operacionAParsear, "DROP")) {
 		printf("DROP\n");
 //TODO			kernel_drop();
 	}
-	else if (string_starts_with(operacionAParsear, "JOURNAL")) {
+	else if (string_contains(operacionAParsear, "JOURNAL")) {
 		printf("JOURNAL\n");
 //TODO			kernel_journal();
 	}
-	else if (string_starts_with(operacionAParsear, "RUN")) {
+	else if (string_contains(operacionAParsear, "RUN")) {
 		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
 //TODO			kernel_run(*argumentos);
 	}
-	else if (string_starts_with(operacionAParsear, "METRICS")) {
+	else if (string_contains(operacionAParsear, "METRICS")) {
 		printf("METRICS\n");
 //TODO			kernel_metrics();
 	}
-	else if (string_starts_with(operacionAParsear, "ADD")) {
+	else if (string_contains(operacionAParsear, "ADD")) {
 		printf("ADD\n");
 //TODO			kernel_add();
 	}
