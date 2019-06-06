@@ -118,12 +118,12 @@ void kernel_add(){
 
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
-instruccion* obtener_ultima_instruccion(t_list* instruc){
-	int size = list_size(instruc);
-	instruccion *instrucAux;//= malloc(sizeof(instruccion));
-	instrucAux = list_get(instruc,size);
-	return instrucAux;
-}
+//instruccion* obtener_ultima_instruccion(t_list* instruc){
+//	int size = list_size(instruc);
+//	instruccion *instrucAux;//= malloc(sizeof(instruccion));
+//	instrucAux = list_get(instruc,size);
+//	return instrucAux;
+//}
 
 bool instruccion_no_ejecutada(instruccion* instruc){
 	return instruc->ejecutado==0;
@@ -163,6 +163,7 @@ void kernel_roundRobin(){
 				}
 				instruccion* instruc=malloc(sizeof(instruccion));
 				instruc= list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
+				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
 				kernel_api(instruc->operacion);
 			}
@@ -248,7 +249,6 @@ void kernel_run(char* operacion){
 	ssize_t leer;
 	lineaLeida = NULL;
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
-	//pcb_auxiliar->operacion= malloc(sizeof(operacion));
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 1 ;
 	pcb_auxiliar->instruccion =list_create();
@@ -256,18 +256,35 @@ void kernel_run(char* operacion){
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
-		//instruccion_auxiliar->operacion= malloc(sizeof(lineaLeida));
 		instruccion_auxiliar->operacion= lineaLeida;
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
-		//free(instruccion_auxiliar->operacion);
-		//free(instruccion_auxiliar);
 	}
+//	instruccion* in1 = list_get(pcb_auxiliar->instruccion,0);
+//	printf("%s\n",in1->operacion);
+//	instruccion* in2 = list_get(pcb_auxiliar->instruccion,1);
+//	printf("%s\n",in2->operacion);
+//	instruccion* in3 = list_get(pcb_auxiliar->instruccion,2);
+//	printf("%s\n",in3->operacion);
+//	instruccion* in4 = list_get(pcb_auxiliar->instruccion,3);
+//	printf("%s\n",in4->operacion);
+//	instruccion* in5 = list_get(pcb_auxiliar->instruccion,4);
+//	printf("%s\n",in5->operacion);
+//	instruccion* in6 = list_get(pcb_auxiliar->instruccion,5);
+//	printf("%s\n",in6->operacion);
+//	instruccion* in7= list_get(pcb_auxiliar->instruccion,6);
+//	printf("%s\n",in7->operacion);
+//	instruccion* in8 = list_get(pcb_auxiliar->instruccion,7);
+//	printf("%s\n",in8->operacion);
+//	instruccion* in9 = list_get(pcb_auxiliar->instruccion,8);
+//	printf("%s\n",in9->operacion);
+
+
 	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_listos,pcb_auxiliar);
 	pthread_mutex_unlock(&colaNuevos);
-	free(lineaLeida);
-//	free(pcb_auxiliar->operacion);
-//	free(pcb_auxiliar);
+//free(lineaLeida);
+//free(pcb_auxiliar->operacion);
+//free(pcb_auxiliar);
 	free(*(opYArg+1));
 	free(*(opYArg));
 	free(opYArg);
@@ -276,7 +293,7 @@ void kernel_run(char* operacion){
 }
 void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
-	printf("%s\n\n", operacionAParsear);
+	//printf("%s\n\n", operacionAParsear);
 	if(string_contains(operacionAParsear, "INSERT")) {
 		kernel_insert(operacionAParsear);
 	}
