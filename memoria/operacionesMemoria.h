@@ -38,8 +38,9 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 
 void inicializarArchivos() {
 	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
-	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 1, LOG_LEVEL_INFO);
+	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 0, LOG_LEVEL_INFO);
 	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
+	LOGGER_CONSOLA = log_create("memoria_consola.log", "MEMORIA_CONSOLE", 1, LOG_LEVEL_INFO);
 }
 
 void inicializarSemaforos() {
@@ -60,8 +61,15 @@ void* liberarSegmentos(segmento* unSegmento) {
 		free(unSegmento->nombreTabla);
 		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
 		free(unSegmento);
-	}
+}
 
+void liberarConfigYLogs() {
+	log_destroy(ARCHIVOS_DE_CONFIG_Y_LOG->logger);
+	log_destroy(LOGGER_CONSOLA);
+	config_destroy(ARCHIVOS_DE_CONFIG_Y_LOG->config);
+	free(ARCHIVOS_DE_CONFIG_Y_LOG);
+
+}
 void liberarMemoria() {
 	free(MEMORIA_PRINCIPAL->base);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmentos);
@@ -172,12 +180,12 @@ int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS) {
 void agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel) {
 	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(unRegistro);
 	if(!paginaParaAgregar) {
-		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
+		enviarYLogearMensajeError(socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
 		return;
 	}
 
 	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
-	enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
+	enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 }
 
 registro* leerDatosEnMemoria(paginaEnTabla* unRegistro) {
@@ -309,21 +317,35 @@ char* valueRegistro(segmento* unSegmento, int key){
 	return value;
 }
 
-void enviarYLogearMensajeError(t_log *logger, int socket, char* mensaje) {
-	sem_wait(&MUTEX_LOG);
-	log_error(logger, mensaje);
-	sem_post(&MUTEX_LOG);
-	enviar(socket, mensaje, strlen(mensaje) + 1);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)) { // ME ILUMINE AH BUENO
+	if(socket != -1) {
+		sem_wait(&MUTEX_LOG);
+		log(ARCHIVOS_DE_CONFIG_Y_LOG->logger, mensaje);
+		sem_post(&MUTEX_LOG);
+		enviar(socket, mensaje, strlen(mensaje) + 1);
+	} else {
+		log(LOGGER_CONSOLA, mensaje);
+	}
 }
 
-void enviarYLogearInfo(t_log *logger, int socket, char* mensaje) {
-	sem_wait(&MUTEX_LOG);
-	log_info(logger, mensaje);
-	sem_post(&MUTEX_LOG);
-	enviar(socket, mensaje, strlen(mensaje) + 1);
+void enviarYLogearMensajeError(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
 }
+
+void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+}
+
 // ------------------------------------------------------------------------ //
-// 5) OPERACIONESLQL //
+// 5) CHECKS A OPERACIONESLQL //
+/*
+int esInsertEjecutable(char* parametros) {
+	char** parametrosSpliteados = string_n_split();
+}
+*/
+
+// ------------------------------------------------------------------------ //
+// 6) OPERACIONESLQL //
 
 void liberarRecursosSelectLQL(char* nombreTabla, int *key) {
 	free(nombreTabla);
@@ -346,7 +368,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 			char *mensaje = string_new();
 			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", value);
 
-			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, mensaje);
+			enviarOMostrarYLogearInfo(socketKernel, mensaje);
 			free(value);
 			free(mensaje);
 		}
@@ -355,13 +377,13 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-				enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: No se encontro el registro en LFS, o hubo un error al buscarlo.");
+				enviarYLogearMensajeError(socketKernel, "ERROR: No se encontro el registro en LFS, o hubo un error al buscarlo.");
 			}
 			else if(guardarEnMemoria(registroLFS)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 			}
 			else {
-				enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al guardar el registro LFS en la memoria.");
+				enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al guardar el registro LFS en la memoria.");
 			};
 		}
 	}
@@ -373,7 +395,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
-			enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+			enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
 		}
 	}
 	// TODO else journal();
@@ -398,7 +420,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
 	if(!registroNuevo) {
-		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: El value era mayor al tamanio maximo del value posible.");
+		enviarYLogearMensajeError(socketKernel, "ERROR: El value era mayor al tamanio maximo del value posible.");
 		free(nombreTabla);
 		liberarParametrosSpliteados(parametrosSpliteados);
 		return;
@@ -411,7 +433,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo);
 			paginaEncontrada->flag = SI;
 
-			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
+			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 		} else {
 			agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel);
 		}
@@ -419,9 +441,9 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 
 	else {
 		if(agregarSegmento(registroNuevo,nombreTabla)) {
-			enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "Se inserto exitosamente.");
+			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 		} else {
-			enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+			enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
 		};
 	}
 	// TODO else journal();
@@ -436,10 +458,10 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 	char* mensaje = (char*) pedirALFS(operacionCreate);
 
 	if(!mensaje) {
-		enviarYLogearMensajeError(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
+		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
 	}
 
-	enviarYLogearInfo(ARCHIVOS_DE_CONFIG_Y_LOG->logger, socketKernel, mensaje);
+	enviarOMostrarYLogearInfo(socketKernel, mensaje);
 
 	free(mensaje);
 }

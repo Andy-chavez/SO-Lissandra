@@ -18,13 +18,13 @@ int APIProtocolo(void* buffer, int socket) {
 
 	switch(operacion) {
 	case OPERACIONLQL:
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi una operacionLQL");
+		enviarOMostrarYLogearInfo(-1, "Recibi una operacionLQL");
 		APIMemoria(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
 	case DESCONEXION:
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Se cerro una conexion con el socket");
+		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
 		cerrarConexion(socket);
 		return 0;
 	}
@@ -33,39 +33,37 @@ int APIProtocolo(void* buffer, int socket) {
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un INSERT");
+		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
 		insertLQL(operacionAParsear, socketKernel);
+		/*
+		if(esInsertEjecutable(operacionAParsear->parametros)) insertLQL(operacionAParsear, socketKernel);
+		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
+		*/
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un SELECT");
+		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
 		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DESCRIBE");
+		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un CREATE");
+		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE");
 		createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un DROP");
+		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
-		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Recibi un JOURNAL");
+		enviarOMostrarYLogearInfo(-1, "Recibi un JOURNAL");
 		}
 	else {
-		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "No pude entender la operacion");
+		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
 	liberarOperacionLQL(operacionAParsear);
 }
 
 //------------------------------------------------------------------------
-
-void liberarConfigYLogs() {
-	log_destroy(ARCHIVOS_DE_CONFIG_Y_LOG->logger);
-	config_destroy(ARCHIVOS_DE_CONFIG_Y_LOG->config);
-	free(ARCHIVOS_DE_CONFIG_Y_LOG);
-}
 
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
@@ -85,7 +83,7 @@ void* trabajarConConexion(void* socket) {
 datosInicializacion* realizarHandshake() {
 	SOCKET_LFS = crearSocketLFS();
 	if(SOCKET_LFS == -1) {
-		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger,"No se pudo conectar con LFS");
+		enviarYLogearMensajeError(-1, "No se pudo conectar con LFS");
 		return NULL;
 	}
 	operacionProtocolo operacionHandshake = HANDSHAKE;
@@ -113,41 +111,50 @@ int crearSocketLFS() {
 	return socketClienteLFS;
 }
 
-void *servidorMemoria(){
+void* manejarConsola() {
+	char* comando = NULL;
+	while(1) {
+		enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada. Por favor, ingrese un comando LQL:");
+		comando = readline(">");
+		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
+		APIMemoria(splitear_operacion(comando), -1);
+		sem_post(&MUTEX_OPERACION);
+	}
+}
+
+void *servidorMemoria() {
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IPMEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
-	pthread_t threadID;
+	pthread_t threadConexion;
 	int socketKernel;
 	if(socketServidorMemoria == -1) {
 		cerrarConexion(socketServidorMemoria);
 
-		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "No se pudo inicializar el servidor de memoria");
-		return NULL;
+		enviarYLogearMensajeError(-1, "No se pudo inicializar el servidor de memoria");
+		pthread_exit(0);
 	}
 
-	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Servidor Memoria en linea");
-
-	int valgrind = 1;
-	while(valgrind){
+	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
+	while(1){
 
 		sem_wait(&BINARIO_SOCKET_KERNEL);
 		socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
-			log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "ERROR: Socket Defectuoso");
-			valgrind = 0;
+			enviarYLogearMensajeError(-1, "ERROR: Socket Defectuoso");
 			continue;
 		}
-		if(pthread_create(&threadID, NULL, trabajarConConexion, &socketKernel) < 0) {
-			log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "No se pudo crear un hilo para trabajar con el socket");
+		if(pthread_create(&threadConexion, NULL, trabajarConConexion, &socketKernel) < 0) {
+			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
 		}
-		pthread_detach(threadID);
+		pthread_detach(threadConexion);
 	}
 
 	cerrarConexion(socketServidorMemoria);
+	pthread_exit(0);
 
 }
 
 int main() {
-	pthread_t threadServer; // threadTimedJournal, threadTimedGossiping;
+	pthread_t threadServer, threadConsola; // threadTimedJournal, threadTimedGossiping;
 	inicializarArchivos();
 	inicializarSemaforos();
 
@@ -161,11 +168,12 @@ int main() {
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
 
-	servidorMemoria();
-	//pthread_create(&threadServer,NULL,servidorMemoria,(void*) ARCHIVOS_DE_CONFIG_Y_LOG);
+	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
+	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
-	//pthread_join(threadServer, NULL);
+	pthread_join(threadServer, NULL);
+	pthread_join(threadConsola, NULL);
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
 
