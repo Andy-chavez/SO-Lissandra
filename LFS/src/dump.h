@@ -70,15 +70,6 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	return rutaTmp;
 }
 
-void list_iteratePuto(t_list* self, void(*closure)(void*)) {
-	t_link_element *element = self->head;
-	t_link_element *aux = NULL;
-	while (element != NULL) {
-		aux = element->next;
-		closure(element->data);
-		element = aux;
-	}
-}
 
 void dump(){
 	int tamanioTotalADumpear =0;
