@@ -71,6 +71,6 @@ sem_t MUTEX_SOCKET_LFS;
 memoria* MEMORIA_PRINCIPAL;
 
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
-
+t_log* LOGGER_CONSOLA;
 
 #endif
