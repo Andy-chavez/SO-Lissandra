@@ -50,8 +50,13 @@ typedef struct {
 	t_list* listaRegistros;
 } tablaMem;
 
-//Funciones
+typedef struct {
+	char* nombre;
+	t_list* temporales;
+} tablaTmp;
 
+
+//Funciones
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
@@ -77,7 +82,6 @@ int tamanioRegistros(char* nombreTabla);
 void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 int obtenerCantTemporales(char* nombreTabla);
 int existeArchivo(char * filename);
-
 
 void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	registro* guardarRegistro = malloc (sizeof(registro)) ;
@@ -156,7 +160,6 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 			return false;
 		}
 
-
 }
 
 //Guarda un registro en la memtable
@@ -175,9 +178,6 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 						list_add(memtable, nuevaTabla);
 						log_info(logger, "Se añadio la tabla a la memtable");
 	}
-
-
-
 }
 
 
@@ -264,7 +264,7 @@ metadata obtenerMetadata(char* nombreTabla){
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
 	metadata unaMetadata;
-	char* str2 = "/metadata";
+	char* str2 = "/metadata.bin";
 
 	char* ruta = string_new();
 	string_append(&ruta, puntoMontaje);
@@ -277,7 +277,7 @@ metadata obtenerMetadata(char* nombreTabla){
 	cantParticiones = atoi(config_get_string_value(configMetadata, "PARTITIONS"));
 	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
 	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY")); //delegar a funcion con strcmp
-	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTION_TIME"));
+	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTATION_TIME"));
 
 	unaMetadata.cantParticiones = cantParticiones;
 	unaMetadata.tipoConsistencia = tipoConsistencia;
@@ -312,6 +312,47 @@ void liberarDoblePuntero(char** doblePuntero){
 
 }
 
+char* cargarInfoDeTmp(char* buffer, char* nombreTabla, int key){
+		char* ruta = string_new();
+		t_config* part;
+		t_list* listaRegistros = list_create();
+		char* bufferAux = string_new();
+		bufferAux = buffer;
+		void cargarTemporal(int numeroTmp){
+			string_append(&ruta,puntoMontaje);
+			string_append(&ruta,"Tables/");
+			string_append(&ruta,nombreTabla);
+			string_append(&ruta,"/"); //vamos a usar la convension PartN.bin
+			string_append(&ruta,string_itoa(numeroTmp));
+			string_append(&ruta,".tmp");
+			part = config_create(ruta);
+			char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
+			int sizeParticion=config_get_int_value(part,"SIZE");
+			int i = 0;
+
+			while(*(arrayDeBloques+i)!= NULL){
+					char* informacion = infoEnBloque(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
+					string_append(&bufferAux, informacion);
+					i++;
+				}
+			free(ruta);
+			liberarDoblePuntero(arrayDeBloques);
+			config_destroy(part);
+
+		}
+
+		void cargarTemporalesDeTabla(tablaTmp* tabla){
+			list_iterate(tabla->temporales, (void *)cargarTemporal);
+
+		}
+
+
+		list_iterate(listaDeTablasConTemporales,(void *) cargarTemporalesDeTabla);
+
+		return bufferAux;
+}
+
+
 registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	int i=0;
@@ -330,6 +371,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		}
 
 
+
 	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
 		registro* primerElemento = elemento1;
 		registro* segundoElemento = elemento2;
@@ -346,25 +388,33 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	log_info(logger, "Metadata cargado");
 
 	particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
+	char* buffer = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Tables/");
 	string_append(&ruta,*(argSeparados+0));
-	string_append(&ruta,"/Part"); //vamos a usar la convension PartN.bin
+	string_append(&ruta,"/part"); //vamos a usar la convension PartN.bin
 	string_append(&ruta,particion);
 	string_append(&ruta,".bin");
 	part = config_create(ruta);
+
+
 	char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 	int sizeParticion=config_get_int_value(part,"SIZE");
-	char* buffer = string_new();
+
+	//ver si esta vacio que no haga esto desde infoenbloque
+/*
 	while(*(arrayDeBloques+i)!= NULL){
 		char* informacion = infoEnBloque(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
 		string_append(&buffer, informacion);
 		i++;
 	}
+*/
+	char* bufferFinal = cargarInfoDeTmp(buffer, *(argSeparados+0), key);
+
 
 	log_info(logger, "Informacion de bloques cargada");
 
-	char** separarRegistro = string_split(buffer,"\n");
+	char** separarRegistro = string_split(bufferFinal,"\n");
 	int j =0;
 	for(j=0;*(separarRegistro+j)!=NULL;j++){
 		char **aCargar =string_split(*(separarRegistro+j),";");
@@ -404,6 +454,9 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	free(buffer);
 
 	//ver si la funcion tiene que devolver el registro
+	printf("Registro seleccionado: %s \n",registroBuscado->value);
+
+
 	return registroBuscado;
 }
 
@@ -411,27 +464,33 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 void funcionInsert(char* argumentos) {
 
 	//verificar que no se exceda el tamaño del value, tamanioValue (var. global
+	char** argSeparados = string_n_split(argumentos,3,"\"");
+	char* nombreYKey = *(argSeparados + 0);
+	char** separarNombreYKey = string_n_split(nombreYKey, 2, " ");
+	char* nombreTabla = *(separarNombreYKey + 0);
+	int key = atoi(*(separarNombreYKey + 1));
+	char* value = *(argSeparados + 1);
 
-	char** argSeparados = string_n_split(argumentos,4," ");
-
-	char* nombreTabla = *(argSeparados + 0);
+	char* valorTimestamp = *(argSeparados + 2);
+	int timestamp;
 
 	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return;
 	log_info(logger, "Directorio de tabla valido");
-	int key = atoi(*(argSeparados+1));
-	char* value = *(argSeparados + 2);
-	int timestamp = *(argSeparados + 3);
 
-	if (timestamp == 0) timestamp = (unsigned long)time(NULL);
+	if (valorTimestamp == NULL) {
+		timestamp = (unsigned long)time(NULL);
+	}else{
+		timestamp = atoi(valorTimestamp);
+	}
 
-	obtenerMetadata(nombreTabla);
+//	obtenerMetadata(nombreTabla);
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = key;
 				registroDePrueba -> value= string_duplicate(value);
 				registroDePrueba -> timestamp = timestamp;
 
-  guardarRegistro(registroDePrueba, nombreTabla);
+ guardarRegistro(registroDePrueba, nombreTabla);
   log_info(logger, "Se guardo el registro");
 
   liberarDoblePuntero(argSeparados);
@@ -635,17 +694,20 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
-	void liberarRegistro(registro* unRegistro) {
-		free(unRegistro->value);
+void liberarTabla(tablaMem* tabla) {
+
+	void liberarRegistros(registro* unRegistro) {
+//		free(unRegistro->value);
 		free(unRegistro);
+
 	}
 
-	void liberarTabla(tablaMem* tabla) {
-		free(tabla->nombre);
-		list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistro);
-		free(tabla);
-	}
+	free(tabla->nombre);
+	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);
+	free(tabla);
+}
+
+void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
 
 	list_destroy_and_destroy_elements(memtable,(void*) liberarTabla);
 }

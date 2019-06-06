@@ -33,6 +33,7 @@ t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
 t_bitarray* bitarray;
+t_list* listaDeTablasConTemporales;
 
 void leerConfig(char* ruta){
 	archivoDeConfig = config_create(ruta);
@@ -51,7 +52,7 @@ void inicializarArchivoBitmap(){
 	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wb");
 
 	for(i=0; i < 64; i++){
-		fputc(1,f);
+		fputc(0,f);
 	}
 
 	fclose(f);
@@ -90,6 +91,8 @@ void leerMetadataFS (){
 }
 void inicializarMemtable(){
 	memtable = list_create();
+	listaDeTablasConTemporales =list_create();
+
 }
 
 void inicializarLog(char* ruta){

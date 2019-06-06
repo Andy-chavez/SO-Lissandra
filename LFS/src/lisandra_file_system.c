@@ -157,19 +157,20 @@ void leerConsola() {
 	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
-
+/*
 	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
 	    //guardiola con el describe all porque puede tirar basura
 	    opYArg = string_n_split(linea,2," ");
 	    parserGeneral(*(opYArg+0), *(opYArg+1));
 
 	    }
-
+*/
 	    free (linea);  // free memory allocated by getline
 }
 
 
 int main(int argc, char* argv[]) {
+
 
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
@@ -178,52 +179,72 @@ int main(int argc, char* argv[]) {
 
 	inicializarArchivoBitmap();
 	inicializarBitmap();
+
+	//funcionCreate("TABLA2 SC 2 60000");
+
+	//a) 5 particiones
+	funcionCreate("PELICULAS SC 5 10000");
+	funcionInsert("PELICULAS 10 \"Toy Story\"");
+	funcionInsert("PELICULAS 163 \"Nemo\"");
+	funcionInsert("PELICULAS 1110 \"Harry Potter\"");
+//	dump();
+//	funcionSelect("PELICULAS 10");
+	funcionInsert("PELICULAS 13535 \"Titanic\"");
+	funcionInsert("PELICULAS 922 \"Ratatouille\"");
+	funcionInsert("PELICULAS 4829 \"Aladdin\"");
+	funcionInsert("PELICULAS 2516 \"Godzilla\"");
+//	dump();
+//	funcionSelect("PELICULAS 4829");
+	funcionInsert("PELICULAS 3671 \"Avatar\"");
+ dump();
+//	funcionSelect("PELICULAS 163");
+
 	registro* registroDePrueba = malloc(sizeof(registro));
-					registroDePrueba -> key = 13;
-					registroDePrueba -> value= string_duplicate("eloooooooooooooo");
-					registroDePrueba -> timestamp = 8000;
-	    registro* registroDePrueba2 = malloc(sizeof(registro));
-					  registroDePrueba2 -> key = 56;
-					  registroDePrueba2 -> value= string_duplicate("ghj");
-					  registroDePrueba2 -> timestamp = 1548421509;
-		registro* registroDePrueba4 = malloc(sizeof(registro));
-					  					  registroDePrueba2 -> key = 57;
-					  					  registroDePrueba2 -> value= string_duplicate("djskajksjaks");
-					  					  registroDePrueba2 -> timestamp = 1548421509;
-			registro* registroDePrueba3 = malloc(sizeof(registro));
-					  registroDePrueba3 -> key = 13;
-					  registroDePrueba3 -> value= string_duplicate("aloo");
-					  registroDePrueba3 -> timestamp = 9000;
+						registroDePrueba -> key = 13;
+						registroDePrueba -> value= string_duplicate("eloooooooooooooo");
+						registroDePrueba -> timestamp = 8000;
+		    registro* registroDePrueba2 = malloc(sizeof(registro));
+						  registroDePrueba2 -> key = 56;
+						  registroDePrueba2 -> value= string_duplicate("ghj");
+						  registroDePrueba2 -> timestamp = 1548421509;
 
-			tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-					tablaDePrueba-> nombre = string_duplicate("TABLA1");
-					tablaDePrueba->listaRegistros = list_create();
+			registro* registroDePrueba4 = malloc(sizeof(registro));
+						  					  registroDePrueba2 -> key = 57;
+						  					  registroDePrueba2 -> value= string_duplicate("djskajksjaks");
+						  					  registroDePrueba2 -> timestamp = 1548421509;
+				registro* registroDePrueba3 = malloc(sizeof(registro));
+						  registroDePrueba3 -> key = 13;
+						  registroDePrueba3 -> value= string_duplicate("aloo");
+						  registroDePrueba3 -> timestamp = 9000000;
 
-					list_add(tablaDePrueba->listaRegistros, registroDePrueba);
-					list_add(tablaDePrueba->listaRegistros, registroDePrueba2);
-					list_add(tablaDePrueba->listaRegistros, registroDePrueba4);
+				tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
+						tablaDePrueba-> nombre = string_duplicate("TABLA1");
+						tablaDePrueba->listaRegistros = list_create();
 
-			tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-					  tablaDePrueba2->nombre = string_duplicate("TABLA2");
-					  tablaDePrueba2->listaRegistros = list_create();
+						list_add(tablaDePrueba->listaRegistros, registroDePrueba);
+						list_add(tablaDePrueba->listaRegistros, registroDePrueba2);
+						list_add(tablaDePrueba->listaRegistros, registroDePrueba3);
+		//				list_add(tablaDePrueba->listaRegistros, registroDePrueba4);
 
-			list_add(tablaDePrueba2->listaRegistros, registroDePrueba3);
-			list_add(tablaDePrueba2->listaRegistros, registroDePrueba2);
-			list_add(tablaDePrueba2->listaRegistros, registroDePrueba);
-			list_add(memtable, tablaDePrueba);
-			list_add(memtable, tablaDePrueba2);
-	dump();
+				tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
+						  tablaDePrueba2->nombre = string_duplicate("TABLA2");
+						  tablaDePrueba2->listaRegistros = list_create();
+
+				list_add(tablaDePrueba2->listaRegistros, registroDePrueba3);
+				list_add(tablaDePrueba2->listaRegistros, registroDePrueba2);
+				list_add(tablaDePrueba2->listaRegistros, registroDePrueba);
+				list_add(memtable, tablaDePrueba);
+				list_add(memtable, tablaDePrueba2);
+		dump();
+
+
+
 	crearTemporal(120,2,"TABLA1");
-
-	funcionCreate("TABLA2 SC 2 60000");
-
 
 
 
 
 	//asignarBloqueLibre();
-
-
 
 	servidorLisandra();
 	//leerConsola();
@@ -236,9 +257,6 @@ int main(int argc, char* argv[]) {
 //	registro* registroParaMemoria = funcionSelect("TABLA1 56");
 
 	//funcionInsert("TABLA1 56 alo");
-
-
-
 
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
