@@ -17,6 +17,7 @@ void liberarConfigYLogs();
 void kernel_inicializar();
 void kernel_finalizar();
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
+//-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
 	pthread_mutex_init(&colaListos, NULL);
@@ -36,6 +37,7 @@ void kernel_crearListas(){
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
 	memorias = list_create();
+	tablas = list_create();
 }
 void kernel_inicializar(){
 	kernel_configYLog= malloc(sizeof(configYLogs));
@@ -50,6 +52,7 @@ void kernel_inicializar(){
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
 }
+//-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
