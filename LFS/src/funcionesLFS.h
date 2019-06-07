@@ -14,6 +14,9 @@
 #include <fcntl.h>
 #include <math.h>
 #include <unistd.h>
+#include <semaphore.h>
+#include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 
 
 /* SELECT: FACU , INSERT: PABLO
@@ -26,7 +29,6 @@
  * No olvidar de hacer la comparacion final, entre memtable,archivo temporal y FS
  *
 */
-pthread_mutex_t mutexLog;
 
 typedef enum {
 	INSERT,
@@ -37,12 +39,6 @@ typedef enum {
 	JOURNAL,
 	SELECT
 } operacion;
-
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
 /*
 typedef struct {
 	char* nombre;
@@ -66,7 +62,7 @@ typedef struct {
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
-metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
+metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
 char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros);
@@ -77,24 +73,46 @@ void* devolverMayor(registro* registro1, registro* registro2);
 bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento); //este es para memtable
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key);
 void liberarDoblePuntero(char** doblePuntero);
-registro* funcionSelect(char* argumentos);
-void funcionInsert(char* argumentos);
+void funcionSelect(char* argumentos,int socket);
+void funcionInsert(char* argumentos,int socket);
 void guardarInfoEnArchivo(char* ruta, char* info);
 char* devolverBloqueLibre(); //devuelve el numero del bloque libre
 void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion);
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
-void funcionCreate(char* argumentos);
+void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
 void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 int obtenerCantTemporales(char* nombreTabla);
 int existeArchivo(char * filename);
-void funcionDescribe(char* argumentos); //despues quizas haya que cambiar el tipo
+void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
+void enviarYLogearMensajeError(int socket, char* mensaje);
+void enviarOMostrarYLogearInfo(int socket, char* mensaje);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 
-void agregarALista(char* timestamp,char* key,char* value,t_list* head){
-	registro* guardarRegistro = malloc (sizeof(registro)) ;
-	guardarRegistro->timestamp = atoi(timestamp);
-	guardarRegistro->key = atoi(key);
-	guardarRegistro->value = value;
+
+
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)){
+	if(socket != -1) {
+		pthread_mutex_lock(&mutexLogger);
+		log(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+		enviar(socket, mensaje, strlen(mensaje) + 1);
+	} else {
+		log(loggerConsola, mensaje);
+	}
+}
+void enviarYLogearMensajeError(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
+}
+
+void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+}
+void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
+	registro* guardarRegistro = malloc (sizeof(registro));
+	guardarRegistro->timestamp = atoi(unTimestamp);
+	guardarRegistro->key = atoi(unaKey);
+	guardarRegistro->value = unValue;
 	list_add(head,guardarRegistro);
 }
 
@@ -106,18 +124,23 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	string_append(&rutaDirectorio,"Tables/");
 	string_append(&rutaDirectorio,nombreTabla);
 	struct stat sb;
-	//pthread_mutex_lock(&mutexLog);
+	pthread_mutex_lock(&mutexLogger);
 	log_info(logger,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
-	    if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
+	pthread_mutex_unlock(&mutexLogger);
+	if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
 	    {
+		pthread_mutex_lock(&mutexLogger);
 	    	log_info(logger,"La tabla existe en el FS");
+	    	pthread_mutex_unlock(&mutexLogger);
 	    	//pthread_mutex_unlock(&mutexLog); revisar tema semaforos creo que me esta quedando muy grande la region critica,nose si son tan necesarios en este caso
 	    	printf("existe la tabla en el directorio\n");
 	    	validacion=1;
 	    }
 	    else
 	    {
+	    	pthread_mutex_lock(&mutexLogger);
 	    	log_info(logger,"Error no existe tabla en ruta indicada %s \n",rutaDirectorio);
+	    	pthread_mutex_unlock(&mutexLogger);
 	    	//pthread_mutex_unlock(&mutexLog);
 	    	validacion=0;
 	    	printf("No se ha encontrado el directorio de la tabla en la ruta: %s \n",rutaDirectorio);
@@ -161,7 +184,9 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
 			list_add(tabla->listaRegistros, unRegistro);
+			pthread_mutex_lock(&mutexLogger);
 			log_info(logger, "Se añadio registro");
+			pthread_mutex_unlock(&mutexLogger);
 			return true;
 		}else{
 			return false;
@@ -175,7 +200,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 	bool buscarPorNombre(void *elemento){
 		return agregarRegistro(nombreTabla, unRegistro, elemento);
 	}
-
+	pthread_mutex_lock(&mutexMemtable);
 	if(!list_find(memtable, buscarPorNombre)){
 
 		tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
@@ -183,9 +208,15 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 						nuevaTabla->listaRegistros = list_create();
 						list_add(nuevaTabla->listaRegistros, unRegistro);
 						list_add(memtable, nuevaTabla);
+						pthread_mutex_lock(&mutexLogger);
 						log_info(logger, "Se añadio la tabla a la memtable");
+						pthread_mutex_unlock(&mutexLogger);
 	}
+	pthread_mutex_unlock(&mutexMemtable);
 }
+
+
+
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
 
@@ -207,8 +238,9 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 		free(registro);
 	}
 
-
+	pthread_mutex_lock(&mutexMemtable);
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
+
 
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
 
@@ -222,6 +254,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 	log_info(logger, "Registro encontrado en la memtable");
 
+	pthread_mutex_unlock(&mutexMemtable);
 
 //	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistro);
 
@@ -263,31 +296,31 @@ char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistr
 
 
 
-metadata obtenerMetadata(char* nombreTabla){
+metadata* obtenerMetadata(char* nombreTabla){
 	string_to_upper(nombreTabla);
 	t_config* configMetadata;
 	int cantParticiones;
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
-	metadata unaMetadata ;
+	metadata* unaMetadata = malloc(sizeof(metadata));
 
 
 	char* ruta = string_new();
 	string_append(&ruta, puntoMontaje);
 	string_append(&ruta,"Tables/");
 	string_append(&ruta,nombreTabla);
-	string_append(&ruta,"/Metadata");
+	string_append(&ruta,"/metadata.bin"); //cambiar esto en create
 
 	configMetadata = config_create(ruta);
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
-	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
 	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
 	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTATION_TIME");
 
-	unaMetadata.cantParticiones = cantParticiones;
-	unaMetadata.tipoConsistencia = tipoConsistencia;
-	unaMetadata.tiempoCompactacion = tiempoCompactacion;
+	unaMetadata->cantParticiones = cantParticiones;
+	unaMetadata->tipoConsistencia = tipoConsistencia;
+	unaMetadata->tiempoCompactacion = tiempoCompactacion;
+	unaMetadata->nombreTabla = string_duplicate(nombreTabla);
 
 	config_destroy(configMetadata);
 	free(ruta);
@@ -351,7 +384,7 @@ char* cargarInfoDeTmp(char* buffer, char* nombreTabla, int key){
 }
 
 
-registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
+void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	char* particion;
 	t_config* part;
@@ -364,7 +397,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		}
 
 
-	void* liberarRegistro(registro* registro) {
+	void liberarRegistro(registro* registro) {
 			free(registro);
 		}
 
@@ -379,17 +412,20 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	}
 	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0)
 		{
-			log_error(logger,"No se pudo completar el select");
-			return NULL;
+		enviarOMostrarYLogearInfo(socket,"No se encontro el directorio");
 		}
 	else{
+		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Directorio de tabla valido");
+		pthread_mutex_unlock(&mutexLogger);
 
-		metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
+		metadata* metadataTabla = obtenerMetadata(*(argSeparados+0));
 
+		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Metadata cargado");
+		pthread_mutex_unlock(&mutexLogger);
 
-		particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
+		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones)); //cant de particiones de la tabla
 		char* buffer = string_new();
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Tables/");
@@ -413,8 +449,10 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	*/
 		char* bufferFinal = cargarInfoDeTmp(buffer, *(argSeparados+0), key);
 
-
+		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Informacion de bloques cargada");
+		pthread_mutex_unlock(&mutexLogger);
+
 
 		char** separarRegistro = string_split(bufferFinal,"\n");
 		int j =0;
@@ -429,18 +467,21 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
 		//puts(buffer);
 		//y aca afuera haria la busqueda del registro.
-
+		pthread_mutex_lock(&mutexMemtable);
 		if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
+			pthread_mutex_lock(&mutexLogger);
 			log_info(logger, "El registro no se encuentra en la memtable");
+			pthread_mutex_unlock(&mutexLogger);
 			t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 			if (registrosConLaKeyEnListaRegistros->elements_count == 0){
-				log_info(logger, "La key buscada no se encuentra");
+				enviarOMostrarYLogearInfo(socket,"No se encuentra la key");
 				printf("No se encuentra la key\n");
-					return NULL;
 				}
 		registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
-		log_info(logger, "Registro encontrado en bloques");
+		enviarOMostrarYLogearInfo(socket,"Registro encontrado en bloques");
 		}
+
+		pthread_mutex_unlock(&mutexMemtable);
 
 		//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
 
@@ -450,18 +491,21 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 
 		config_destroy(part);
 		free (ruta);
-		list_destroy_and_destroy_elements(listaRegistros, liberarRegistro);
+		list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistro);
 		free(buffer);
 
 		//ver si la funcion tiene que devolver el registro
 		printf("Registro seleccionado: %s \n",registroBuscado->value);
+		enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
+		if(socket!=-1){
+			serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
 		}
-		return registroBuscado;
+		}
 
 }
 
 
-void funcionInsert(char* argumentos) {
+void funcionInsert(char* argumentos,int socket) {
 
 	//verificar que no se exceda el tamaño del value, tamanioValue (var. global
 	char** argSeparados = string_n_split(argumentos,3,"\"");
@@ -475,7 +519,9 @@ void funcionInsert(char* argumentos) {
 	int timestamp;
 
 	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return;
+	pthread_mutex_lock(&mutexLogger);
 	log_info(logger, "Directorio de tabla valido");
+	pthread_mutex_unlock(&mutexLogger);
 
 	if (valorTimestamp == NULL) {
 		timestamp = (unsigned long)time(NULL);
@@ -483,15 +529,15 @@ void funcionInsert(char* argumentos) {
 		timestamp = atoi(valorTimestamp);
 	}
 
-//	obtenerMetadata(nombreTabla);
+//	obtener(nombreTabla);
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = key;
 				registroDePrueba -> value= string_duplicate(value);
 				registroDePrueba -> timestamp = timestamp;
 
- guardarRegistro(registroDePrueba, nombreTabla);
-  log_info(logger, "Se guardo el registro");
+	guardarRegistro(registroDePrueba, nombreTabla);
+	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
 
   liberarDoblePuntero(argSeparados);
 
@@ -605,7 +651,7 @@ void crearParticiones(char* ruta, int numeroParticiones) {
 
 }
 
-void funcionCreate(char* argumentos) {
+void funcionCreate(char* argumentos,int socket) {
 
 
 	char** argSeparados = string_n_split(argumentos,4," ");
@@ -632,10 +678,10 @@ void funcionCreate(char* argumentos) {
 		puts("ya existe");
 	}
 
-
 	crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
+	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
 	free(directorioTabla);
 
 }
@@ -653,41 +699,9 @@ int tamanioRegistros(char* nombreTabla){
 		tamanioTotal = tamanioTotal + sizeof(registro->key)  + sizeof(registro->timestamp) + (strlen(registro->value) + 1);
 	}
 
-
-	registro* registroDePrueba = malloc(sizeof(registro));
-				registroDePrueba -> key = 13;
-				registroDePrueba -> value= string_duplicate("eloooooooooooooo");
-				registroDePrueba -> timestamp = 8000;
-    tamanioTotal = tamanioTotal + sizeof(registroDePrueba->key) + sizeof(registroDePrueba->timestamp) + (strlen(registroDePrueba->value) + 1);
-		registro* registroDePrueba2 = malloc(sizeof(registro));
-				  registroDePrueba2 -> key = 56;
-				  registroDePrueba2 -> value= string_duplicate("ghj");
-				  registroDePrueba2 -> timestamp = 1548421509;
-	tamanioTotal = tamanioTotal + sizeof(registroDePrueba2->key) + sizeof(registroDePrueba2->timestamp) + (strlen(registroDePrueba2->value) + 1);
-		registro* registroDePrueba3 = malloc(sizeof(registro));
-				  registroDePrueba3 -> key = 13;
-				  registroDePrueba3 -> value= string_duplicate("aloo");
-				  registroDePrueba3 -> timestamp = 9000;
-
-		tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-				tablaDePrueba-> nombre = string_duplicate("TABLA1");
-				tablaDePrueba->listaRegistros = list_create();
-
-				list_add(tablaDePrueba->listaRegistros, registroDePrueba);
-				list_add(tablaDePrueba->listaRegistros, registroDePrueba2);
-
-		tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-				  tablaDePrueba2->nombre = string_duplicate("tablaB");
-				  tablaDePrueba2->listaRegistros = list_create();
-
-		list_add(tablaDePrueba2->listaRegistros, registroDePrueba3);
-		tamanioTotal = tamanioTotal + sizeof(registroDePrueba3->key) + sizeof(registroDePrueba3->timestamp) + (strlen(registroDePrueba3->value) + 1);
-		list_add(memtable, tablaDePrueba);
-		list_add(memtable, tablaDePrueba2);
-
-		tamanioTotal = 0;
-
+	pthread_mutex_lock(&mutexMemtable);
 	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
+	pthread_mutex_unlock(&mutexMemtable);
 
 	list_fold(encuentraTabla->listaRegistros, 0, sumarRegistros);
 
@@ -709,7 +723,9 @@ void liberarTabla(tablaMem* tabla) {
 
 void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
 
+	pthread_mutex_lock(&mutexMemtable);
 	list_destroy_and_destroy_elements(memtable,(void*) liberarTabla);
+	pthread_mutex_unlock(&mutexMemtable);
 }
 int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
 											//REUTILIZAR EN COMPACTACION
@@ -742,15 +758,16 @@ int existeArchivo(char * filename){
     return 0;
 }
 
-void funcionDescribe(char* argumentos) {
-	metadata metadataBuscado;
+void funcionDescribe(char* argumentos,int socket) {
+	metadata* metadataBuscado = NULL;
 	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
 	if(1){
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 		metadataBuscado = obtenerMetadata(argumentos);
-		pthread_mutex_lock(&mutexLogger);
-		log_info(logger,"Se encontro el archivo metadata de la tabla con los siguientes valores: Consistency= ", metadataBuscado.tipoConsistencia,"Partitions= ",metadataBuscado.cantParticiones,"Compaction_Time= ", metadataBuscado.tiempoCompactacion);
-		pthread_mutex_unlock(&mutexLogger);
+		enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
+		if(socket!=-1){
+			serializarYEnviarMetadata(socket,metadataBuscado);
+		}
 		}
 	}
 }

@@ -1,4 +1,5 @@
 #include "serializacion.h"
+#include <commons/memory.h>
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
@@ -261,8 +262,9 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 	memcpy(bufferMetadata + desplazamiento, &tamanioDelNombreTabla, tamanioDelTiempoDeCompactacion);
 	desplazamiento += sizeof(int);
 	//nombre tabla
-	memcpy(bufferMetadata + desplazamiento, unMetadata->nombreTabla, tamanioDelNombreTabla);
+	memcpy(bufferMetadata + desplazamiento, (unMetadata->nombreTabla), tamanioDelNombreTabla);
 	desplazamiento += tamanioDelNombreTabla;
+
 
 	*tamanioBuffer = desplazamiento;
 
@@ -273,6 +275,7 @@ void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
 	int tamanioAEnviar;
 	void* bufferAEnviar = serializarMetadata(unaMetadata, &tamanioAEnviar);
 	enviar(socket, bufferAEnviar, tamanioAEnviar);
+	free(bufferAEnviar);
 }
 
 metadata* deserializarMetadata(void* bufferMetadata) {

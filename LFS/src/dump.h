@@ -5,6 +5,7 @@
  *      Author: utnso
  */
 #include "funcionesLFS.h"
+#include <semaphore.h>
 
 char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 
@@ -41,6 +42,7 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 void dump(){
 	while(1){
 	sleep(tiempoDump);
+	pthread_mutex_lock(&mutexLogger);
 	int tamanioTotalADumpear =0;
 	char* buffer;
 	void cargarRegistro(registro* unRegistro){
@@ -68,11 +70,16 @@ void dump(){
 	puts(buffer);
 
 		tamanioTotalADumpear = strlen(buffer);
+		pthread_mutex_lock(&mutexLogger);
 		log_info(logger,"Creando tmp");
+		pthread_mutex_unlock(&mutexLogger);
 
 		int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
 		char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
+		pthread_mutex_lock(&mutexLogger);
 		log_info(logger,"Se creo el tmp en la ruta: %s",rutaTmp);
+		pthread_mutex_unlock(&mutexLogger);
+
 
 		t_config* temporal =config_create(rutaTmp);
 		char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
@@ -114,11 +121,12 @@ void dump(){
 		liberarDoblePuntero(bloquesAsignados);
 	}
 
-	list_iterate(memtable,(void*)dumpearTabla);
-	funcionSelect("PELICULAS 10");
 	pthread_mutex_lock(&mutexMemtable);
+	list_iterate(memtable,(void*)dumpearTabla);
 	liberarMemtable();
 	pthread_mutex_unlock(&mutexMemtable);
+
 	}
+
 }
 
