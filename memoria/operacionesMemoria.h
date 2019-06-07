@@ -39,7 +39,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 void inicializarArchivos() {
 	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
 	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 0, LOG_LEVEL_INFO);
-	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
+	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("../memoria.config");
 	LOGGER_CONSOLA = log_create("memoria_consola.log", "MEMORIA_CONSOLE", 1, LOG_LEVEL_INFO);
 }
 
@@ -339,22 +339,13 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 // ------------------------------------------------------------------------ //
 // 5) CHECKS A OPERACIONESLQL //
 
-int esInsertEjecutable(char* parametros) {
+int esInsertOSelectEjecutable(char* parametros) {
 	char** parametrosSpliteados = string_split(parametros, " ");
 	if(!atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) != "0"){
 		return 0;
 	}
 	return 1;
 }
-
-int esSelectEjecutable(char* parametros) {
-	char** parametrosSpliteados = string_split(parametros, " ");
-	if(!atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) != "0"){
-		return 0;
-	}
-	return 1;
-}
-
 
 // ------------------------------------------------------------------------ //
 // 6) OPERACIONESLQL //

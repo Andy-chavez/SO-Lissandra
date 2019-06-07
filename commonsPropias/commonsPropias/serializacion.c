@@ -196,7 +196,8 @@ operacionLQL* splitear_operacion(char* operacion){
 
 	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE")) {
 		operacionAux->operacion = operacion;
-		operacionAux->parametros = "ALL";
+		operacionAux->parametros = malloc(3);
+		strcpy(operacionAux->parametros, "ALL");
 	} else {
 		opSpliteada = string_n_split(operacion,2," ");
 		operacionAux->operacion=*opSpliteada;
