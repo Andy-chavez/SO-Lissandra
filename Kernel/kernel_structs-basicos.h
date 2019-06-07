@@ -14,12 +14,14 @@
 #include <stdlib.h>
 #include <semaphore.h>
 
+#define HASH 2
+#define STRONG 1
+#define EVENTUAL 0
 /******************************STRUCTS******************************************/
 typedef struct{
 	char* operacion;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
 	t_list* instruccion; //fila
-	//t_list* pcb_siguiente;  //columna
 	//TODO agregar mas campos 1
 }pcb;
 typedef struct{
@@ -28,38 +30,22 @@ typedef struct{
 	//t_list* instruccion_siguiente;
 	//TODO agregar mas campos 2
 }instruccion;
-/*typedef struct{
-	int numeroDeMemoria;
-	consistencia *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
-}memoria;
 
 typedef struct{
 	consistencia unCriterio;
-	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
+	t_list* memorias;
 }criterio;
-*/
+
 typedef struct{
-	int memoria;
-	consistencia consistencias[3];
+	int numero;
+	int puerto; //necesario?
 }memoria;
+
 typedef struct{
 	char* nombreDeTabla;
 	consistencia consistenciaDeTabla;
 }tabla; //ver si es necesario agregar algo mas
 
-/*typedef enum {
-	INSERT,
-	CREATE,
-	DESCRIBETABLE,
-	DESCRIBEALL,
-	DROP,
-	JOURNAL,
-	SELECT,
-	RUN,
-	METRICS,
-	ADD
-}caso;
-*/
 typedef struct {
 	t_config* config;
 	t_log* log;
@@ -67,11 +53,13 @@ typedef struct {
 
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;  //use esta en el caso del run
-t_list* cola_proc_listos; //esto me da medio inncesario porque de new ->ready es como que no hay tanta diferencia, alias estructuras para crear
+t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;
+criterio criterios[3];
 sem_t hayNew;
+sem_t hayReady;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
