@@ -34,7 +34,7 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
-		if(esInsertEjecutable(operacionAParsear->parametros)) {
+		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) {
 			insertLQL(operacionAParsear, socketKernel);
 		}
 		else {
@@ -43,7 +43,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
-		if(esSelectEjecutable(operacionAParsear->parametros)) selectLQL(operacionAParsear, socketKernel);
+		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) selectLQL(operacionAParsear, socketKernel);
 		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
@@ -72,6 +72,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
+	enviar(socketKernel, (void*) config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER"), sizeof(int));
 	int hayMensaje = 1;
 
 	while(hayMensaje) {

@@ -450,7 +450,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 	// TODO else journal();
 
-	liberarRecursosInsertLQL(nombreTabla, registroNuevo, parametrosSpliteados);
+	liberarRecursosInsertLQL(nombreTabla, registroNuevo);
 	/*size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
 	mem_hexdump(MEMORIA_PRINCIPAL->base, length);
 */
