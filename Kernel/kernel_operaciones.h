@@ -225,7 +225,7 @@ int kernel_drop(char* operacion){
 //	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 //	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
 //	printf("\n\nEnviado\n\n");
-//	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
+//	char * recibido= (char*) recibir(socketClienteKernel);
 //	printf("\n\nValor recibido:%s\n\n",recibido);
 //	cerrarConexion(socketClienteKernel);
 //	free(recibido);
@@ -250,7 +250,7 @@ int kernel_journal(){
 //	free(opAux->parametros);
 //	free(opAux);
 }
-int kernel_metrics(){ //todo dps
+int kernel_metrics(){
 	printf("Not yet -> metrics\n");
 	return 1;
 }
@@ -292,7 +292,7 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 }
 // ---------------.: THREAD ROUND ROBIN :.---------------
 void kernel_roundRobin(){
-	//while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
+	//while(!list_is_empty(cola_proc_listos)){
 		//TODO poner semaforo
 	while(1){
 	sem_wait(&hayReady);
@@ -369,15 +369,15 @@ void kernel_almacenar_en_new(char*operacion){
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayNew);
-	//TODO loggear que operacion se agrego a new
+	pthread_mutex_lock(&log);
+	log_info(kernel_configYLog->log, "Se agregó a la cola de new al proceso: %s", operacion);
+	pthread_mutex_unlock(&log);
 }
 
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
 	while(1){
-	 //TODO agregar while para leer de consola
-		//linea = readline("")
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
 	}
@@ -443,7 +443,6 @@ void kernel_run(char* operacion){
 		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 	}
-	//TODO ACA HAY ALGO RARO
 //	instruccion* in1 = list_get(pcb_auxiliar->instruccion,0);
 //	printf("%s\n",in1->operacion);
 //	instruccion* in2 = list_get(pcb_auxiliar->instruccion,1);

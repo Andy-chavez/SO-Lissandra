@@ -65,6 +65,7 @@ sem_t hayReady;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
+pthread_mutex_t log;
 char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 char* ipMemoria;
 char* puertoMemoria;
