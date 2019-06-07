@@ -170,9 +170,9 @@ void dump(){
 	}
 
 	list_iterate(memtable,(void*)dumpearTabla);
-	funcionSelect("PELICULAS 10");
+//	funcionSelect("PELICULAS 10");
 
-	//	liberarMemtable();
+	liberarMemtable();
 
 }
 
