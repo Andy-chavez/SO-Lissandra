@@ -501,22 +501,19 @@ int kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 		return kernel_add(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "JOURNAL")) {
-		printf("JOURNAL\n");
 		free(operacionAParsear);
 		return kernel_journal();
 	}
-	else if (string_contains(operacionAParsear, "RUN")) {
-		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
-		return kernel_run(operacionAParsear);
-	}
+//	else if (string_contains(operacionAParsear, "RUN")) {
+//		return kernel_run(operacionAParsear);
+//	}
 	else if (string_contains(operacionAParsear, "METRICS")) {
-		printf("METRICS\n");
 		free(operacionAParsear);
 		return kernel_metrics();
 	}
 	else {
-		printf("Mi no entender esa operacion\n");
+		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s, verifique existencia del archivo\n", operacionAParsear ); //operacion);
 		return 0;
-		}
+	}
 }
 #endif /* KERNEL_OPERACIONES_H_ */
