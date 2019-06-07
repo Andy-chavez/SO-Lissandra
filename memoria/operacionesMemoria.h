@@ -140,21 +140,24 @@ void* guardarEnMemoria(registroConNombreTabla* unRegistro) {
 
 }
 
-paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro) {
+paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro,int deDondeVengo) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 
 	if(!(pagina->unRegistro = guardarEnMemoria(unRegistro))) {
 		// TODO Avisar que no se pudo guardar en memoria.
 		return NULL;
 	};
-	pagina->flag = NO;
+	if(deDondeVengo == 0)
+		pagina->flag = NO;
+	if(deDondeVengo == 1)
+		pagina->flag = SI;
 
 	return pagina;
 }
 
-int agregarSegmento(registro* primerRegistro,char* tabla ){
+int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo){
 
-	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(primerRegistro);
+	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(primerRegistro,deDondeVengo);
 
 	if(!primeraPagina) {
 		return 0;
@@ -173,15 +176,15 @@ int agregarSegmento(registro* primerRegistro,char* tabla ){
 }
 
 
-int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS) {
-	return agregarSegmento(registroLFS, registroLFS->nombreTabla);
+int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDondeVengo) {
+	return agregarSegmento(registroLFS, registroLFS->nombreTabla,deDondeVengo);
 }
 
-void agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel) {
-	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(unRegistro);
+void* agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo) {
+	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(unRegistro, deDondeVengo);
 	if(!paginaParaAgregar) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
-		return;
+		return NULL;
 	}
 
 	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
@@ -306,6 +309,7 @@ paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 
 	return (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
 }
+
 char* valueRegistro(segmento* unSegmento, int key){
 	paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,key);
 
@@ -382,7 +386,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
 				enviarYLogearMensajeError(socketKernel, "ERROR: No se encontro el registro en LFS, o hubo un error al buscarlo.");
 			}
-			else if(guardarEnMemoria(registroLFS)) {
+			else if(agregarPaginaEnSegmento(unSegmento,registroLFS,socketKernel,0)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 			}
 			else {
@@ -394,7 +398,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 	else {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
-		if(agregarSegmentoConNombreDeLFS(registroLFS)){
+		if(agregarSegmentoConNombreDeLFS(registroLFS,0)){
 		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
@@ -411,9 +415,10 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 	*/
 }
 
-void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
+void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro, char** parametrosSpliteados) {
 	free(nombreTabla);
 	liberarRegistro(unRegistro);
+	liberarParametrosSpliteados(parametrosSpliteados);
 }
 
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
@@ -437,12 +442,12 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 
 			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 		} else {
-			agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel);
+			agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel,1);
 		}
 	}
 
 	else {
-		if(agregarSegmento(registroNuevo,nombreTabla)) {
+		if(agregarSegmento(registroNuevo,nombreTabla,1)) {
 			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 		} else {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
