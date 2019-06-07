@@ -644,7 +644,6 @@ void funcionCreate(char* argumentos) {
 int tamanioRegistros(char* nombreTabla){
 
 	int tamanioTotal = 0;
-	int i = 0;
 
 	bool tieneElNombre(void *elemento){
 		return esIgualAlNombre(nombreTabla, elemento);

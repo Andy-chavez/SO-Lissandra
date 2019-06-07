@@ -43,7 +43,6 @@ int main(int argc, char *argv[]){
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadRoundRobin,NULL);
 
-	//TODO frees de las colas, destroy de semaforos
 	kernel_finalizar();
 	return EXIT_SUCCESS;
 }
