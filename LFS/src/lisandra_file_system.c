@@ -37,6 +37,7 @@ void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser p
 			}
 			else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
 				printf("DESCRIBE\n");
+				funcionDescribe(argumentos);
 			}
 			else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
 				printf("CREATE\n");
@@ -151,13 +152,13 @@ void leerConsola() {
 		char *linea = NULL;  // forces getline to allocate with malloc
 	    char** opYArg;
 
-	    printf ("Ingresa operacion\n");
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
 	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
 	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
+	    printf ("Ingresa operacion\n");
 
 	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
 	    //guardiola con el describe all porque puede tirar basura
@@ -181,6 +182,7 @@ int main(int argc, char* argv[]) {
 	inicializarArchivoBitmap();
 	inicializarBitmap();
 
+	leerConsola();
 	pthread_t threadConsola;
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 

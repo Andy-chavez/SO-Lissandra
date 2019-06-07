@@ -17,6 +17,7 @@
 #include <fcntl.h>
 
 pthread_mutex_t mutexMemtable;
+pthread_mutex_t mutexLogger;
 t_log* logger;
 
 int tamanioBloques;
