@@ -24,6 +24,7 @@
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
 #include "compactador.h"
+#include <semaphore.h>
 
 
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
@@ -51,6 +52,28 @@ void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser p
 	}
 }
 
+void realizarHandshake(int socket){
+	void* buffer = recibir(socket);
+	int esCero= deserializarHandshake(buffer);
+	if(esCero==0){
+		serializarYEnviarHandshake(socket, &tamanioValue);
+	}
+	else {
+		log_error(logger, "no se pudo realizar Handshake");//poner semaforo
+	}
+}
+
+trabajarConexion(int socketMemoria){
+
+	while(hayMensaje) {
+			void* bufferRecepcion = recibir(socketMemoria);
+			sem_wait(); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
+			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
+			sem_post(&MUTEX_OPERACION);
+		}
+
+		pthread_exit(0);
+}
 
 void* servidorLisandra(){
 
@@ -76,15 +99,15 @@ void* servidorLisandra(){
 			continue;
 		}
 
-		int i =0;
 		//char* mensajeRecibido = recibir(socketMemoria);
-		if(i==0){ //en realidad hay que deserializar handshake
-			int tamanioBuffer;
-			void* mensaje = serializarHandshake(tamanioValue,&tamanioBuffer);
-			enviar(socketMemoria, mensaje, 2*sizeof(int));
-			i++;
+		realizarHandshake(socketMemoria);
+
+		pthread_t threadMemoria
+		if(pthread_create(threadMemoria,NULL,(void*) trabajarConexion(),socketMemoria)<0){
+			log_error("No se pudo crear thread para la memoria");
 		}
-		else{
+		pthread_join(threadMemoria,NULL);
+		//else{
 			/*char* mensajeRecibido = recibir(socketMemoria);
 			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
 			registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
@@ -93,7 +116,7 @@ void* servidorLisandra(){
 			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
 			enviar(socketMemoria,registroMandar, 98);*/
 
-		}
+		//}
 
 
 		//char* mensaje = "hola";
