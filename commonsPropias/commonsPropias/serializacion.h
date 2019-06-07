@@ -38,12 +38,14 @@ typedef enum {
 	METADATA,
 	HANDSHAKE,
 	DESCONEXION
+
 } operacionProtocolo;
 
 typedef struct {
   char* operacion;
   char* parametros;
 } operacionLQL;
+
 
 typedef struct {
 	consistencia tipoConsistencia;

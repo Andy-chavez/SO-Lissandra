@@ -78,6 +78,7 @@ registroConNombreTabla* deserializarRegistro(void* bufferRegistro) {
 	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
 
 	free(bufferRegistro);
+
 	return unRegistro;
 }
 
