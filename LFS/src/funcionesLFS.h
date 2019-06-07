@@ -714,12 +714,21 @@ int existeArchivo(char * filename){
     return 0;
 }
 
+<<<<<<< HEAD
 void funcionDescribe(char* nombreTabla) {
 	metadata metadataBuscado;
 	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
 	if(1){
 		if(verificarExistenciaDirectorioTabla(nombreTabla)){
 		metadataBuscado = obtenerMetadata(nombreTabla);
+=======
+void funcionDescribe(char* argumentos) {
+	metadata metadataBuscado;
+	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
+	if(1){
+		if(verificarExistenciaDirectorioTabla(argumentos)){
+		metadataBuscado = obtenerMetadata(argumentos);
+>>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger,"Se encontro el archivo metadata de la tabla con los siguientes valores: Consistency= ", metadataBuscado.tipoConsistencia,"Partitions= ",metadataBuscado.cantParticiones,"Compaction_Time= ", metadataBuscado.tiempoCompactacion);
 		pthread_mutex_unlock(&mutexLogger);

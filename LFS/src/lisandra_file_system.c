@@ -86,7 +86,11 @@ void* servidorLisandra(){
 		else{
 			char* mensajeRecibido = recibir(socketMemoria);
 			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
+<<<<<<< HEAD
 	//		registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
+=======
+			registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
+>>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
 			char* nombreTabla = "TABLA1";
 			int tamanioBuffer;
 			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
@@ -152,7 +156,10 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
 	/*leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
@@ -201,7 +208,11 @@ int main(int argc, char* argv[]) {
 	//pthread_join(threadServer,NULL);
 	//servidorLisandra(archivosDeConfigYLog);
 
+<<<<<<< HEAD
 //	liberarConfigYLogs();*/
+=======
+	liberarConfigYLogs();*/
+>>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
 	return EXIT_SUCCESS;
 }
 
