@@ -16,6 +16,8 @@
 #include <sys/io.h>
 #include <fcntl.h>
 
+pthread_mutex_t mutexMemtable;
+pthread_mutex_t mutexLogger;
 t_log* logger;
 
 int tamanioBloques;
@@ -27,13 +29,19 @@ t_config* archivoMetadata;
 char* ipLisandra;
 char* puertoLisandra;
 char* puntoMontaje;
+int tiempoDump;
 //int tiempoDump y int Retardo por ahora no, pueden ir cambiando
 int tamanioValue;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
 t_bitarray* bitarray;
-t_list* listaDeTablasConTemporales;
+
+void inicializarSemaforos(){
+	pthread_mutex_init(&memtable, NULL);
+
+
+}
 
 void leerConfig(char* ruta){
 	archivoDeConfig = config_create(ruta);
@@ -41,6 +49,7 @@ void leerConfig(char* ruta){
 	puertoLisandra = config_get_string_value(archivoDeConfig,"PUERTO_ESCUCHA");
 	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
+	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
 
 }
 
@@ -91,8 +100,6 @@ void leerMetadataFS (){
 }
 void inicializarMemtable(){
 	memtable = list_create();
-	listaDeTablasConTemporales =list_create();
-
 }
 
 void inicializarLog(char* ruta){

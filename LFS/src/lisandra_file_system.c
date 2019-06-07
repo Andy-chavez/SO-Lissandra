@@ -8,6 +8,7 @@
  Description :
  ============================================================================
  */
+//semaforo para cuando se usa la memtable, siempre que se use el logger, en el dump
 
 
 #include <stdio.h>
@@ -37,9 +38,11 @@ void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser p
 			}
 			else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
 				printf("DESCRIBE\n");
+				funcionDescribe(argumentos);
 			}
 			else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
 				printf("CREATE\n");
+				funcionCreate(argumentos);
 			}
 			else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
 				printf("DROP\n");
@@ -49,39 +52,13 @@ void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser p
 	}
 }
 
-void* serializarHandshake(int tamanioValue){
-
-	int desplazamiento = 0;
-	void *buffer= malloc((sizeof(int))*2);
-	int tamanioInt= sizeof(int);
-	memcpy(buffer + desplazamiento, &tamanioInt, sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(buffer + desplazamiento, &tamanioValue, sizeof(int));
-	desplazamiento+= sizeof(int);
-
-	return buffer;
-}
-
-
-int deserializarHandshake(void* bufferHandshake){
-
-	int desplazamiento = 0;
-	int tamanioDelInt;
-	int tamanioDelValue;
-
-	memcpy(&tamanioDelInt, bufferHandshake + desplazamiento, sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(&tamanioDelValue, bufferHandshake + desplazamiento, sizeof(int));
-
-	return tamanioDelValue;
-}
 
 void* servidorLisandra(){
 
 	//char* puertoLisandra = "5008";
 	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
 	//char* ipLisandra = config_get_string_value(archivosDeConfigYLog->config, "IP_LISANDRA");
-	int socketServidorLisandra = crearSocketServidor(puertoLisandra);
+	int socketServidorLisandra = crearSocketServidor(ipLisandra,puertoLisandra);
 
 //	free(ipMemoria);
 //	free(puertoMemoria);
@@ -101,16 +78,18 @@ void* servidorLisandra(){
 		int i =0;
 		//char* mensajeRecibido = recibir(socketMemoria);
 		if(i==0){ //en realidad hay que deserializar handshake
-			void* mensaje = serializarHandshake(tamanioValue);
+			int tamanioBuffer;
+			void* mensaje = serializarHandshake(tamanioValue,&tamanioBuffer);
 			enviar(socketMemoria, mensaje, 2*sizeof(int));
 			i++;
 		}
 		else{
 			char* mensajeRecibido = recibir(socketMemoria);
 			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
-			registro* registroASerializar= funcionSelect(operacion->parametros);
+	//		registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
 			char* nombreTabla = "TABLA1";
-			void* registroMandar = serializarRegistro(registroASerializar, nombreTabla);
+			int tamanioBuffer;
+			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
 			enviar(socketMemoria,registroMandar, 98);
 
 		}
@@ -150,29 +129,31 @@ void leerConsola() {
 		char *linea = NULL;  // forces getline to allocate with malloc
 	    char** opYArg;
 
-	    printf ("Ingresa operacion\n");
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
 	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
 	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
-/*
+	    printf ("Ingresa operacion\n");
+
 	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
 	    //guardiola con el describe all porque puede tirar basura
 	    opYArg = string_n_split(linea,2," ");
 	    parserGeneral(*(opYArg+0), *(opYArg+1));
 
 	    }
-*/
+
 	    free (linea);  // free memory allocated by getline
 }
+
 
 
 int main(int argc, char* argv[]) {
 
 
-	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+
+	/*leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
@@ -180,78 +161,22 @@ int main(int argc, char* argv[]) {
 	inicializarArchivoBitmap();
 	inicializarBitmap();
 
-	//funcionCreate("TABLA2 SC 2 60000");
+	leerConsola();
+	pthread_t threadConsola;
+	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 
-	//a) 5 particiones
-	funcionCreate("PELICULAS SC 5 10000");
-	funcionInsert("PELICULAS 10 \"Toy Story\"");
-	funcionInsert("PELICULAS 163 \"Nemo\"");
-	funcionInsert("PELICULAS 1110 \"Harry Potter\"");
-//	dump();
-//	funcionSelect("PELICULAS 10");
-	funcionInsert("PELICULAS 13535 \"Titanic\"");
-	funcionInsert("PELICULAS 922 \"Ratatouille\"");
-	funcionInsert("PELICULAS 4829 \"Aladdin\"");
-	funcionInsert("PELICULAS 2516 \"Godzilla\"");
-//	dump();
-//	funcionSelect("PELICULAS 4829");
-	funcionInsert("PELICULAS 3671 \"Avatar\"");
- dump();
-//	funcionSelect("PELICULAS 163");
+	pthread_t threadDump;
+	pthread_create(&threadDump, NULL,(void*) dump, NULL);
 
-	registro* registroDePrueba = malloc(sizeof(registro));
-						registroDePrueba -> key = 13;
-						registroDePrueba -> value= string_duplicate("eloooooooooooooo");
-						registroDePrueba -> timestamp = 8000;
-		    registro* registroDePrueba2 = malloc(sizeof(registro));
-						  registroDePrueba2 -> key = 56;
-						  registroDePrueba2 -> value= string_duplicate("ghj");
-						  registroDePrueba2 -> timestamp = 1548421509;
-
-			registro* registroDePrueba4 = malloc(sizeof(registro));
-						  					  registroDePrueba2 -> key = 57;
-						  					  registroDePrueba2 -> value= string_duplicate("djskajksjaks");
-						  					  registroDePrueba2 -> timestamp = 1548421509;
-				registro* registroDePrueba3 = malloc(sizeof(registro));
-						  registroDePrueba3 -> key = 13;
-						  registroDePrueba3 -> value= string_duplicate("aloo");
-						  registroDePrueba3 -> timestamp = 9000000;
-
-				tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-						tablaDePrueba-> nombre = string_duplicate("TABLA1");
-						tablaDePrueba->listaRegistros = list_create();
-
-						list_add(tablaDePrueba->listaRegistros, registroDePrueba);
-						list_add(tablaDePrueba->listaRegistros, registroDePrueba2);
-						list_add(tablaDePrueba->listaRegistros, registroDePrueba3);
-		//				list_add(tablaDePrueba->listaRegistros, registroDePrueba4);
-
-				tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-						  tablaDePrueba2->nombre = string_duplicate("TABLA2");
-						  tablaDePrueba2->listaRegistros = list_create();
-
-				list_add(tablaDePrueba2->listaRegistros, registroDePrueba3);
-				list_add(tablaDePrueba2->listaRegistros, registroDePrueba2);
-				list_add(tablaDePrueba2->listaRegistros, registroDePrueba);
-				list_add(memtable, tablaDePrueba);
-				list_add(memtable, tablaDePrueba2);
-		dump();
-
-
-
-	crearTemporal(120,2,"TABLA1");
-
-
-
-
-	//asignarBloqueLibre();
-
-	servidorLisandra();
+	pthread_join(threadConsola,NULL);
+	pthread_join(threadDump,NULL);
+	//pthread_join(threadDump,NULL);
+	//servidorLisandra();
 	//leerConsola();
-	/*
+
 	void* bufferHandshake = serializarHandshake(tamanioValue);
 	int tamanioRecibido = deserializarHandshake(bufferHandshake);
-*/
+
 
 
 //	registro* registroParaMemoria = funcionSelect("TABLA1 56");
@@ -261,7 +186,7 @@ int main(int argc, char* argv[]) {
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//ver de liberar la memtable al final
-	/*obtenerMetadata("tablaA");
+	obtenerMetadata("tablaA");
 	int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
 	pthread_mutex_init(&mutexLog,NULL);
 	pthread_t threadLeerConsola;
@@ -269,14 +194,14 @@ int main(int argc, char* argv[]) {
     pthread_join(threadLeerConsola,NULL);
 
     pthread_mutex_destroy(&mutexLog);
-    liberarConfigYLogs(archivosDeConfigYLog);*/
+    liberarConfigYLogs(archivosDeConfigYLog);
 
 	//pthread_t threadServer ; //habria que ver tambien thread dumping.
 	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 	//pthread_join(threadServer,NULL);
 	//servidorLisandra(archivosDeConfigYLog);
 
-	liberarConfigYLogs();
+//	liberarConfigYLogs();*/
 	return EXIT_SUCCESS;
 }
 

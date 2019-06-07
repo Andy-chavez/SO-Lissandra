@@ -11,102 +11,39 @@
 #include <stdlib.h>
 #include <commonsPropias/conexiones.h>
 #include <commons/config.h>
-#include <commons/string.h>
 #include <pthread.h>
 #include <string.h>
-#include "structs-basicos.h"
-#include <readline/readline.h>
-#include <readline/history.h>
-
-#define CANTIDADCRITERIOS 2 //0-2
-#define STRONG 0
-#define HASH 1
-#define EVENTUAL 2
-
-void kernel_api(char*,char*);
-criterio *inicializarCriterios();
-void kernel_consola();
-
-void kernel_consola(){
-	printf(" Welcome to the league of Kernel\n Por favor ingrese <OPERACION> seguido de los argumentos\n");
-	char* linea;
-	linea = readline("");
-	char** opYArg;
-	opYArg = string_n_split(linea,2," ");
-	kernel_api(*opYArg,*(opYArg+1));
-}
-void kernel_api(char* operacionAParsear, char* argumentos)
-{
-	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
-			printf("INSERT\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
-			printf("SELECT\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
-			printf("DESCRIBE\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
-			printf("CREATE\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
-			printf("DROP\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "JOURNAL")) {
-				printf("JOURNAL\n");
-		}
-		else if (string_equals_ignore_case(operacionAParsear, "RUN")) {
-				printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
-			}
-		else if (string_equals_ignore_case(operacionAParsear, "METRICS")) {
-				printf("METRICS\n");
-			}
-		else if (string_equals_ignore_case(operacionAParsear, "ADD")) {
-				printf("ADD\n");
-			}
-		else {
-			printf("Mi no entender esa operacion");
-		}
-}
+#include "kernel_operaciones.h"
 
 /*
-void kernel_planificador(int quantum){
+ * EJEMPLOS:
+ * INSERT TABLA1 515 malesal
+ * SELECT TABLA1 515
+ * DESCRIBE TABLA1
+ * CREATE TABLA1 SC 7 1000
+ * DROP TABLA1
+ * METRICS
+ * JOURNAL
+ * ADD MEMORY 5 TO EC
+ *
+ */
 
-}
-*/
-
-criterio *inicializarCriterios(){
-	criterio *datos = malloc(3*sizeof(criterio));
-	datos[STRONG].unCriterio = SC; //Strong
-	datos[HASH].unCriterio = SH; //Hash
-	datos[EVENTUAL].unCriterio = EC; //Eventual
-	for(int iter=0; iter <= CANTIDADCRITERIOS; iter++){
-		datos[iter].memoriasAsociadas = malloc(sizeof(int));
-		printf("Criterio: %d \n Memoria: %d \n",iter, *(datos[iter].memoriasAsociadas) );
-	}
-	return datos;
-}
-
-void* kernel_cliente(void *archivo){
-	configYLogs *kernel_configYLog = (configYLogs*) archivo;;
-	char* IpMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
-	char* PuertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
-	int socketClienteKernel = crearSocketCliente(IpMemoria,PuertoMemoria);
-	 //aca tengo dudas de si dejar ese enviar o si puedo salir de la funcion
-	 //enviar(socketClienteKernel, string, (strlen(string)+1)*sizeof(char));
-	cerrarConexion(socketClienteKernel); //Deberia de cerrar conexion?
- }
 int main(int argc, char *argv[]){
-//	criterio *criterios;
-//	criterios = inicializarCriterios();
-/*	pthread_t threadCliente;
-	configYLogs *archivosDeConfigYLog = malloc(sizeof(configYLogs));
-	archivosDeConfigYLog->config = config_create("../KERNEL_CONFIG_EJEMPLO");//A modificar esto dependiendo del config que se quiera usar
-	archivosDeConfigYLog->logger = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
-	pthread_create(&threadCliente, NULL,kernel_cliente, (void *)archivosDeConfigYLog);
-	pthread_join(threadCliente, NULL);
-*/
-	kernel_consola();
-//	liberarConfigYLogs(archivosDeConfigYLog);
-	return 0;
+
+	pthread_t threadConsola;
+	pthread_t threadNew_Ready;
+	pthread_t threadRoundRobin;
+
+	kernel_inicializar();
+
+	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
+	pthread_create(&threadRoundRobin, NULL,(void*) kernel_roundRobin, NULL);
+	pthread_join(threadConsola, NULL);
+	pthread_join(threadNew_Ready,NULL);
+	pthread_join(threadRoundRobin,NULL);
+
+	//TODO frees de las colas, destroy de semaforos
+	kernel_finalizar();
+	return EXIT_SUCCESS;
 }

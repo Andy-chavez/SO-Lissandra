@@ -6,23 +6,8 @@
  */
 #include "funcionesLFS.h"
 
-
-bool actualizarTablaDeTmp(char* nombreTabla, tablaTmp * tabla, int numeroTmp){
-
-		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
-			list_add(tabla->temporales, numeroTmp);
-			log_info(logger, "Se actualizaron los temporales de la tabla");
-			return true;
-		}else{
-			return false;
-		}
-
-}
-
 char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 
-	tablaTmp* nuevoTemporal;
-//
 	char* rutaTmp = string_new();
 	int numeroTmp = obtenerCantTemporales(nombreTabla);
 
@@ -48,32 +33,15 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	string_append(&info,"]");
 	guardarInfoEnArchivo(rutaTmp, info);
 
-	bool encontrarTabla(tablaTmp* tabla){
-		return actualizarTablaDeTmp(nombreTabla, tabla, numeroTmp);
-
-	}
-
-	if (numeroTmp != 0){
-			//la tabla ya tenia un tmp
-		list_find(listaDeTablasConTemporales , (void *) encontrarTabla);
-		}else{
-			//es la primera vez que la tabla tiene un tmp
-			nuevoTemporal = malloc(sizeof(tablaTmp));
-			nuevoTemporal->nombre = string_duplicate(nombreTabla);
-			nuevoTemporal->temporales = list_create();
-			list_add(nuevoTemporal->temporales, numeroTmp);
-
-			list_add(listaDeTablasConTemporales, nuevoTemporal);
-		}
-
 	free(info);
 	return rutaTmp;
 }
 
 
 void dump(){
+	while(1){
+	sleep(tiempoDump);
 	int tamanioTotalADumpear =0;
-	//int cantBytesDumpeados = 0;
 	char* buffer;
 	void cargarRegistro(registro* unRegistro){
 
@@ -102,10 +70,9 @@ void dump(){
 		tamanioTotalADumpear = strlen(buffer);
 		log_info(logger,"Creando tmp");
 
-//		int cantBloquesNecesarios = 4;
 		int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
 		char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
-		log_info(logger,"Se creo el tmp numero en la ruta: ",rutaTmp);
+		log_info(logger,"Se creo el tmp en la ruta: %s",rutaTmp);
 
 		t_config* temporal =config_create(rutaTmp);
 		char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
@@ -142,28 +109,6 @@ void dump(){
 			fclose(fd);
 			free(rutaBloque);
 		}
-		/*if(tamanioBuffer<=tamanioBloque){
-			FILE* fd = fopen(rutaBloque,"w");
-			fwrite(buffer,1,tamanioBuffer,fd);
-			fclose(fd);
-			//terminar tmp
-		}
-		//130 bytes
-		//bloques 64
-		//entra la primera vez
-		//desplazamiento = 64
-
-
-		else{
-			FILE* fd = fopen(rutaBloque,"w");
-			cantBytesDumpeados += tamanioBloques;
-			int desplazamiento =0;
-			while(cantBytesDumpeados<tamanioBuffer){
-				if()
-				fwrite(buffer+desplazamiento,tamanioBloques,)
-				cantBytesDumpeados += tamanioBloques;
-			}
-		}      */
 		config_destroy(temporal);
 		free(buffer);
 		liberarDoblePuntero(bloquesAsignados);
@@ -171,8 +116,9 @@ void dump(){
 
 	list_iterate(memtable,(void*)dumpearTabla);
 	funcionSelect("PELICULAS 10");
-
-	//	liberarMemtable();
-
+	pthread_mutex_lock(&mutexMemtable);
+	liberarMemtable();
+	pthread_mutex_unlock(&mutexMemtable);
+	}
 }
 
