@@ -25,12 +25,6 @@ typedef enum {
 } flagModificado;
 
 typedef struct {
-	time_t timestamp;
-	uint16_t key;
-	char* value;
-} registro;
-
-typedef struct {
 	int numeroPagina;
 	void *unRegistro;
 	flagModificado flag;

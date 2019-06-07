@@ -22,6 +22,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
+	pthread_mutex_init(&log, NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 }
@@ -64,6 +65,7 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&colaNuevos);
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
+	pthread_mutex_destroy(&log);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
