@@ -123,13 +123,9 @@ void dump(){
 
 	pthread_mutex_lock(&mutexMemtable);
 	list_iterate(memtable,(void*)dumpearTabla);
-	pthread_mutex_unlock(&mutexMemtable);
-
-	funcionSelect("PELICULAS 10");
 	liberarMemtable();
 	pthread_mutex_unlock(&mutexMemtable);
 
-	pthread_mutex_unlock(&mutexDump);
 	}
 
 }

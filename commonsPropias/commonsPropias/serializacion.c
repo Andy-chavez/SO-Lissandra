@@ -1,4 +1,5 @@
 #include "serializacion.h"
+#include <commons/memory.h>
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
@@ -230,7 +231,7 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 
 	int tamanioProtocolo = sizeof(int);
 	operacionProtocolo protocolo = METADATA;
-	int tamanioTotalDelBuffer = 2*sizeof(int) + tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion + tamanioDelNombreTabla;
+	int tamanioTotalDelBuffer = 6*sizeof(int) + tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion + tamanioDelNombreTabla;
 	void *bufferMetadata= malloc(tamanioTotalDelBuffer);
 
 	//Tamaño de operacion Protocolo
@@ -261,8 +262,9 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 	memcpy(bufferMetadata + desplazamiento, &tamanioDelNombreTabla, tamanioDelTiempoDeCompactacion);
 	desplazamiento += sizeof(int);
 	//nombre tabla
-	memcpy(bufferMetadata + desplazamiento, &(unMetadata->nombreTabla), tamanioDelTiempoDeCompactacion);
+	memcpy(bufferMetadata + desplazamiento, (unMetadata->nombreTabla), tamanioDelNombreTabla);
 	desplazamiento += tamanioDelNombreTabla;
+
 
 	*tamanioBuffer = desplazamiento;
 
@@ -277,7 +279,7 @@ void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
 }
 
 metadata* deserializarMetadata(void* bufferMetadata) {
-	int desplazamiento = 4;
+	int desplazamiento = 8;
 	metadata* unMetadata = malloc(sizeof(metadata));
 	int tamanioDelTipoDeConsistencia,tamanioDeCantidadDeParticiones,tamanioDelTiempoDeCompactacion, tamanioNombreTabla;
 
@@ -302,7 +304,8 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	memcpy(&tamanioNombreTabla, bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
-	memcpy(&(unMetadata->nombreTabla), bufferMetadata + desplazamiento, tamanioNombreTabla);
+	unMetadata->nombreTabla = malloc(tamanioNombreTabla);
+	memcpy((unMetadata->nombreTabla), bufferMetadata + desplazamiento, tamanioNombreTabla);
 
 	return unMetadata;
 }
