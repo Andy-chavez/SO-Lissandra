@@ -175,7 +175,7 @@ void leerConsola() {
 
 	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
 	    //guardiola con el describe all porque puede tirar basura
-	    parserGeneral(linea,socket);
+	    	parserGeneral(splitear_operacion(linea),socket);
 	    }
 
 	    free (linea);  // free memory allocated by getline

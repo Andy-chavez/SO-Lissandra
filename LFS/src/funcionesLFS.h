@@ -27,7 +27,6 @@
  * No olvidar de hacer la comparacion final, entre memtable,archivo temporal y FS
  *
 */
-pthread_mutex_t mutexLog;
 
 typedef enum {
 	INSERT,
@@ -78,19 +77,41 @@ void* devolverMayor(registro* registro1, registro* registro2);
 bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento); //este es para memtable
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key);
 void liberarDoblePuntero(char** doblePuntero);
-registro* funcionSelect(char* argumentos);
-void funcionInsert(char* argumentos);
+void funcionSelect(char* argumentos,int socket);
+void funcionInsert(char* argumentos,int socket);
 void guardarInfoEnArchivo(char* ruta, char* info);
 char* devolverBloqueLibre(); //devuelve el numero del bloque libre
 void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion);
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
-void funcionCreate(char* argumentos);
+void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
 void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 int obtenerCantTemporales(char* nombreTabla);
 int existeArchivo(char * filename);
-void funcionDescribe(char* argumentos); //despues quizas haya que cambiar el tipo
+void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
+void enviarYLogearMensajeError(int socket, char* mensaje);
+void enviarOMostrarYLogearInfo(int socket, char* mensaje);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 
+
+
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)){
+	if(socket != -1) {
+		pthread_mutex_lock(&mutexLogger);
+		log(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+		enviar(socket, mensaje, strlen(mensaje) + 1);
+	} else {
+		log(loggerConsola, mensaje);
+	}
+}
+void enviarYLogearMensajeError(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
+}
+
+void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+}
 void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	registro* guardarRegistro = malloc (sizeof(registro)) ;
 	guardarRegistro->timestamp = atoi(timestamp);
@@ -107,7 +128,6 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	string_append(&rutaDirectorio,"Tables/");
 	string_append(&rutaDirectorio,nombreTabla);
 	struct stat sb;
-	//pthread_mutex_lock(&mutexLog);
 	pthread_mutex_lock(&mutexLogger);
 	log_info(logger,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
 	pthread_mutex_unlock(&mutexLogger);
@@ -368,7 +388,7 @@ char* cargarInfoDeTmp(char* buffer, char* nombreTabla, int key){
 }
 
 
-registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
+void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	int i=0;
 	char* particion;
@@ -382,7 +402,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		}
 
 
-	void* liberarRegistro(registro* registro) {
+	void liberarRegistro(registro* registro) {
 			free(registro);
 		}
 
@@ -397,10 +417,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	}
 	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0)
 		{
-		pthread_mutex_lock(&mutexLogger);
-			log_error(logger,"No se pudo completar el select");
-		pthread_mutex_unlock(&mutexLogger);
-			return NULL;
+		enviarOMostrarYLogearInfo(socket,"No se encontro el directorio");
 		}
 	else{
 		pthread_mutex_lock(&mutexLogger);
@@ -462,16 +479,11 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 			pthread_mutex_unlock(&mutexLogger);
 			t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 			if (registrosConLaKeyEnListaRegistros->elements_count == 0){
-				pthread_mutex_lock(&mutexLogger);
-				log_info(logger, "La key buscada no se encuentra");
-				pthread_mutex_unlock(&mutexLogger);
+				enviarOMostrarYLogearInfo(socket,"No se encuentra la key");
 				printf("No se encuentra la key\n");
-					return NULL;
 				}
 		registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
-		pthread_mutex_lock(&mutexLogger);
-		log_info(logger, "Registro encontrado en bloques");
-		pthread_mutex_unlock(&mutexLogger);
+		enviarOMostrarYLogearInfo(socket,"Registro encontrado en bloques");
 		}
 
 		pthread_mutex_unlock(&mutexMemtable);
@@ -484,18 +496,21 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 
 		config_destroy(part);
 		free (ruta);
-		list_destroy_and_destroy_elements(listaRegistros, liberarRegistro);
+		list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistro);
 		free(buffer);
 
 		//ver si la funcion tiene que devolver el registro
 		printf("Registro seleccionado: %s \n",registroBuscado->value);
+		enviarOMostrarYLogearInfo(socket,"Se encontro el registro");
+		if(socket==1){
+			puts("ahora lo termino"); //test
 		}
-		return registroBuscado;
+		}
 
 }
 
 
-void funcionInsert(char* argumentos) {
+void funcionInsert(char* argumentos,int socket) {
 
 	//verificar que no se exceda el tamaño del value, tamanioValue (var. global
 	char** argSeparados = string_n_split(argumentos,3,"\"");
@@ -526,10 +541,8 @@ void funcionInsert(char* argumentos) {
 				registroDePrueba -> value= string_duplicate(value);
 				registroDePrueba -> timestamp = timestamp;
 
- guardarRegistro(registroDePrueba, nombreTabla);
- pthread_mutex_lock(&mutexLogger);
-  log_info(logger, "Se guardo el registro");
-  pthread_mutex_unlock(&mutexLogger);
+	guardarRegistro(registroDePrueba, nombreTabla);
+	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
 
   liberarDoblePuntero(argSeparados);
 
@@ -643,7 +656,7 @@ void crearParticiones(char* ruta, int numeroParticiones) {
 
 }
 
-void funcionCreate(char* argumentos) {
+void funcionCreate(char* argumentos,int socket) {
 
 
 	char** argSeparados = string_n_split(argumentos,4," ");
@@ -751,15 +764,14 @@ int existeArchivo(char * filename){
     return 0;
 }
 
-void funcionDescribe(char* argumentos) {
+void funcionDescribe(char* argumentos,int socket) {
 	metadata metadataBuscado;
 	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
 	if(1){
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 		metadataBuscado = obtenerMetadata(argumentos);
-		pthread_mutex_lock(&mutexLogger);
-		log_info(logger,"Se encontro el archivo metadata de la tabla con los siguientes valores: Consistency= ", metadataBuscado.tipoConsistencia,"Partitions= ",metadataBuscado.cantParticiones,"Compaction_Time= ", metadataBuscado.tiempoCompactacion);
-		pthread_mutex_unlock(&mutexLogger);
+		enviarOMostrarYLogearInfo(socket,"Se encontro el metadata buscado");
+
 		}
 	}
 }
