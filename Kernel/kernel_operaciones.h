@@ -280,34 +280,51 @@ void kernel_roundRobin(){
 	pthread_mutex_unlock(&colaListos);
 	//printf("%s\n", pcb_auxiliar->operacion);
 	if(pcb_auxiliar->instruccion == NULL){
-			if(pcb_auxiliar->ejecutado ==1){
-				pthread_mutex_lock(&colaTerminados);
-				list_add(cola_proc_terminados,pcb_auxiliar);
-				pthread_mutex_unlock(&colaTerminados);
-				//free(pcb_auxiliar);
-			}
-			else{
+//			if(pcb_auxiliar->ejecutado ==1){  innecesario?
+//				pthread_mutex_lock(&colaTerminados);
+//				list_add(cola_proc_terminados,pcb_auxiliar);
+//				pthread_mutex_unlock(&colaTerminados);
+//				//free(pcb_auxiliar);
+//			}
+//			else
+//			{
 				pcb_auxiliar->ejecutado=1;
-				kernel_api(pcb_auxiliar->operacion);
+				if(kernel_api(pcb_auxiliar->operacion)==0)
+					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
 				//free(pcb_auxiliar);
-			}
+//			}
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
+			int ERROR= 0;
 			for(int quantum=0;quantum<quantumMax;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
-					kernel_api(pcb_auxiliar->operacion);
 					pcb_auxiliar->ejecutado=1;
+					if(kernel_api(pcb_auxiliar->operacion)==0){
+						log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
+//						pthread_mutex_lock(&colaTerminados);
+//						list_add(cola_proc_terminados,pcb_auxiliar);
+//						pthread_mutex_unlock(&colaTerminados);
+						ERROR = -1;
+						break;
+					}
 				}
 				//instruccion* instruc=malloc(sizeof(instruccion));
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
 				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
-				kernel_api(instruc->operacion);
+				if(kernel_api(instruc->operacion)==0){
+					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
+//					pthread_mutex_lock(&colaTerminados);
+//					list_add(cola_proc_terminados,pcb_auxiliar);
+//					pthread_mutex_unlock(&colaTerminados);
+					ERROR = -1;
+					break;
+				}
 			}
-			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada)){
+			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
 				pthread_mutex_lock(&colaListos);
 				list_add(cola_proc_listos, pcb_auxiliar);
 				pthread_mutex_unlock(&colaListos);
