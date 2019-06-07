@@ -458,7 +458,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 }
 
 void createLQL(operacionLQL* operacionCreate, int socketKernel) {
-	char* mensaje = (char*) pedirALFS(operacionCreate);
+	/*char* mensaje = (char*) pedirALFS(operacionCreate);
 
 	if(!mensaje) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
@@ -467,4 +467,21 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 	enviarOMostrarYLogearInfo(socketKernel, mensaje);
 
 	free(mensaje);
+	*/
+	enviarOMostrarYLogearInfo(socketKernel, "sisi lo hice tranqui");
+}
+
+void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
+	void* bufferMetadata = pedirALFS(operacionCreate);
+
+	if(!bufferMetadata) {
+		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
+	}
+
+	metadata* unaMetadata = deserializarMetadata(bufferMetadata);
+
+	serializarYEnviarMetadata(socketKernel, unaMetadata);
+
+	free(unaMetadata);
+	free(bufferMetadata);
 }

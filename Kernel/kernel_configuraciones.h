@@ -54,7 +54,8 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 	memoria* conex = malloc(sizeof(memoria));
 	conex->socket = socketClienteKernel;
 	conex->ip = ipMemoria;
-	conex->numero = (int) recibir(socketClienteKernel);
+	conex->numero = *(int*) recibir(socketClienteKernel);
+	printf("%d\n", conex->numero);
 	conex->puerto = puertoMemoria;
 	list_add(conexionesMemoria, conex);
 	return 0;

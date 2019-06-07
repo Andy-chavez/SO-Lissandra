@@ -52,7 +52,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE");
-		// createLQL(operacionAParsear, socketKernel);
+		createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
@@ -73,7 +73,8 @@ void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
 	recibir(socketKernel);
-	enviar(socketKernel, (void*) config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER"), sizeof(int));
+	int numeroMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
+	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
 	int hayMensaje = 1;
 
 	while(hayMensaje) {
@@ -168,6 +169,7 @@ int main() {
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {
+
 		liberarConfigYLogs();
 		return -1;
 	};
@@ -179,6 +181,7 @@ int main() {
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	//pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
+
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
 	//pthread_detach(threadTimedJournal);
