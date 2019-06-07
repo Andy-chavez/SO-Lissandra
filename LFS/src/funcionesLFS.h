@@ -363,6 +363,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	char* ruta = string_new();
 	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
+	registro* registroBuscado;
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
@@ -384,6 +385,7 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 	if(verificarExistenciaDirectorioTabla(*(argSeparados+0)) ==0)
 		{
 			log_error(logger,"No se pudo completar el select");
+			return NULL;
 		}
 	else{
 		log_info(logger, "Directorio de tabla valido");
@@ -433,8 +435,6 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 		//puts(buffer);
 		//y aca afuera haria la busqueda del registro.
 
-		registro* registroBuscado;
-
 		if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
 			log_info(logger, "El registro no se encuentra en la memtable");
 			t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
@@ -460,8 +460,8 @@ registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la 
 
 		//ver si la funcion tiene que devolver el registro
 		printf("Registro seleccionado: %s \n",registroBuscado->value);
-		return registroBuscado;
 		}
+		return registroBuscado;
 
 }
 

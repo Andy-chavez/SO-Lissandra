@@ -151,7 +151,7 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 
-	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	/*leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
@@ -171,10 +171,10 @@ int main(int argc, char* argv[]) {
 	//pthread_join(threadDump,NULL);
 	//servidorLisandra();
 	//leerConsola();
-	/*
+
 	void* bufferHandshake = serializarHandshake(tamanioValue);
 	int tamanioRecibido = deserializarHandshake(bufferHandshake);
-*/
+
 
 
 //	registro* registroParaMemoria = funcionSelect("TABLA1 56");
@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
 	//funcionInsert("tablaA", 13, "alo", 8000);
 
 	//ver de liberar la memtable al final
-	/*obtenerMetadata("tablaA");
+	obtenerMetadata("tablaA");
 	int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
 	pthread_mutex_init(&mutexLog,NULL);
 	pthread_t threadLeerConsola;
@@ -192,14 +192,14 @@ int main(int argc, char* argv[]) {
     pthread_join(threadLeerConsola,NULL);
 
     pthread_mutex_destroy(&mutexLog);
-    liberarConfigYLogs(archivosDeConfigYLog);*/
+    liberarConfigYLogs(archivosDeConfigYLog);
 
 	//pthread_t threadServer ; //habria que ver tambien thread dumping.
 	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 	//pthread_join(threadServer,NULL);
 	//servidorLisandra(archivosDeConfigYLog);
 
-	liberarConfigYLogs();
+	liberarConfigYLogs();*/
 	return EXIT_SUCCESS;
 }
 
