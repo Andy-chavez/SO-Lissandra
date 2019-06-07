@@ -13,6 +13,7 @@
 #include <sys/io.h>
 #include <fcntl.h>
 #include <math.h>
+#include <unistd.h>
 
 
 /* SELECT: FACU , INSERT: PABLO
@@ -82,6 +83,7 @@ int tamanioRegistros(char* nombreTabla);
 void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 int obtenerCantTemporales(char* nombreTabla);
 int existeArchivo(char * filename);
+metadata* funcionDescribe(char* argumentos); //despues quizas haya que cambiar el tipo
 
 void agregarALista(char* timestamp,char* key,char* value,t_list* head){
 	registro* guardarRegistro = malloc (sizeof(registro)) ;
@@ -264,20 +266,20 @@ metadata obtenerMetadata(char* nombreTabla){
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
 	metadata unaMetadata;
-	char* str2 = "/metadata.bin";
+
 
 	char* ruta = string_new();
 	string_append(&ruta, puntoMontaje);
 	string_append(&ruta,"Tables/");
 	string_append(&ruta,nombreTabla);
-	string_append(&ruta,str2);
+	string_append(&ruta,"Metadata");
 
 	configMetadata = config_create(ruta);
 
-	cantParticiones = atoi(config_get_string_value(configMetadata, "PARTITIONS"));
+	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
 	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
-	tipoConsistencia = atoi(config_get_string_value(configMetadata, "CONSISTENCY")); //delegar a funcion con strcmp
-	tiempoCompactacion = atoi(config_get_string_value(configMetadata, "COMPACTATION_TIME"));
+	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
+	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTATION_TIME");
 
 	unaMetadata.cantParticiones = cantParticiones;
 	unaMetadata.tipoConsistencia = tipoConsistencia;
@@ -612,6 +614,7 @@ void funcionCreate(char* argumentos) {
 
 	//es todo char porque cuando lo guardes en el metadata se guarda como caracteres
 	char* nombreTabla = *(argSeparados + 0);
+	string_to_upper(nombreTabla); //para que nos quede en el file system todo en mayuscula
     char* consistenciaTabla = *(argSeparados + 1);
 	char* numeroParticiones = *(argSeparados + 2);
 	char* tiempoCompactacion = *(argSeparados + 3);
@@ -740,5 +743,17 @@ int existeArchivo(char * filename){
         return 1;
     }
     return 0;
+}
+
+void funcionDescribe(char* argumentos) {
+	metadata* metadataBuscado = malloc (sizeof (metadata));
+	if(0); //seria el describe all argumentos==NULL
+	else {
+		if(verificarExistenciaDirectorioTabla(argumentos)){
+		metadataBuscado = obtenerMetadata(argumentos);
+		}
+
+	}
+
 }
 

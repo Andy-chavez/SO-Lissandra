@@ -16,6 +16,7 @@
 #include <sys/io.h>
 #include <fcntl.h>
 
+pthread_mutex_t mutexMemtable;
 t_log* logger;
 
 int tamanioBloques;
@@ -27,6 +28,7 @@ t_config* archivoMetadata;
 char* ipLisandra;
 char* puertoLisandra;
 char* puntoMontaje;
+int tiempoDump;
 //int tiempoDump y int Retardo por ahora no, pueden ir cambiando
 int tamanioValue;
 t_config* archivoDeConfig;
@@ -41,6 +43,7 @@ void leerConfig(char* ruta){
 	puertoLisandra = config_get_string_value(archivoDeConfig,"PUERTO_ESCUCHA");
 	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
+	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
 
 }
 
