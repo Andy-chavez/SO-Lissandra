@@ -94,28 +94,31 @@ memoria* encontrarMemoriaStrong(){
 //
 //	return (memoria*) list_find(criterios[criterio].memorias, (void*)memoriaRandom);   de momento sale hardcodeo de la unica memoria que hay
 
-	memoria* mem = malloc(sizeof(memoria));
-	mem->ip = ipMemoria;
-	mem->puerto = puertoMemoria;
-	mem->numero = numPrueba;
-	list_add(criterios[STRONG].memorias,mem);
-	return mem;
+//	memoria* mem = malloc(sizeof(memoria));
+//	mem->ip = ipMemoria;
+//	mem->puerto = puertoMemoria;
+//	mem->numero = numPrueba;
+//	list_add(criterios[STRONG].memorias,mem);
+	return list_get(criterios[STRONG].memorias, 0);
 }
 //------ CRITERIOS ---------
 
 
 //------ CONEXION ---------
+int encontrarSocketDeMemoria(int numero){
+	bool encontrarSocket(memoria* unaConex){
+		return unaConex->numero == numero;
+	}
+	memoria* mem = list_find(conexionesMemoria,(void*) encontrarSocket);
+	return mem->socket;
+}
+
 int socketMemoriaSolicitada(consistencia criterio){
 	memoria* mem = NULL;
-	bool encontrarSocket(conexion * unaConex){
-		return unaConex->numero == mem->numero;
-	}
-	conexion* conex = NULL;
 	switch (criterio){
 
 		case SC:
 			mem = encontrarMemoriaStrong();
-			conex = list_find(conexionesMemoria, (void*) encontrarSocket);
 			break;
 		case SH:
 
@@ -124,7 +127,7 @@ int socketMemoriaSolicitada(consistencia criterio){
 			break;
 	}
 
-	return conex->socket;
+	return encontrarSocketDeMemoria(mem->numero);
 }
 //------ SINTAXIS CORRECTA ---------
 int sintaxisCorrecta(char caso,char* parametros){
@@ -386,7 +389,7 @@ void kernel_roundRobin(){
 				pthread_mutex_unlock(&colaTerminados);
 			}
 		}
-		sleep(sleepEjecucion);
+		//sleep(sleepEjecucion);
 	}
 //		free(pcb_auxiliar->operacion);
 //		free(pcb_auxiliar);

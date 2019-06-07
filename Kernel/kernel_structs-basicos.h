@@ -36,6 +36,7 @@ typedef struct{
 }criterio;
 
 typedef struct{
+	int socket;
 	int numero;
 	char* puerto; //necesario?
 	char* ip;
@@ -50,12 +51,12 @@ typedef struct {
 	t_config* config;
 	t_log* log;
 } configYLogs;
-typedef struct{
-	int socket;
-	int numero;
-	char* puerto; //necesario?
-	char* ip;
-}conexion;
+//typedef struct{
+//	int socket;
+//	int numero;
+//	char* puerto; //necesario?
+//	char* ip;
+//}conexion;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;  //use esta en el caso del run
 t_list* cola_proc_listos;

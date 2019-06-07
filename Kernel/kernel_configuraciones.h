@@ -40,7 +40,7 @@ void kernel_crearListas(){
 	criterios[STRONG].memorias = list_create();
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
-	memorias = list_create();
+	//memorias = list_create();
 	tablas = list_create();
 	conexionesMemoria = list_create();
 }
@@ -51,7 +51,7 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 	}
 	serializarYEnviarHandshake(socketClienteKernel,0);
 	//int recibido=  //todo devuelve pool de memorias
-	conexion* conex = malloc(sizeof(conexion));
+	memoria* conex = malloc(sizeof(memoria));
 	conex->socket = socketClienteKernel;
 	conex->ip = ipMemoria;
 	conex->numero = (int) recibir(socketClienteKernel);
@@ -71,6 +71,7 @@ void kernel_inicializar(){
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
+	kernel_inicializarMemoria();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
