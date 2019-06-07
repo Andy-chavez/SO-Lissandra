@@ -225,7 +225,7 @@ int kernel_drop(char* operacion){
 //	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 //	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
 //	printf("\n\nEnviado\n\n");
-//	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
+//	char * recibido= (char*) recibir(socketClienteKernel);
 //	printf("\n\nValor recibido:%s\n\n",recibido);
 //	cerrarConexion(socketClienteKernel);
 //	free(recibido);
@@ -250,7 +250,7 @@ int kernel_journal(){
 //	free(opAux->parametros);
 //	free(opAux);
 }
-int kernel_metrics(){ //todo dps
+int kernel_metrics(){
 	printf("Not yet -> metrics\n");
 	return 1;
 }
@@ -292,7 +292,7 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 }
 // ---------------.: THREAD ROUND ROBIN :.---------------
 void kernel_roundRobin(){
-	//while(!list_is_empty(cola_proc_listos)){ //TODO agregar semaforo cuando para avisar que hay procesos en listo
+	//while(!list_is_empty(cola_proc_listos)){
 		//TODO poner semaforo
 	while(1){
 	sem_wait(&hayReady);
@@ -369,17 +369,18 @@ void kernel_almacenar_en_new(char*operacion){
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayNew);
-	//TODO loggear que operacion se agrego a new
+	pthread_mutex_lock(&log);
+	log_info(kernel_configYLog->log, "Se agregó a la cola de new al proceso: %s", operacion);
+	pthread_mutex_unlock(&log);
 }
 
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	//while((linea = readline("") == NULL){
-	 //TODO agregar while para leer de consola
+	while(1){
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
-	//}
+	}
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){
@@ -393,23 +394,25 @@ void kernel_crearPCB(char* operacion){
 	sem_post(&hayReady);
 }
 void kernel_pasar_a_ready(){
-	sem_wait(&hayNew);
-	pthread_mutex_lock(&colaNuevos);
-	char* operacion = NULL;
-	operacion =(char*) list_remove(cola_proc_nuevos,0);
-	pthread_mutex_unlock(&colaNuevos);
+	while(1){
+		sem_wait(&hayNew);
+		pthread_mutex_lock(&colaNuevos);
+		char* operacion = NULL;
+		operacion =(char*) list_remove(cola_proc_nuevos,0);
+		pthread_mutex_unlock(&colaNuevos);
 
-	string_to_upper(operacion);
-	if (string_contains( operacion, "RUN")) {
-		kernel_run(operacion);
-	}
-	else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") || string_contains(operacion, "CREATE") ||
-			 string_contains(operacion, "DESCRIBE") || string_contains(operacion, "DROP") ||
+		string_to_upper(operacion);
+		if (string_contains( operacion, "RUN")) {
+			kernel_run(operacion);
+		}
+		else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") || string_contains(operacion, "CREATE") ||
+			string_contains(operacion, "DESCRIBE") || string_contains(operacion, "DROP") ||
 			 string_contains(operacion, "JOURNAL") || string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")){ //splitear y comparar
-		kernel_crearPCB(operacion);
-	}
-	else{
-		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
+			kernel_crearPCB(operacion);
+		}
+		else{
+			log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
+		}
 	}
 }
 void kernel_run(char* operacion){
@@ -432,20 +435,14 @@ void kernel_run(char* operacion){
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 1 ;
 	pcb_auxiliar->instruccion =list_create();
-	char** lineaAGuardar = malloc(limite);
-	int i = 0;
 
 	//instruccion** instruccion_auxiliar;
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
-		lineaAGuardar[i] = malloc(leer-1);
-		strcpy(lineaAGuardar[i],lineaLeida);
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
-		instruccion_auxiliar->operacion= lineaAGuardar[i];
+		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
-		i ++;
 	}
-	//TODO ACA HAY ALGO RARO
 //	instruccion* in1 = list_get(pcb_auxiliar->instruccion,0);
 //	printf("%s\n",in1->operacion);
 //	instruccion* in2 = list_get(pcb_auxiliar->instruccion,1);
@@ -474,7 +471,7 @@ void kernel_run(char* operacion){
 //free(lineaLeida);
 //free(pcb_auxiliar->operacion);
 //free(pcb_auxiliar);
-	free(lineaAGuardar);
+//free(lineaAGuardar);
 	free(*(opYArg+1));
 	free(*(opYArg));
 	free(opYArg);
@@ -491,36 +488,31 @@ int kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 		return kernel_select(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "DESCRIBE")) {
-		//printf("DESCRIBE\n");
 		return kernel_describe(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "CREATE")) {
-		//printf("CREATE\n");
 		return kernel_create(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "DROP")) {
-		//printf("DROP\n");
 		return kernel_drop(operacionAParsear);
 	}
-	else if (string_contains(operacionAParsear, "ADD")) {
-		//printf("ADD\n");
+	else if (string_contains(operacionAParsear, "ADD")){
 		return kernel_add(operacionAParsear);
 	}
-	else {
-		printf("Mi no entender esa operacion\n");
-		return 0;
-		}
-	//	else if (string_contains(operacionAParsear, "JOURNAL")) {
-//		printf("JOURNAL\n");
-//TODO	return kernel_journal();
-//	}
+	else if (string_contains(operacionAParsear, "JOURNAL")) {
+		free(operacionAParsear);
+		return kernel_journal();
+	}
 //	else if (string_contains(operacionAParsear, "RUN")) {
-//		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
-//TODO	return kernel_run(*argumentos);
+//		return kernel_run(operacionAParsear);
 //	}
-//	else if (string_contains(operacionAParsear, "METRICS")) {
-//		printf("METRICS\n");
-//		return kernel_metrics();
-//	}
+	else if (string_contains(operacionAParsear, "METRICS")) {
+		free(operacionAParsear);
+		return kernel_metrics();
+	}
+	else {
+		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s, verifique existencia del archivo\n", operacionAParsear ); //operacion);
+		return 0;
+	}
 }
 #endif /* KERNEL_OPERACIONES_H_ */
