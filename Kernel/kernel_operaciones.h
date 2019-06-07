@@ -375,11 +375,12 @@ void kernel_almacenar_en_new(char*operacion){
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	//while((linea = readline("") == NULL){
+	while(1){
 	 //TODO agregar while para leer de consola
+		//linea = readline("")
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
-	//}
+	}
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){
@@ -437,7 +438,7 @@ void kernel_run(char* operacion){
 
 	//instruccion** instruccion_auxiliar;
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
-		lineaAGuardar[i] = malloc(leer-1);
+		lineaAGuardar[i] = malloc(leer+1);
 		strcpy(lineaAGuardar[i],lineaLeida);
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
