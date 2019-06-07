@@ -72,7 +72,7 @@ void dump(){
 
 		int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
 		char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
-		log_info(logger,"Se creo el tmp en la ruta: ",rutaTmp);
+		log_info(logger,"Se creo el tmp en la ruta: %s",rutaTmp);
 
 		t_config* temporal =config_create(rutaTmp);
 		char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");

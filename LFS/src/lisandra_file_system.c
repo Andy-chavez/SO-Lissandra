@@ -51,39 +51,13 @@ void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser p
 	}
 }
 
-void* serializarHandshake(int tamanioValue){
-
-	int desplazamiento = 0;
-	void *buffer= malloc((sizeof(int))*2);
-	int tamanioInt= sizeof(int);
-	memcpy(buffer + desplazamiento, &tamanioInt, sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(buffer + desplazamiento, &tamanioValue, sizeof(int));
-	desplazamiento+= sizeof(int);
-
-	return buffer;
-}
-
-
-int deserializarHandshake(void* bufferHandshake){
-
-	int desplazamiento = 0;
-	int tamanioDelInt;
-	int tamanioDelValue;
-
-	memcpy(&tamanioDelInt, bufferHandshake + desplazamiento, sizeof(int));
-	desplazamiento+= sizeof(int);
-	memcpy(&tamanioDelValue, bufferHandshake + desplazamiento, sizeof(int));
-
-	return tamanioDelValue;
-}
 
 void* servidorLisandra(){
 
 	//char* puertoLisandra = "5008";
 	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
 	//char* ipLisandra = config_get_string_value(archivosDeConfigYLog->config, "IP_LISANDRA");
-	int socketServidorLisandra = crearSocketServidor(puertoLisandra);
+	int socketServidorLisandra = crearSocketServidor(ipLisandra,puertoLisandra);
 
 //	free(ipMemoria);
 //	free(puertoMemoria);
@@ -103,16 +77,18 @@ void* servidorLisandra(){
 		int i =0;
 		//char* mensajeRecibido = recibir(socketMemoria);
 		if(i==0){ //en realidad hay que deserializar handshake
-			void* mensaje = serializarHandshake(tamanioValue);
+			int tamanioBuffer;
+			void* mensaje = serializarHandshake(tamanioValue,&tamanioBuffer);
 			enviar(socketMemoria, mensaje, 2*sizeof(int));
 			i++;
 		}
 		else{
 			char* mensajeRecibido = recibir(socketMemoria);
 			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
-			registro* registroASerializar= funcionSelect(operacion->parametros);
+			registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
 			char* nombreTabla = "TABLA1";
-			void* registroMandar = serializarRegistro(registroASerializar, nombreTabla);
+			int tamanioBuffer;
+			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
 			enviar(socketMemoria,registroMandar, 98);
 
 		}
@@ -168,25 +144,6 @@ void leerConsola() {
 	    }
 
 	    free (linea);  // free memory allocated by getline
-}
-
-void funcionInsert(char* nombreTabla, int key, char* value, int timestamp) {
-
-	//queda todo medio desordenado ahora, se va a ir ordenando en la medida que vayamos discutiendo
-
-	//int existeTabla= verificarExistenciaDirectorioTabla(nombreTabla,archivosDeConfigYLog);
-	//obtenerMetadata(nombreTabla);
-
-	t_list* memtable = list_create();
-
-	//para probar si anda el devolver registro
-	registro* unRegistro = devolverRegistroDeLaMemtable(memtable, nombreTabla, key);
-	printf("Printeo el value del registro encontrado: %d \n", unRegistro->key);
-
-	//para probar si anda el agregar registro
-    guardarRegistro(memtable, unRegistro, nombreTabla);
-
-
 }
 
 

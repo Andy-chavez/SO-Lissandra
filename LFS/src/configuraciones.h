@@ -94,8 +94,6 @@ void leerMetadataFS (){
 }
 void inicializarMemtable(){
 	memtable = list_create();
-	listaDeTablasConTemporales =list_create();
-
 }
 
 void inicializarLog(char* ruta){

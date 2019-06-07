@@ -38,6 +38,11 @@ typedef enum {
 	SELECT
 } operacion;
 
+typedef struct {
+	time_t timestamp;
+	u_int16_t key;
+	char* value;
+} registro;
 /*
 typedef struct {
 	char* nombre;
@@ -345,14 +350,6 @@ char* cargarInfoDeTmp(char* buffer, char* nombreTabla, int key){
 			config_destroy(part);
 
 		}
-
-		void cargarTemporalesDeTabla(tablaTmp* tabla){
-			list_iterate(tabla->temporales, (void *)cargarTemporal);
-
-		}
-
-
-		list_iterate(listaDeTablasConTemporales,(void *) cargarTemporalesDeTabla);
 
 		return bufferAux;
 }
@@ -753,8 +750,8 @@ int existeArchivo(char * filename){
 
 void funcionDescribe(char* argumentos) {
 	metadata metadataBuscado;
-	if(0){} //seria el describe all argumentos==NULL
-	else {
+	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
+	if(1){
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 		metadataBuscado = obtenerMetadata(argumentos);
 		pthread_mutex_lock(&mutexLogger);
@@ -762,6 +759,5 @@ void funcionDescribe(char* argumentos) {
 		pthread_mutex_unlock(&mutexLogger);
 		}
 	}
-
 }
 
