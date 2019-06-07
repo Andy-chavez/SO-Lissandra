@@ -48,7 +48,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
-		// describeLQL(operacionAParsear, socketKernel);
+		describeLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE");
@@ -100,6 +100,7 @@ datosInicializacion* realizarHandshake() {
 
 	datosInicializacion* datosImportantes = malloc(sizeof(datosInicializacion));
 	datosImportantes->tamanio = deserializarHandshake(bufferHandshake);
+	printf("%d\n", datosImportantes->tamanio);
 	return datosImportantes;
 	/*datosInicializacion* datosImportantes = malloc(sizeof(datosInicializacion));
 	datosImportantes->tamanio = 2048;
