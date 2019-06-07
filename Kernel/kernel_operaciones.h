@@ -21,8 +21,9 @@ void kernel_almacenar_en_cola(char*,char*);
 void kernel_agregar_cola_proc_nuevos(char*);
 void kernel_run(char*);
 void kernel_consola();
-void kernel_api(char*);
-
+int kernel_api(char*);
+void guardarTablacreada(char*);
+void eliminarTablaCreada(char* );
 /* TODO implementaciones
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
  * run -> ya esta hecho
@@ -32,22 +33,108 @@ void kernel_api(char*);
  *
  */
 void kernel_roundRobin();
-void kernel_insert();
-void kernel_select();
-void kernel_describe();
-void kernel_create();
-void kernel_drop();
+int kernel_insert(char*);
+int kernel_select(char*);
+int kernel_describe(char*);
+int  kernel_create(char*);
+int kernel_drop(char*);
 void kernel_journal();
-void kernel_metrics();
-void kernel_add();
-
-void* kernel_cliente(void *archivo);
+int kernel_metrics();
+int kernel_add(char*);
+//Corroborar sintaxis
+//1.select
+//2.insert
+//3.create
+//4.describe tabla
 
 /******************************IMPLEMENTACIONES******************************************/
+//------ TABLAS ---------
+void guardarTablaCreada(char* parametros){
+	char** opAux =string_n_split(parametros,3," ");
+	tabla* tablaAux = malloc(sizeof(tabla));
+	tablaAux->nombreDeTabla= *opAux;
+	if(string_equals_ignore_case(*(opAux+1),"SC")){
+		tablaAux->consistenciaDeTabla = SC;
+	}
+	else if(string_equals_ignore_case(*(opAux+1),"SH")){
+		tablaAux->consistenciaDeTabla = SH;
+	}
+	else if(string_equals_ignore_case(*(opAux+1),"EC")){
+		tablaAux->consistenciaDeTabla = EC;
+	}
+	list_add(tablas,tablaAux);
+}
+void eliminarTablaCreada(char* parametros){
+	tabla* tablaAux = malloc(sizeof(tabla));
+	bool tablaDeNombre(tabla* t){
+			return t->nombreDeTabla == parametros;
+		}
+	tablaAux = list_remove_by_condition(tablas, (void*)tablaDeNombre);
+	free(tablaAux->nombreDeTabla);
+	free(tablaAux);
+}
+tabla* encontrarTablaPorNombre(char* nombre){
+	bool tablaDeNombre(tabla* t){
+			return t->nombreDeTabla == nombre;
+		}
+	return list_find(tablas,(void* ) tablaDeNombre);
+}
+//------ MEMORIAS ---------
+memoria* encontrarMemoria(int numero){
+	bool memoriaEsNumero(memoria* mem) {
+		return mem->numero == numero;
+	}
+
+	return (memoria*) list_find(memorias, (void*)memoriaEsNumero);
+}
+memoria* encontrarMemoriaStrong(){
+//	bool memoriaRandom(memoria* mem) {
+//		return mem->numero == numero;
+//	}
+//
+//	return (memoria*) list_find(criterios[criterio].memorias, (void*)memoriaRandom);   de momento sale hardcodeo de la unica memoria que hay
+	memoria* mem = malloc(sizeof(memoria));
+	mem->ip = ipMemoria;
+	mem->puerto = puertoMemoria;
+	mem->numero = numPrueba;
+	list_add(criterios[STRONG].memorias,mem);
+	return mem;
+}
+//------ CRITERIOS ---------
+
+//------ SINTAXIS CORRECTA ---------
+int sintaxisCorrecta(char caso,char* parametros){
+	int retorno = 0;
+	switch(caso){
+		case '1': //1.select
+		case '2': //2.insert
+		{
+			char** parametrosSpliteados = string_split(parametros, " ");
+			if(atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) == "0")
+				retorno = 1;
+		}
+			break;
+		case '3': //3.create
+			//verificar dps todo
+			retorno = 1;
+			break;
+		case '4': //4.describe tabla
+			if(encontrarTablaPorNombre(parametros))
+				retorno = 1;
+			break;
+	}
+
+	return retorno;
+}
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
-void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
+int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
-	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	if(!sintaxisCorrecta('2',opAux->parametros)){
+		//abortarProceso(char*operacion);
+		return 0;
+	}
+	memoria* mem =encontrarMemoriaStrong();
+	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
 	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
 	printf("\n\nEnviado\n\n");
 	char * recibido= (char*) recibir(socketClienteKernel);
@@ -57,10 +144,16 @@ void kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la mem
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
+	return 1;
 }
-void kernel_select(char* operacion){
+int kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	if(!sintaxisCorrecta('1',opAux->parametros)){
+		//abortarProceso(char*operacion);
+		return 0;
+	}
+	memoria* mem =encontrarMemoriaStrong();
+	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
 	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
 	printf("\n\nEnviado\n\n");
 	char * recibido= (char*) recibir(socketClienteKernel);
@@ -70,8 +163,37 @@ void kernel_select(char* operacion){
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
+	return 1;
 }
-void kernel_create(char* operacion){
+int kernel_create(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	if(!sintaxisCorrecta('3',opAux->parametros)){
+		//abortarProceso(char*operacion);
+		return 0;
+	}
+	guardarTablaCreada(opAux->parametros);
+	memoria* mem =encontrarMemoriaStrong();
+	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
+	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+	printf("\n\nEnviado\n\n");
+	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
+	printf("\n\nValor recibido:%s\n\n",recibido);
+	cerrarConexion(socketClienteKernel);
+	free(recibido);
+	free(opAux->operacion);
+	free(opAux->parametros);
+	free(opAux);
+	return 1;
+}
+int kernel_describe(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	if(!sintaxisCorrecta('4',opAux->parametros)){
+			//abortarProceso(char*operacion);
+			return 0;
+		}
+	return 1;
+}
+int kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
@@ -83,19 +205,7 @@ void kernel_create(char* operacion){
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-}
-void kernel_drop(char* operacion){
-	operacionLQL* opAux=splitear_operacion(operacion);
-	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-	printf("\n\nEnviado\n\n");
-	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
-	printf("\n\nValor recibido:%s\n\n",recibido);
-	cerrarConexion(socketClienteKernel);
-	free(recibido);
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
+	return 1;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 void kernel_journal(){
@@ -111,20 +221,11 @@ void kernel_journal(){
 	free(opAux->parametros);
 	free(opAux);
 }
-void kernel_metrics(){ //todo dps
+int kernel_metrics(){ //todo dps
 	printf("Not yet");
-}
-bool tienenIgualNombre(char* unNombre,char* otroNombre){
-	return string_equals_ignore_case(unNombre, otroNombre);
+	return 1;
 }
 
-memoria* encontrarMemoria(int numero){
-	bool memoriaEsNumero(memoria* mem) {
-		return mem->numero == numero;
-	}
-
-	return (memoria*) list_find(memorias, (void*)memoriaEsNumero);
-}
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	int i = 0;
 	while(*(parametrosSpliteados + i)) {
@@ -133,14 +234,14 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	}
 	free(parametrosSpliteados);
 }
-void kernel_add(char* operacion){
+int kernel_add(char* operacion){
 	printf("Almost done add memory");
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = (int)*(opAux+2);
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_equals_ignore_case(*(opAux+4),"HASH")){
-			list_add(criterios[HASH].memorias, mem );
+			list_add(criterios[HASH].memorias, mem ); //todo journal cada vez que se agregue una aca
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
 			list_add(criterios[STRONG].memorias, mem );
@@ -148,9 +249,11 @@ void kernel_add(char* operacion){
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
 		}
+		return 1;
 	}
 	else{
 		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s debido a la falta de conexion de dicha memoria\n", operacion);
+		return 0;
 	}
 	liberarParametrosSpliteados(opAux);
 	//list_find(memorias,memoriaNumero(void*));
@@ -162,7 +265,6 @@ void kernel_add(char* operacion){
 //	instrucAux = list_get(instruc,size);
 //	return instrucAux;
 //}
-
 bool instruccion_no_ejecutada(instruccion* instruc){
 	return instruc->ejecutado==0;
 }
@@ -220,6 +322,27 @@ void kernel_roundRobin(){
 //		free(pcb_auxiliar->operacion);
 //		free(pcb_auxiliar);
 }
+
+// ---------------.: THREAD CONSOLA A NEW :.---------------
+void kernel_almacenar_en_new(char*operacion){
+
+	pthread_mutex_lock(&colaNuevos);
+	list_add(cola_proc_nuevos, operacion);
+	pthread_mutex_unlock(&colaNuevos);
+	sem_post(&hayNew);
+	//TODO loggear que operacion se agrego a new
+}
+
+void kernel_consola(){
+	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
+	char* linea= NULL;
+	//while((linea = readline(""))!= NULL){
+	 //TODO agregar while para leer de consola
+		linea = readline("");
+		kernel_almacenar_en_new(linea);
+	//}
+}
+// ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){
 	pcb* pcb_auxiliar = malloc(sizeof(pcb));
 	pcb_auxiliar->operacion = operacion;
@@ -250,26 +373,6 @@ void kernel_pasar_a_ready(){
 		log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
 	}
 }
-// ---------------.: THREAD CONSOLA A NEW :.---------------
-void kernel_almacenar_en_new(char*operacion){
-
-	pthread_mutex_lock(&colaNuevos);
-	list_add(cola_proc_nuevos, operacion);
-	pthread_mutex_unlock(&colaNuevos);
-	sem_post(&hayNew);
-	//TODO loggear que operacion se agrego a new
-}
-
-void kernel_consola(){
-	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
-	char* linea= NULL;
-	//while((linea = readline(""))!= NULL){
-	 //TODO agregar while para leer de consola
-		linea = readline("");
-		kernel_almacenar_en_new(linea);
-	//}
-}
-// ---------------.: THREAD NEW A READY :.---------------
 void kernel_run(char* operacion){
 	char** opYArg;
 	opYArg = string_n_split(operacion ,2," ");
@@ -338,46 +441,46 @@ void kernel_run(char* operacion){
 	fclose(archivoALeer);
 	sem_post(&hayReady);
 }
-void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
+int kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 {
 	//printf("%s\n\n", operacionAParsear);
 	if(string_contains(operacionAParsear, "INSERT")) {
-		kernel_insert(operacionAParsear);
+		return kernel_insert(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "SELECT")) {
-			kernel_select(operacionAParsear);
+		return kernel_select(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "DESCRIBE")) {
 		printf("DESCRIBE\n");
-//TODO			kernel_describe();
+		return kernel_describe(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "CREATE")) {
 		printf("CREATE\n");
-//TODO			kernel_create();
+		return kernel_create(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "DROP")) {
 		printf("DROP\n");
-//TODO			kernel_drop();
-	}
-	else if (string_contains(operacionAParsear, "JOURNAL")) {
-		printf("JOURNAL\n");
-//TODO			kernel_journal();
-	}
-	else if (string_contains(operacionAParsear, "RUN")) {
-		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
-//TODO			kernel_run(*argumentos);
-	}
-	else if (string_contains(operacionAParsear, "METRICS")) {
-		printf("METRICS\n");
-//TODO			kernel_metrics();
+		return kernel_drop(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "ADD")) {
 		//printf("ADD\n");
-			kernel_add(operacionAParsear);
+		return kernel_add(operacionAParsear);
 	}
 	else {
 		printf("Mi no entender esa operacion\n");
+		return 0;
 		}
+	//	else if (string_contains(operacionAParsear, "JOURNAL")) {
+//		printf("JOURNAL\n");
+//TODO	return kernel_journal();
+//	}
+//	else if (string_contains(operacionAParsear, "RUN")) {
+//		printf("Ha utilizado el comando RUN, su archivo comenzará a ser ejecutado\n");
+//TODO	return kernel_run(*argumentos);
+//	}
+//	else if (string_contains(operacionAParsear, "METRICS")) {
+//		printf("METRICS\n");
+//		return kernel_metrics();
+//	}
 }
-
 #endif /* KERNEL_OPERACIONES_H_ */

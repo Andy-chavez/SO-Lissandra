@@ -38,7 +38,8 @@ typedef struct{
 
 typedef struct{
 	int numero;
-	int puerto; //necesario?
+	char* puerto; //necesario?
+	char* ip;
 }memoria;
 
 typedef struct{
@@ -57,6 +58,7 @@ t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;
+t_list* tablas;
 criterio criterios[3];
 sem_t hayNew;
 sem_t hayReady;
@@ -71,6 +73,9 @@ int quantumMax;
 int multiprocesamiento;
 int metadataRefresh;
 int sleepEjecucion;
+
+//------------------------TEST CHEHCKPOINT --------------------------------------
+int numPrueba = 1;
 
 
 #endif /* KERNEL_STRUCTS_BASICOS_H_ */
