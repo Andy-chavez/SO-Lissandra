@@ -93,6 +93,7 @@ memoria* encontrarMemoriaStrong(){
 //	}
 //
 //	return (memoria*) list_find(criterios[criterio].memorias, (void*)memoriaRandom);   de momento sale hardcodeo de la unica memoria que hay
+
 	memoria* mem = malloc(sizeof(memoria));
 	mem->ip = ipMemoria;
 	mem->puerto = puertoMemoria;
@@ -102,6 +103,29 @@ memoria* encontrarMemoriaStrong(){
 }
 //------ CRITERIOS ---------
 
+
+//------ CONEXION ---------
+int socketMemoriaSolicitada(consistencia criterio){
+	memoria* mem = NULL;
+	bool encontrarSocket(conexion * unaConex){
+		return unaConex->numero == mem->numero;
+	}
+	conexion* conex = NULL;
+	switch (criterio){
+
+		case SC:
+			mem = encontrarMemoriaStrong();
+			conex = list_find(conexionesMemoria, (void*) encontrarSocket);
+			break;
+		case SH:
+
+			break;
+		case EC:
+			break;
+	}
+
+	return conex->socket;
+}
 //------ SINTAXIS CORRECTA ---------
 int sintaxisCorrecta(char caso,char* parametros){
 	int retorno = 0;
@@ -134,17 +158,18 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 		//abortarProceso(char*operacion);
 		return 0;
 	}
-	memoria* mem =encontrarMemoriaStrong();
-	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	if(socketClienteKernel){
-		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+//	memoria* mem =encontrarMemoriaStrong();
+//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
+	//if(socketClienteKernel){
+		int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+		serializarYEnviarOperacionLQL(socket, opAux);
 		printf("\n\nEnviado\n\n");
-		char * recibido= (char*) recibir(socketClienteKernel);
+		char * recibido= (char*) recibir(socket);
 		printf("\n\nValor recibido:%s\n\n",recibido);
-		cerrarConexion(socketClienteKernel);
+		cerrarConexion(socket);
 		free(recibido);
 		return 1;
-	}
+	//}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -156,17 +181,18 @@ int kernel_select(char* operacion){
 		//abortarProceso(char*operacion);
 		return 0;
 	}
-	memoria* mem =encontrarMemoriaStrong();
-	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	if(socketClienteKernel){
-		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-		printf("\n\nEnviado\n\n");
-		char * recibido= (char*) recibir(socketClienteKernel);
-		printf("\n\nValor recibido:%s\n\n",recibido);
-		cerrarConexion(socketClienteKernel);
-		free(recibido);
-		return 1;
-	}
+	//	memoria* mem =encontrarMemoriaStrong();
+	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
+		//if(socketClienteKernel){
+			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+			serializarYEnviarOperacionLQL(socket, opAux);
+			printf("\n\nEnviado\n\n");
+			char * recibido= (char*) recibir(socket);
+			printf("\n\nValor recibido:%s\n\n",recibido);
+			cerrarConexion(socket);
+			free(recibido);
+			return 1;
+		//}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -179,17 +205,18 @@ int kernel_create(char* operacion){
 		return 0;
 	}
 	guardarTablaCreada(opAux->parametros);
-	memoria* mem =encontrarMemoriaStrong();
-	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	if(socketClienteKernel){
-		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-		printf("\n\nEnviado\n\n");
-		char * recibido= (char*) recibir(socketClienteKernel);
-		printf("\n\nValor recibido:%s\n\n",recibido);
-		cerrarConexion(socketClienteKernel);
-		free(recibido);
-		return 1;
-	}
+	//	memoria* mem =encontrarMemoriaStrong();
+	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
+		//if(socketClienteKernel){
+			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+			serializarYEnviarOperacionLQL(socket, opAux);
+			printf("\n\nEnviado\n\n");
+			char * recibido= (char*) recibir(socket);
+			printf("\n\nValor recibido:%s\n\n",recibido);
+			cerrarConexion(socket);
+			free(recibido);
+			return 1;
+		//}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -202,17 +229,18 @@ int kernel_describe(char* operacion){
 			//abortarProceso(char*operacion);
 			return 0;
 		}
-	memoria* mem =encontrarMemoriaStrong();
-	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	if(socketClienteKernel){
-		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-		printf("\n\nEnviado\n\n");
-		char * recibido= (char*) recibir(socketClienteKernel);
-		printf("\n\nValor recibido:%s\n\n",recibido);
-		cerrarConexion(socketClienteKernel);
-		free(recibido);
-		return 1;
-	}
+	//	memoria* mem =encontrarMemoriaStrong();
+	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
+		//if(socketClienteKernel){
+			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+			serializarYEnviarOperacionLQL(socket, opAux);
+			printf("\n\nEnviado\n\n");
+			char * recibido= (char*) recibir(socket);
+			printf("\n\nValor recibido:%s\n\n",recibido);
+			cerrarConexion(socket);
+			free(recibido);
+			return 1;
+		//}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
@@ -350,6 +378,7 @@ void kernel_roundRobin(){
 				pthread_mutex_lock(&colaListos);
 				list_add(cola_proc_listos, pcb_auxiliar);
 				pthread_mutex_unlock(&colaListos);
+				sem_post(&hayReady);
 			}
 			else{
 				pthread_mutex_lock(&colaTerminados);
@@ -357,6 +386,7 @@ void kernel_roundRobin(){
 				pthread_mutex_unlock(&colaTerminados);
 			}
 		}
+		sleep(sleepEjecucion);
 	}
 //		free(pcb_auxiliar->operacion);
 //		free(pcb_auxiliar);
@@ -369,9 +399,9 @@ void kernel_almacenar_en_new(char*operacion){
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayNew);
-	pthread_mutex_lock(&log);
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "Se agregó a la cola de new al proceso: %s", operacion);
-	pthread_mutex_unlock(&log);
+	pthread_mutex_unlock(&mLog);
 }
 
 void kernel_consola(){

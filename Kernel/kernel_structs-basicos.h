@@ -10,7 +10,6 @@
 #include <commons/log.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
-#include <commonsPropias/serializacion.h>
 #include <stdlib.h>
 #include <semaphore.h>
 
@@ -51,7 +50,12 @@ typedef struct {
 	t_config* config;
 	t_log* log;
 } configYLogs;
-
+typedef struct{
+	int socket;
+	int numero;
+	char* puerto; //necesario?
+	char* ip;
+}conexion;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;  //use esta en el caso del run
 t_list* cola_proc_listos;
@@ -59,13 +63,14 @@ t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;
 t_list* tablas;
+t_list* conexionesMemoria;
 criterio criterios[3];
 sem_t hayNew;
 sem_t hayReady;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
-pthread_mutex_t log;
+pthread_mutex_t mLog;
 char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 char* ipMemoria;
 char* puertoMemoria;
