@@ -167,9 +167,10 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	//if(socketClienteKernel){
 		int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 		serializarYEnviarOperacionLQL(socket, opAux);
-		printf("\n\nEnviado\n\n");
+		log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
 		char * recibido= (char*) recibir(socket);
-		printf("\n\nValor recibido:%s\n\n",recibido);
+		log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
+		//log_info(kernel_configYLog->log, "%s\n", recibido);
 		//cerrarConexion(socket);
 		free(recibido);
 		return 1;
@@ -190,9 +191,9 @@ int kernel_select(char* operacion){
 		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			printf("\n\nEnviado\n\n");
+			log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
 			char * recibido= (char*) recibir(socket);
-			printf("\n\nValor recibido:%s\n\n",recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
 			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -214,9 +215,9 @@ int kernel_create(char* operacion){
 		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			printf("\n\nEnviado\n\n");
+			log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
 			char * recibido= (char*) recibir(socket);
-			printf("\n\nValor recibido:%s\n\n",recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
 			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -227,24 +228,20 @@ int kernel_create(char* operacion){
 	return 0;
 }
 int kernel_describe(char* operacion){
-	printf("Almost done describe\n");
+	//printf("Almost done describe\n");
 	operacionLQL* opAux=splitear_operacion(operacion);
 	if(sintaxisCorrecta('3',opAux->parametros)==0){
 			//abortarProceso(char*operacion);
 			return 0;
 		}
-	//	memoria* mem =encontrarMemoriaStrong();
-	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			printf("\n\nEnviado\n\n");
+			log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
 			char * recibido= (char*) recibir(socket);
-			printf("\n\nValor recibido:%s\n\n",recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
 			cerrarConexion(socket);
 			free(recibido);
 			return 1;
-		//}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
