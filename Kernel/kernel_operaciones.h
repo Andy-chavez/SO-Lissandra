@@ -136,16 +136,19 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	}
 	memoria* mem =encontrarMemoriaStrong();
 	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-	printf("\n\nEnviado\n\n");
-	char * recibido= (char*) recibir(socketClienteKernel);
-	printf("\n\nValor recibido:%s\n\n",recibido);
-	cerrarConexion(socketClienteKernel);
-	free(recibido);
+	if(socketClienteKernel){
+		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+		printf("\n\nEnviado\n\n");
+		char * recibido= (char*) recibir(socketClienteKernel);
+		printf("\n\nValor recibido:%s\n\n",recibido);
+		cerrarConexion(socketClienteKernel);
+		free(recibido);
+		return 1;
+	}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 1;
+	return 0;
 }
 int kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
@@ -155,16 +158,19 @@ int kernel_select(char* operacion){
 	}
 	memoria* mem =encontrarMemoriaStrong();
 	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-	printf("\n\nEnviado\n\n");
-	char * recibido= (char*) recibir(socketClienteKernel);
-	printf("\n\nValor recibido:%s\n\n",recibido);
-	cerrarConexion(socketClienteKernel);
-	free(recibido);
+	if(socketClienteKernel){
+		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+		printf("\n\nEnviado\n\n");
+		char * recibido= (char*) recibir(socketClienteKernel);
+		printf("\n\nValor recibido:%s\n\n",recibido);
+		cerrarConexion(socketClienteKernel);
+		free(recibido);
+		return 1;
+	}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 1;
+	return 0;
 }
 int kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
@@ -175,16 +181,19 @@ int kernel_create(char* operacion){
 	guardarTablaCreada(opAux->parametros);
 	memoria* mem =encontrarMemoriaStrong();
 	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-	printf("\n\nEnviado\n\n");
-	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
-	printf("\n\nValor recibido:%s\n\n",recibido);
-	cerrarConexion(socketClienteKernel);
-	free(recibido);
+	if(socketClienteKernel){
+		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+		printf("\n\nEnviado\n\n");
+		char * recibido= (char*) recibir(socketClienteKernel);
+		printf("\n\nValor recibido:%s\n\n",recibido);
+		cerrarConexion(socketClienteKernel);
+		free(recibido);
+		return 1;
+	}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 1;
+	return 0;
 }
 int kernel_describe(char* operacion){
 	printf("Almost done describe\n");
@@ -195,16 +204,19 @@ int kernel_describe(char* operacion){
 		}
 	memoria* mem =encontrarMemoriaStrong();
 	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-	printf("\n\nEnviado\n\n");
-	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
-	printf("\n\nValor recibido:%s\n\n",recibido);
-	cerrarConexion(socketClienteKernel);
-	free(recibido);
+	if(socketClienteKernel){
+		serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
+		printf("\n\nEnviado\n\n");
+		char * recibido= (char*) recibir(socketClienteKernel);
+		printf("\n\nValor recibido:%s\n\n",recibido);
+		cerrarConexion(socketClienteKernel);
+		free(recibido);
+		return 1;
+	}
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 1;
+	return 0;
 }
 int kernel_drop(char* operacion){
 	printf("Not yet -> drop\n");
@@ -363,7 +375,7 @@ void kernel_almacenar_en_new(char*operacion){
 void kernel_consola(){
 	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
 	char* linea= NULL;
-	//while(!strcmp(linea = readline(""),"FIN")==0){
+	//while((linea = readline("") == NULL){
 	 //TODO agregar while para leer de consola
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
