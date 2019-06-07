@@ -8,8 +8,8 @@
 #include <readline/readline.h>
 #include <string.h>
 #include <stdio.h>
-#include <commonsPropias/conexiones.h>
-#include <commonsPropias/serializacion.h>
+#include <conexiones.h>
+#include <serializacion.h>
 #include "operacionesMemoria.h"
 #include "structsYVariablesGlobales.h"
 
@@ -72,7 +72,8 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
-	serializarYEnviarHandshake(socketKernel, config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER"));
+	recibir(socketKernel);
+	enviar(socketKernel, (void*) config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER"), sizeof(int));
 	int hayMensaje = 1;
 
 	while(hayMensaje) {

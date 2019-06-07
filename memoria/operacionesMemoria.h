@@ -39,7 +39,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 void inicializarArchivos() {
 	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
 	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 0, LOG_LEVEL_INFO);
-	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("../memoria.config");
+	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
 	LOGGER_CONSOLA = log_create("memoria_consola.log", "MEMORIA_CONSOLE", 1, LOG_LEVEL_INFO);
 }
 

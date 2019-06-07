@@ -78,7 +78,6 @@ registroConNombreTabla* deserializarRegistro(void* bufferRegistro) {
 	memcpy(unRegistro->value, bufferRegistro + desplazamiento, largoDeValue);
 
 	free(bufferRegistro);
-
 	return unRegistro;
 }
 
@@ -197,8 +196,7 @@ operacionLQL* splitear_operacion(char* operacion){
 
 	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE")) {
 		operacionAux->operacion = operacion;
-		operacionAux->parametros = malloc(3);
-		strcpy(operacionAux->parametros, "ALL");
+		operacionAux->parametros = "ALL";
 	} else {
 		opSpliteada = string_n_split(operacion,2," ");
 		operacionAux->operacion=*opSpliteada;
@@ -220,17 +218,16 @@ void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL) {
 	Serializa una metadata. Toma un parametro:
 	unaMetadata: La metadata a serializar
 */
-void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
+void* serializarMetadata(metadata* unMetadata) {
 
 	int desplazamiento = 0;
 	int tamanioDelTipoDeConsistencia = sizeof(int);
 	int tamanioDeCantidadDeParticiones = sizeof(int);
 	int tamanioDelTiempoDeCompactacion = sizeof(int);
-	int tamanioDelNombreTabla = strlen(unMetadata->nombreTabla) + 1;
 
 	int tamanioProtocolo = sizeof(int);
 	operacionProtocolo protocolo = METADATA;
-	int tamanioTotalDelBuffer = 2*sizeof(int) + tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion + tamanioDelNombreTabla;
+	int tamanioTotalDelBuffer = tamanioDelTipoDeConsistencia + tamanioDeCantidadDeParticiones + tamanioDelTiempoDeCompactacion;
 	void *bufferMetadata= malloc(tamanioTotalDelBuffer);
 
 	//Tamaño de operacion Protocolo
@@ -241,45 +238,31 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 	desplazamiento+= sizeof(int);
 	//Tamaño del tipo de consistencia
 	memcpy(bufferMetadata + desplazamiento, &tamanioDelTipoDeConsistencia, tamanioDelTipoDeConsistencia);
-	desplazamiento+= sizeof(int);
+	desplazamiento+= tamanioDelTipoDeConsistencia;
 	//Tipo de consistencia
 	memcpy(bufferMetadata + desplazamiento, &(unMetadata->tipoConsistencia), tamanioDelTipoDeConsistencia);
 	desplazamiento+= tamanioDelTipoDeConsistencia;
 	//Tamaño de la cantidad de particiones
 	memcpy(bufferMetadata + desplazamiento, &tamanioDeCantidadDeParticiones, tamanioDeCantidadDeParticiones);
-	desplazamiento+= sizeof(int);
+	desplazamiento+= tamanioDeCantidadDeParticiones;
 	//Cantidad de particiones
 	memcpy(bufferMetadata + desplazamiento, &(unMetadata->cantParticiones), tamanioDeCantidadDeParticiones);
 	desplazamiento+= tamanioDeCantidadDeParticiones;
 	//Tamaño del tiempoDeCompactacion
 	memcpy(bufferMetadata + desplazamiento, &tamanioDelTiempoDeCompactacion, tamanioDelTiempoDeCompactacion);
-	desplazamiento+= sizeof(int);
+	desplazamiento+= tamanioDelTiempoDeCompactacion;
 	//Tiempo de compactacion
 	memcpy(bufferMetadata + desplazamiento, &(unMetadata->tiempoCompactacion), tamanioDelTiempoDeCompactacion);
-	desplazamiento+= tamanioDelTiempoDeCompactacion;
-	//tamanio nombre tabla
-	memcpy(bufferMetadata + desplazamiento, &tamanioDelNombreTabla, tamanioDelTiempoDeCompactacion);
-	desplazamiento += sizeof(int);
-	//nombre tabla
-	memcpy(bufferMetadata + desplazamiento, &(unMetadata->nombreTabla), tamanioDelTiempoDeCompactacion);
-	desplazamiento += tamanioDelNombreTabla;
 
-	*tamanioBuffer = desplazamiento;
+	desplazamiento+= tamanioDelTiempoDeCompactacion;
 
 	return bufferMetadata;
-}
-
-void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
-	int tamanioAEnviar;
-	void* bufferAEnviar = serializarMetadata(unaMetadata, &tamanioAEnviar);
-	enviar(socket, bufferAEnviar, tamanioAEnviar);
-	free(bufferAEnviar);
 }
 
 metadata* deserializarMetadata(void* bufferMetadata) {
 	int desplazamiento = 4;
 	metadata* unMetadata = malloc(sizeof(metadata));
-	int tamanioDelTipoDeConsistencia,tamanioDeCantidadDeParticiones,tamanioDelTiempoDeCompactacion, tamanioNombreTabla;
+	int tamanioDelTipoDeConsistencia,tamanioDeCantidadDeParticiones,tamanioDelTiempoDeCompactacion;
 
 	memcpy(&tamanioDelTipoDeConsistencia, bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento += sizeof(int);
@@ -299,11 +282,6 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	memcpy(&(unMetadata->tiempoCompactacion), bufferMetadata + desplazamiento, sizeof(int));
 	desplazamiento+= sizeof(int);
 
-	memcpy(&tamanioNombreTabla, bufferMetadata + desplazamiento, sizeof(int));
-	desplazamiento+= sizeof(int);
-
-	memcpy(&(unMetadata->nombreTabla), bufferMetadata + desplazamiento, tamanioNombreTabla);
-
 	return unMetadata;
 }
 
@@ -321,20 +299,3 @@ char* string_trim_quotation(char* string) {
 	free(string);
 	return stringRespuesta;
 };
-
-registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* nombreTabla) {
-	registroConNombreTabla* registroParaEnviar = malloc(sizeof(registroConNombreTabla));
-
-	registroParaEnviar->nombreTabla = string_duplicate(nombreTabla);
-	registroParaEnviar->value = string_duplicate(unRegistro->value);
-	registroParaEnviar->key = unRegistro->key;
-	registroParaEnviar->timestamp = unRegistro->timestamp;
-
-	return registroParaEnviar;
-}
-
-void liberarRegistroConNombreTabla(registroConNombreTabla* registro) {
-	free(registro->nombreTabla);
-	free(registro->value);
-	free(registro);
-}
