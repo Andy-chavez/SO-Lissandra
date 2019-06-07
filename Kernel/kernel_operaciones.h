@@ -445,6 +445,7 @@ void kernel_run(char* operacion){
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 		i ++;
 	}
+	//TODO ACA HAY ALGO RARO
 //	instruccion* in1 = list_get(pcb_auxiliar->instruccion,0);
 //	printf("%s\n",in1->operacion);
 //	instruccion* in2 = list_get(pcb_auxiliar->instruccion,1);
