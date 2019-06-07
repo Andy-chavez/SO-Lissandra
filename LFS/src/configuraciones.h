@@ -36,7 +36,6 @@ t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
 t_bitarray* bitarray;
-t_list* listaDeTablasConTemporales;
 
 void leerConfig(char* ruta){
 	archivoDeConfig = config_create(ruta);

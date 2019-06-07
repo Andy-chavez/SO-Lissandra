@@ -127,36 +127,6 @@ int calcularParticion(int key,int cantidadParticiones){
 }
 
 
-<<<<<<< HEAD
-
-
- bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
-		tablaMem* tabla = elemento;
-		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
-			list_add(tabla->lista, unRegistro);
-
-			return true;
-		}else{
-				return false;
-		}
-}
-
-//Guarda un registro en la memtable
-void guardarRegistro(t_list* memtable, registro* unRegistro, char* nombreTabla) {
-
-	bool buscarPorNombre(void *elemento){
-		return agregarRegistro(nombreTabla, unRegistro, elemento);
-	}
-
-	tablaMem* tablaEncontrada = list_find(memtable, buscarPorNombre);
-
-}
-
-
-
-bool estaLaKey(int key,void* elemento){
-	registro* unRegistro = elemento;
-=======
 bool estaLaKey(int key,void* elemento){
 	registro* unRegistro = elemento;
 
@@ -193,7 +163,6 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 		}
 
 }
->>>>>>> lisandraFS
 
 //Guarda un registro en la memtable
 void guardarRegistro(registro* unRegistro, char* nombreTabla) {
@@ -213,10 +182,8 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 	}
 }
 
-<<<<<<< HEAD
 registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int key){
-=======
->>>>>>> lisandraFS
+
 
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
@@ -235,23 +202,14 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	return esIgualAlNombre(nombreTabla, elemento);
 	}
 
-<<<<<<< HEAD
-=======
 	void* liberarRegistro(registro* registro) {
 		free(registro);
 	}
->>>>>>> lisandraFS
 
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
-<<<<<<< HEAD
-			tablaMem* tablaDePrueba = malloc(sizeof(tablaMem));
-			tablaDePrueba-> nombre = string_duplicate("tablaA");
-			tablaDePrueba->lista = list_create();
-=======
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
->>>>>>> lisandraFS
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
 		log_info(logger, "La key buscada no se encuentra la key en la memtable");
@@ -259,14 +217,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 		return NULL;
 	}
 
-<<<<<<< HEAD
-			tablaMem* tablaDePrueba2 = malloc(sizeof(tablaMem));
-						tablaDePrueba2-> nombre = string_duplicate("tablaB");
-						tablaDePrueba2->lista = list_create();
-						list_add(tablaDePrueba2->lista, registroDePrueba);
-=======
 	registro* registroDeMayorTimestamp= list_fold(registrosConLaKeyEnMemtable, list_get(registrosConLaKeyEnMemtable,0), cualEsElMayorTimestamp);
->>>>>>> lisandraFS
 
 	log_info(logger, "Registro encontrado en la memtable");
 
@@ -275,11 +226,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 return registroDeMayorTimestamp;
 
-<<<<<<< HEAD
-//	printf("No se ha encontrado el directorio de la tabla en la ruta: %d \n",registroEncontrado->key);
-=======
 }
->>>>>>> lisandraFS
 
 char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
