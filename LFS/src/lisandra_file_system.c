@@ -25,6 +25,7 @@
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
 #include "compactador.h"
+#include <semaphore.h>
 
 
 void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
@@ -72,7 +73,9 @@ void* servidorLisandra(){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
 		if(socketMemoria == -1) {
+			pthread_mutex_lock(&mutexLogger);
 			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
+			pthread_mutex_unlock(&mutexLogger);
 			continue;
 		}
 		int i =0;
@@ -86,15 +89,14 @@ void* servidorLisandra(){
 		else{
 			char* mensajeRecibido = recibir(socketMemoria);
 			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
-<<<<<<< HEAD
+
 	//		registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
-=======
-			registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
->>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
+
+
 			char* nombreTabla = "TABLA1";
 			int tamanioBuffer;
-			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
-			enviar(socketMemoria,registroMandar, 98);
+			//void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
+			//enviar(socketMemoria,registroMandar, 98);
 
 		}
 
@@ -156,32 +158,36 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 
-<<<<<<< HEAD
-
-=======
->>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
-	/*leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	inicializarSemaforos();
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandra.log");
+
 
 	inicializarArchivoBitmap();
 	inicializarBitmap();
 
 	leerConsola();
+
+	/*
 	pthread_t threadConsola;
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 
 	pthread_t threadDump;
+
 	pthread_create(&threadDump, NULL,(void*) dump, NULL);
 
 	pthread_join(threadConsola,NULL);
 	pthread_join(threadDump,NULL);
+
+	*/
+
 	//pthread_join(threadDump,NULL);
 	//servidorLisandra();
 	//leerConsola();
 
-	void* bufferHandshake = serializarHandshake(tamanioValue);
+	/*void* bufferHandshake = serializarHandshake(tamanioValue);
 	int tamanioRecibido = deserializarHandshake(bufferHandshake);
 
 
@@ -206,13 +212,10 @@ int main(int argc, char* argv[]) {
 	//pthread_t threadServer ; //habria que ver tambien thread dumping.
 	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 	//pthread_join(threadServer,NULL);
-	//servidorLisandra(archivosDeConfigYLog);
+	//servidorLisandra(archivosDeConfigYLog);*/
 
-<<<<<<< HEAD
-//	liberarConfigYLogs();*/
-=======
-	liberarConfigYLogs();*/
->>>>>>> e555faa796dbb68712e105ef71c70d85e9c981e1
+	liberarConfigYLogs();
+
 	return EXIT_SUCCESS;
 }
 
