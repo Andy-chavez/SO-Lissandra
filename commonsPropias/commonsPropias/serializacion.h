@@ -25,6 +25,12 @@ typedef struct {
 	char* nombreTabla;
 } registroConNombreTabla;
 
+typedef struct {
+	time_t timestamp;
+	u_int16_t key;
+	char* value;
+} registro;
+
 typedef enum {
 	SC,
 	SH,
@@ -45,12 +51,13 @@ typedef struct {
   char* parametros;
 } operacionLQL;
 
+
 typedef struct {
 	consistencia tipoConsistencia;
 	int cantParticiones;
 	int tiempoCompactacion;
+	char* nombreTabla;
 } metadata;
-
 
 /*
  * Para saber que es lo que me estan mandando, utilizar
@@ -113,7 +120,7 @@ void* serializarOperacionLQL(operacionLQL* unaOperacion, int* tamanio);
  * Serializa una metadata. devuelve un buffer donde
  * se encuentra la metadata serializada.
  */
-void* serializarMetadata(metadata* unaMetadata);
+void* serializarMetadata(metadata* unaMetadata, int *tamanioBuffer);
 
 void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL);
 
