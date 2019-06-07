@@ -10,19 +10,22 @@
 #include <commons/config.h>
 #include <commons/string.h>
 #include "kernel_structs-basicos.h"
+#include <commonsPropias/serializacion.h>
+#include <commonsPropias/conexiones.h>
 
 void kernel_inicializarSemaforos();
 void kernel_crearListas();
 void liberarConfigYLogs();
 void kernel_inicializar();
 void kernel_finalizar();
+int kernel_inicializarMemoria();
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 //-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
-	pthread_mutex_init(&log, NULL);
+	pthread_mutex_init(&mLog, NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 }
@@ -37,8 +40,24 @@ void kernel_crearListas(){
 	criterios[STRONG].memorias = list_create();
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
-	memorias = list_create();
+	//memorias = list_create();
 	tablas = list_create();
+	conexionesMemoria = list_create();
+}
+int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
+	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	if(socketClienteKernel==-1){
+		return -1;
+	}
+	serializarYEnviarHandshake(socketClienteKernel,0);
+	//int recibido=  //todo devuelve pool de memorias
+	memoria* conex = malloc(sizeof(memoria));
+	conex->socket = socketClienteKernel;
+	conex->ip = ipMemoria;
+	conex->numero = (int) recibir(socketClienteKernel);
+	conex->puerto = puertoMemoria;
+	list_add(conexionesMemoria, conex);
+	return 0;
 }
 void kernel_inicializar(){
 	kernel_configYLog= malloc(sizeof(configYLogs));
@@ -52,6 +71,7 @@ void kernel_inicializar(){
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
+	kernel_inicializarMemoria();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
@@ -65,7 +85,7 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&colaNuevos);
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
-	pthread_mutex_destroy(&log);
+	pthread_mutex_destroy(&mLog);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
