@@ -186,10 +186,6 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 						log_info(logger, "Se añadio la tabla a la memtable");
 	}
 }
-
-registro* devolverRegistroDeLaMemtable(t_list* memtable, char* nombreTabla, int key){
-
-
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key){
 
 
@@ -357,7 +353,6 @@ char* cargarInfoDeTmp(char* buffer, char* nombreTabla, int key){
 
 registro* funcionSelect(char* argumentos){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
-	int i=0;
 	char* particion;
 	t_config* part;
 	char* ruta = string_new();
