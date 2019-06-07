@@ -64,6 +64,7 @@ void* servidorLisandra(){
 	if(socketServidorLisandra == -1) {
 		cerrarConexion(socketServidorLisandra);
 		pthread_exit(0);
+		log_error(logger, "No se pudo crear el servidor lissandra");
 	}
 
 
@@ -74,6 +75,7 @@ void* servidorLisandra(){
 			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
 			continue;
 		}
+
 		int i =0;
 		//char* mensajeRecibido = recibir(socketMemoria);
 		if(i==0){ //en realidad hay que deserializar handshake
