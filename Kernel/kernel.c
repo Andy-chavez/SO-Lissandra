@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
 	pthread_t threadNew_Ready;
 	pthread_t threadRoundRobin;
 
-	kernel_inicializar();
+	kernel_inicializar(); //TODO agregar if, si no conecta exit
 
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);

@@ -144,7 +144,7 @@ int sintaxisCorrecta(char caso,char* parametros){
 			retorno = 1;
 			break;
 		case '3': //3.create
-			//verificar dps todo
+			//todo verificar dps
 			retorno = 1;
 			break;
 		case '4': //4.describe tabla
@@ -164,12 +164,12 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	}
 //	memoria* mem =encontrarMemoriaStrong();
 //	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	//if(socketClienteKernel){
+	//if(socketClienteKernel){ //TODO AGREGAR IF CON STRING_CONTAINS ERROR:
 		int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 		serializarYEnviarOperacionLQL(socket, opAux);
-		log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
+		log_info(kernel_configYLog->log, "Enviado %s", operacion);
 		char * recibido= (char*) recibir(socket);
-		log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
+		log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
 		//log_info(kernel_configYLog->log, "%s\n", recibido);
 		//cerrarConexion(socket);
 		free(recibido);
@@ -191,9 +191,9 @@ int kernel_select(char* operacion){
 		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
+			log_info(kernel_configYLog->log, "Enviado %s", operacion);
 			char * recibido= (char*) recibir(socket);
-			log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
 			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -215,9 +215,9 @@ int kernel_create(char* operacion){
 		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
+			log_info(kernel_configYLog->log, "Enviado %s", operacion);
 			char * recibido= (char*) recibir(socket);
-			log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
 			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -236,9 +236,9 @@ int kernel_describe(char* operacion){
 		}
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			log_info(kernel_configYLog->log, "Enviado %s\n", operacion);
+			log_info(kernel_configYLog->log, "Enviado %s", operacion);
 			char * recibido= (char*) recibir(socket);
-			log_info(kernel_configYLog->log, "valor recibido: %s ", recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
 			cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -293,7 +293,7 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	free(parametrosSpliteados);
 }
 int kernel_add(char* operacion){
-	printf("Almost done add memory\n");
+	//printf("Almost done add memory\n");
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
@@ -471,6 +471,9 @@ void kernel_run(char* operacion){
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
+		if(*(lineaLeida + leer - 1) == '\n') {
+			*(lineaLeida + leer - 1) = '\0';
+		}
 		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 	}

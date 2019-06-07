@@ -10,8 +10,8 @@
 #include <commons/config.h>
 #include <commons/string.h>
 #include "kernel_structs-basicos.h"
-#include <commonsPropias/serializacion.h>
 #include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 
 void kernel_inicializarSemaforos();
 void kernel_crearListas();
@@ -62,7 +62,7 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 void kernel_inicializar(){
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
-	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 1, LOG_LEVEL_INFO);
+	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
