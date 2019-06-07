@@ -40,7 +40,8 @@ typedef struct{
 //}criterio;
 
 typedef struct{
-	int memoria;
+	int numero;
+	int puerto;
 	consistencia consistencias[3];
 }memoria;
 

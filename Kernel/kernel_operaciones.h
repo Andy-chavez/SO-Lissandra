@@ -114,9 +114,12 @@ void kernel_journal(){
 void kernel_metrics(){ //todo dps
 	printf("Not yet");
 }
-void kernel_add(){
-
-}
+//bool memoriaNumero(memoria* mem, int num){
+//	return mem->numero == num;
+//}
+//void kernel_add(char*){
+//	list_find(memorias,memoriaNumero(void*));
+//}
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 //instruccion* obtener_ultima_instruccion(t_list* instruc){
 //	int size = list_size(instruc);
@@ -161,8 +164,8 @@ void kernel_roundRobin(){
 					kernel_api(pcb_auxiliar->operacion);
 					pcb_auxiliar->ejecutado=1;
 				}
-				instruccion* instruc=malloc(sizeof(instruccion));
-				instruc= list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
+				//instruccion* instruc=malloc(sizeof(instruccion));
+				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
 				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
 				kernel_api(instruc->operacion);
@@ -334,8 +337,8 @@ void kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 //TODO			kernel_metrics();
 	}
 	else if (string_contains(operacionAParsear, "ADD")) {
-		printf("ADD\n");
-//TODO			kernel_add();
+		//printf("ADD\n");
+			kernel_add(operacionAParsear);
 	}
 	else {
 		printf("Mi no entender esa operacion\n");

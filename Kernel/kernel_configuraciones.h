@@ -45,11 +45,6 @@ void kernel_inicializar(){
 	kernel_inicializarSemaforos();
 }
 void liberarConfigYLogs() {
-//	free(pathConfig);
-//	free(kernel_configYLog->config);
-//	free(kernel_configYLog->log);
-//	free(ipMemoria);
-//	free(puertoMemoria);
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
 	free(kernel_configYLog);
@@ -66,12 +61,10 @@ void liberarColas(pcb* element){
 	free(element);
 }
 void liberarPCB(pcb* elemento) {
-
 	void liberarInstrucciones(instruccion* listaIns) {
 		free(listaIns->operacion);
 		free(listaIns);
 	}
-
 	free(elemento->operacion);
 	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 	free(elemento);
