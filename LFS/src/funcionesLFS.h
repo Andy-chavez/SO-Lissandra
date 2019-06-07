@@ -15,6 +15,8 @@
 #include <math.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 
 
 /* SELECT: FACU , INSERT: PABLO
@@ -37,12 +39,6 @@ typedef enum {
 	JOURNAL,
 	SELECT
 } operacion;
-
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
 /*
 typedef struct {
 	char* nombre;
@@ -66,7 +62,7 @@ typedef struct {
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
-metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
+metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
 char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistros);
@@ -112,11 +108,11 @@ void enviarYLogearMensajeError(int socket, char* mensaje) {
 void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
 }
-void agregarALista(char* timestamp,char* key,char* value,t_list* head){
-	registro* guardarRegistro = malloc (sizeof(registro)) ;
-	guardarRegistro->timestamp = atoi(timestamp);
-	guardarRegistro->key = atoi(key);
-	guardarRegistro->value = value;
+void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
+	registro* guardarRegistro = malloc (sizeof(registro));
+	guardarRegistro->timestamp = atoi(unTimestamp);
+	guardarRegistro->key = atoi(unaKey);
+	guardarRegistro->value = unValue;
 	list_add(head,guardarRegistro);
 }
 
@@ -300,31 +296,31 @@ char* infoEnBloque(int key,char* numeroBloque,int sizeTabla,t_list* listaRegistr
 
 
 
-metadata obtenerMetadata(char* nombreTabla){
+metadata* obtenerMetadata(char* nombreTabla){
 	string_to_upper(nombreTabla);
 	t_config* configMetadata;
 	int cantParticiones;
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
-	metadata unaMetadata ;
+	metadata* unaMetadata = malloc(sizeof(metadata));
 
 
 	char* ruta = string_new();
 	string_append(&ruta, puntoMontaje);
 	string_append(&ruta,"Tables/");
 	string_append(&ruta,nombreTabla);
-	string_append(&ruta,"/Metadata");
+	string_append(&ruta,"/metadata.bin"); //cambiar esto en create
 
 	configMetadata = config_create(ruta);
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
-	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
 	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
 	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTATION_TIME");
 
-	unaMetadata.cantParticiones = cantParticiones;
-	unaMetadata.tipoConsistencia = tipoConsistencia;
-	unaMetadata.tiempoCompactacion = tiempoCompactacion;
+	unaMetadata->cantParticiones = cantParticiones;
+	unaMetadata->tipoConsistencia = tipoConsistencia;
+	unaMetadata->tiempoCompactacion = tiempoCompactacion;
+	unaMetadata->nombreTabla = string_duplicate(nombreTabla);
 
 	config_destroy(configMetadata);
 	free(ruta);
@@ -423,13 +419,13 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		log_info(logger, "Directorio de tabla valido");
 		pthread_mutex_unlock(&mutexLogger);
 
-		metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
+		metadata* metadataTabla = obtenerMetadata(*(argSeparados+0));
 
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Metadata cargado");
 		pthread_mutex_unlock(&mutexLogger);
 
-		particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
+		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones)); //cant de particiones de la tabla
 		char* buffer = string_new();
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Tables/");
@@ -500,9 +496,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 		//ver si la funcion tiene que devolver el registro
 		printf("Registro seleccionado: %s \n",registroBuscado->value);
-		enviarOMostrarYLogearInfo(socket,"Se encontro el registro");
-		if(socket==1){
-			puts("ahora lo termino"); //test
+		enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
+		if(socket!=-1){
+			serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
 		}
 		}
 
@@ -533,7 +529,7 @@ void funcionInsert(char* argumentos,int socket) {
 		timestamp = atoi(valorTimestamp);
 	}
 
-//	obtenerMetadata(nombreTabla);
+//	obtener(nombreTabla);
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = key;
@@ -682,10 +678,10 @@ void funcionCreate(char* argumentos,int socket) {
 		puts("ya existe");
 	}
 
-
 	crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
+	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
 	free(directorioTabla);
 
 }
@@ -763,13 +759,15 @@ int existeArchivo(char * filename){
 }
 
 void funcionDescribe(char* argumentos,int socket) {
-	metadata metadataBuscado;
+	metadata* metadataBuscado = NULL;
 	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
 	if(1){
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 		metadataBuscado = obtenerMetadata(argumentos);
-		enviarOMostrarYLogearInfo(socket,"Se encontro el metadata buscado");
-
+		enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
+		if(socket!=-1){
+			serializarYEnviarMetadata(socket,metadataBuscado);
+		}
 		}
 	}
 }
