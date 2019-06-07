@@ -27,29 +27,32 @@
 #include <semaphore.h>
 
 
-void parserGeneral(char* operacionAParsear,char* argumentos) { //cambio parser para que ignore uppercase
-	if(string_equals_ignore_case(operacionAParsear, "INSERT")) {
+void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
+	liberarOperacionLQL(operacionAParsear);
+	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
 				printf("INSERT\n");
-				funcionInsert(argumentos);
+				//	parserGeneral(*opYArg,*(opYArg+1));
+				funcionInsert(operacionAParsear->parametros,socket);
 			}
-			else if (string_equals_ignore_case(operacionAParsear, "SELECT")) {
+			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
 				puts("SELECT\n");
-				funcionSelect(argumentos);
+				funcionSelect(operacionAParsear->parametros,socket);
 			}
-			else if (string_equals_ignore_case(operacionAParsear, "DESCRIBE")) {
+			else if (string_equals_ignore_case(operacionAParsear->operacion, "DESCRIBE")) {
 				printf("DESCRIBE\n");
-				funcionDescribe(argumentos);
+				funcionDescribe(operacionAParsear->parametros,socket);
 			}
-			else if (string_equals_ignore_case(operacionAParsear, "CREATE")) {
+			else if (string_equals_ignore_case(operacionAParsear->operacion, "CREATE")) {
 				printf("CREATE\n");
-				funcionCreate(argumentos);
+				funcionCreate(operacionAParsear->parametros,socket);
 			}
-			else if (string_equals_ignore_case(operacionAParsear, "DROP")) {
+			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
 				printf("DROP\n");
 			}
 	else {
 		printf("no entendi xD");
 	}
+	liberarOperacionLQL(operacionAParsear);
 }
 
 void realizarHandshake(int socket){
@@ -63,13 +66,33 @@ void realizarHandshake(int socket){
 	}
 }
 
-trabajarConexion(int socketMemoria){
+int APIProtocolo(void* buffer, int socket) {
+	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
+	switch(operacion) {
+	case OPERACIONLQL:
+		pthread_mutex_lock(&mutexLogger);
+		log_info(logger, "Recibi una operacion");
+		pthread_mutex_lock(&mutexLogger);
+		parserGeneral(deserializarOperacionLQL(buffer), socket);
+		return 1;
+	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
+	// por ahora va a ser el default, ver como arreglarlo
+	case DESCONEXION:
+		pthread_mutex_lock(&mutexLogger);
+		log_error(logger, "Se cierra la conexion");
+		pthread_mutex_lock(&mutexLogger);
+		cerrarConexion(socket);
+		return 0;
+	}
+	free(buffer);
+}
+
+void trabajarConexion(int socketMemoria){
+	int hayMensaje = 1;
 	while(hayMensaje) {
-			void* bufferRecepcion = recibir(socketMemoria);
-			sem_wait(); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
+			void* bufferRecepcion = recibir(socketMemoria); //quizas vaya semaforo
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
-			sem_post(&MUTEX_OPERACION);
 		}
 
 		pthread_exit(0);
@@ -77,13 +100,7 @@ trabajarConexion(int socketMemoria){
 
 void* servidorLisandra(){
 
-	//char* puertoLisandra = "5008";
-	//puertoLisandra = config_get_string_value(archivosDeConfigYLog->config, "PUERTO_ESCUCHA");
-	//char* ipLisandra = config_get_string_value(archivosDeConfigYLog->config, "IP_LISANDRA");
 	int socketServidorLisandra = crearSocketServidor(ipLisandra,puertoLisandra);
-
-//	free(ipMemoria);
-//	free(puertoMemoria);
 	if(socketServidorLisandra == -1) {
 		cerrarConexion(socketServidorLisandra);
 		pthread_exit(0);
@@ -105,9 +122,11 @@ void* servidorLisandra(){
 		//char* mensajeRecibido = recibir(socketMemoria);
 		realizarHandshake(socketMemoria);
 
-		pthread_t threadMemoria
-		if(pthread_create(threadMemoria,NULL,(void*) trabajarConexion(),socketMemoria)<0){
-			log_error("No se pudo crear thread para la memoria");
+		pthread_t threadMemoria;
+		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
+			pthread_mutex_lock(&mutexLogger);
+			log_error(logger,"No se pudo crear thread para la memoria");
+			pthread_mutex_unlock(&mutexLogger);
 		}
 		pthread_join(threadMemoria,NULL);
 		//else{
@@ -142,19 +161,9 @@ void* servidorLisandra(){
 
 }
 
-//void lisandra_consola(){
-//	printf("Ingrese comando para lisandra con <OPERACION> seguido de los parametros");
-//	char* linea;
-//	linea = readline("");
-//	char** opYArg;
-//	opYArg = string_n_split(linea,2," ");
-//	parserGeneral(*opYArg,*(opYArg+1));
-//} magic veamos de hacer una cosa asi para la consola que nos va a ser mas facil tambien para cuando venga un descri
-
 void leerConsola() {
-
+		int socket = -1;
 		char *linea = NULL;  // forces getline to allocate with malloc
-	    char** opYArg;
 
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
@@ -166,9 +175,7 @@ void leerConsola() {
 
 	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
 	    //guardiola con el describe all porque puede tirar basura
-	    opYArg = string_n_split(linea,2," ");
-	    parserGeneral(*(opYArg+0), *(opYArg+1));
-
+	    parserGeneral(linea,socket);
 	    }
 
 	    free (linea);  // free memory allocated by getline
@@ -180,7 +187,7 @@ int main(int argc, char* argv[]) {
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
-	inicializarLog("lisandra.log");
+	inicializarLog("lisandraConsola.log");
 
 	inicializarArchivoBitmap();
 	inicializarBitmap();

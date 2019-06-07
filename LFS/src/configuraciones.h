@@ -20,7 +20,9 @@
 pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
 pthread_mutex_t mutexDump;
+//sem_t mutexOperacion;
 t_log* logger;
+t_log* loggerConsola;
 
 int tamanioBloques;
 int cantDeBloques;
@@ -44,7 +46,7 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexDump, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
-
+//		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
 
 }
 
@@ -112,7 +114,8 @@ void inicializarMemtable(){
 }
 
 void inicializarLog(char* ruta){
-	logger = log_create(ruta, "LISANDRA", 1, LOG_LEVEL_INFO);
+	logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_INFO);
+	loggerConsola = log_create(ruta,"LISANDRA_CONSOLA",1,LOG_LEVEL_INFO);
 }
 
 void liberarConfigYLogs() {
