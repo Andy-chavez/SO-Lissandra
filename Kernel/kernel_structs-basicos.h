@@ -14,12 +14,14 @@
 #include <stdlib.h>
 #include <semaphore.h>
 
+#define HASH 2
+#define STRONG 1
+#define EVENTUAL 0
 /******************************STRUCTS******************************************/
 typedef struct{
 	char* operacion;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
 	t_list* instruccion; //fila
-	//t_list* pcb_siguiente;  //columna
 	//TODO agregar mas campos 1
 }pcb;
 typedef struct{
@@ -29,20 +31,14 @@ typedef struct{
 	//TODO agregar mas campos 2
 }instruccion;
 
-//typedef struct{
-//	int numeroDeMemoria;
-//	consistencia *criterioAsociado; //malloc dps de saber cuantos criterios me devuelve el pool
-//}memoria;
-//
-//typedef struct{
-//	consistencia unCriterio;
-//	int *memoriasAsociadas; //malloc dps de saber cuantas memorias me devuelve el pool
-//}criterio;
+typedef struct{
+	consistencia unCriterio;
+	t_list* memorias;
+}criterio;
 
 typedef struct{
 	int numero;
-	int puerto;
-	consistencia consistencias[3];
+	int puerto; //necesario?
 }memoria;
 
 typedef struct{
@@ -50,19 +46,6 @@ typedef struct{
 	consistencia consistenciaDeTabla;
 }tabla; //ver si es necesario agregar algo mas
 
-/*typedef enum {
-	INSERT,
-	CREATE,
-	DESCRIBETABLE,
-	DESCRIBEALL,
-	DROP,
-	JOURNAL,
-	SELECT,
-	RUN,
-	METRICS,
-	ADD
-}caso;
-*/
 typedef struct {
 	t_config* config;
 	t_log* log;
@@ -74,6 +57,7 @@ t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* cola_proc_ejecutando;
 t_list* memorias;
+criterio criterios[3];
 sem_t hayNew;
 sem_t hayReady;
 pthread_mutex_t colaNuevos;

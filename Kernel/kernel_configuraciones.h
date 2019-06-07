@@ -29,6 +29,12 @@ void kernel_crearListas(){
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
 	cola_proc_ejecutando = list_create();
+	criterios[HASH].unCriterio = SH;
+	criterios[HASH].memorias = list_create();
+	criterios[STRONG].unCriterio = SC;
+	criterios[STRONG].memorias = list_create();
+	criterios[EVENTUAL].unCriterio = EC;
+	criterios[EVENTUAL].memorias = list_create();
 	memorias = list_create();
 }
 void kernel_inicializar(){
@@ -65,8 +71,8 @@ void liberarPCB(pcb* elemento) {
 		free(listaIns->operacion);
 		free(listaIns);
 	}
+	//list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 	free(elemento->operacion);
-	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 	free(elemento);
 }
 void liberarListas(){

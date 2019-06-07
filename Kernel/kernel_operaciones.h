@@ -114,12 +114,47 @@ void kernel_journal(){
 void kernel_metrics(){ //todo dps
 	printf("Not yet");
 }
-//bool memoriaNumero(memoria* mem, int num){
-//	return mem->numero == num;
-//}
-//void kernel_add(char*){
-//	list_find(memorias,memoriaNumero(void*));
-//}
+bool tienenIgualNombre(char* unNombre,char* otroNombre){
+	return string_equals_ignore_case(unNombre, otroNombre);
+}
+
+memoria* encontrarMemoria(int numero){
+	bool memoriaEsNumero(memoria* mem) {
+		return mem->numero == numero;
+	}
+
+	return (memoria*) list_find(memorias, (void*)memoriaEsNumero);
+}
+void liberarParametrosSpliteados(char** parametrosSpliteados) {
+	int i = 0;
+	while(*(parametrosSpliteados + i)) {
+		free(*(parametrosSpliteados + i));
+		i++;
+	}
+	free(parametrosSpliteados);
+}
+void kernel_add(char* operacion){
+	printf("Almost done add memory");
+	char** opAux = string_n_split(operacion,5," ");
+	int numero = (int)*(opAux+2);
+	memoria* mem;
+	if((mem = encontrarMemoria(numero))){
+		if(string_equals_ignore_case(*(opAux+4),"HASH")){
+			list_add(criterios[HASH].memorias, mem );
+		}
+		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
+			list_add(criterios[STRONG].memorias, mem );
+		}
+		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
+			list_add(criterios[EVENTUAL].memorias, mem );
+		}
+	}
+	else{
+		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s debido a la falta de conexion de dicha memoria\n", operacion);
+	}
+	liberarParametrosSpliteados(opAux);
+	//list_find(memorias,memoriaNumero(void*));
+}
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 //instruccion* obtener_ultima_instruccion(t_list* instruc){
 //	int size = list_size(instruc);
