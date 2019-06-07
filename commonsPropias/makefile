@@ -1,4 +1,4 @@
-# Makefile template for shared library
+# Makefile template for shared library, Ya veremos de hacer uno nuestro JAJAJAJA
 
 CC = gcc # C compiler
 CFLAGS = -fPIC -Wall -Wextra -O2 -g # C flags
@@ -6,7 +6,7 @@ LDFLAGS = -shared  # linking flags
 RM = rm -f  # rm command
 TARGET_LIB = libcommonsPropias.so # target lib
 
-SRCS = conexiones.c serializacion.c # source files
+SRCS = commonsPropias/conexiones.c commonsPropias/serializacion.c # source files
 HSRCS = $(SRCS:.c=.h)
 OBJS = $(SRCS:.c=.o)
 
@@ -26,8 +26,9 @@ clean:
 	-${RM} ${TARGET_LIB} ${OBJS} $(SRCS:.c=.d)
 
 install: all
-	cp -u libcommonsPropias.so /usr/lib
-	cp --parents -u $(HSRCS) /usr/include
+	cp -u ${TARGET_LIB} /usr/lib
+	cp --parents -u ${HSRCS} /usr/include
 	
 uninstall:
 	rm -f /usr/lib/libcommonsPropias.so
+	rm -rf /usr/include/commonsPropias

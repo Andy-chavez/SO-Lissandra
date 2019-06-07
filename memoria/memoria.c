@@ -8,8 +8,8 @@
 #include <readline/readline.h>
 #include <string.h>
 #include <stdio.h>
-#include <conexiones.h>
-#include <serializacion.h>
+#include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
 #include "structsYVariablesGlobales.h"
 
