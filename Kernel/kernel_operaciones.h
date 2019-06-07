@@ -234,14 +234,17 @@ int kernel_describe(char* operacion){
 			//abortarProceso(char*operacion);
 			return 0;
 		}
-			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
-			serializarYEnviarOperacionLQL(socket, opAux);
-			log_info(kernel_configYLog->log, "Enviado %s", operacion);
-			char * recibido= (char*) recibir(socket);
-			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
-			cerrarConexion(socket);
-			free(recibido);
-			return 1;
+	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	serializarYEnviarOperacionLQL(socket, opAux);
+	log_info(kernel_configYLog->log, "Enviado %s", operacion);
+	void* recibirBuffer = recibir(socket);;
+	metadata* met = deserializarMetadata(recibirBuffer);
+
+	char * recibido= (char*)
+	log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
+	cerrarConexion(socket);
+	free(recibido);
+	//return 1;
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
