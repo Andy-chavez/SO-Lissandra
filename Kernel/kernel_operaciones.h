@@ -84,8 +84,9 @@ memoria* encontrarMemoria(int numero){
 	bool memoriaEsNumero(memoria* mem) {
 		return mem->numero == numero;
 	}
-
-	return (memoria*) list_find(memorias, (void*)memoriaEsNumero);
+	memoria * memory = malloc(sizeof(memoria));
+	memory = (memoria*) list_find(conexionesMemoria, (void*)memoriaEsNumero);
+	return memory;
 }
 memoria* encontrarMemoriaStrong(){
 //	bool memoriaRandom(memoria* mem) {
@@ -169,7 +170,7 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 		printf("\n\nEnviado\n\n");
 		char * recibido= (char*) recibir(socket);
 		printf("\n\nValor recibido:%s\n\n",recibido);
-		cerrarConexion(socket);
+		//cerrarConexion(socket);
 		free(recibido);
 		return 1;
 	//}
@@ -192,7 +193,7 @@ int kernel_select(char* operacion){
 			printf("\n\nEnviado\n\n");
 			char * recibido= (char*) recibir(socket);
 			printf("\n\nValor recibido:%s\n\n",recibido);
-			cerrarConexion(socket);
+			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
 		//}
@@ -216,7 +217,7 @@ int kernel_create(char* operacion){
 			printf("\n\nEnviado\n\n");
 			char * recibido= (char*) recibir(socket);
 			printf("\n\nValor recibido:%s\n\n",recibido);
-			cerrarConexion(socket);
+			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
 		//}
@@ -297,7 +298,7 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 int kernel_add(char* operacion){
 	printf("Almost done add memory\n");
 	char** opAux = string_n_split(operacion,5," ");
-	int numero = (int)*(opAux+2);
+	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_equals_ignore_case(*(opAux+4),"HASH")){
