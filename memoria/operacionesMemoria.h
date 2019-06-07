@@ -411,10 +411,9 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 	*/
 }
 
-void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro, char** parametrosSpliteados) {
+void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
 	free(nombreTabla);
 	liberarRegistro(unRegistro);
-	liberarParametrosSpliteados(parametrosSpliteados);
 }
 
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
@@ -451,9 +450,10 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 	// TODO else journal();
 
-	liberarRecursosInsertLQL(nombreTabla, registroNuevo, parametrosSpliteados);
-	size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
+	liberarRecursosInsertLQL(nombreTabla, registroNuevo);
+	/*size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
 	mem_hexdump(MEMORIA_PRINCIPAL->base, length);
+	*/
 
 }
 
