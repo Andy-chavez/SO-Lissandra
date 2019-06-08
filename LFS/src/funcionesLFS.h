@@ -15,6 +15,8 @@
 #include <math.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 
 
 /* SELECT: FACU , INSERT: PABLO
@@ -37,13 +39,7 @@ typedef enum {
 	JOURNAL,
 	SELECT
 } operacion;
-/*
-typedef struct {
-	time_t timestamp;
-	u_int16_t key;
-	char* value;
-} registro;
-*/
+registroConNombreTabla* registroError; 
 /*
 typedef struct {
 	char* nombre;
@@ -67,7 +63,7 @@ typedef struct {
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
-metadata obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
+metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
 char* infoEnBloque(char* numeroBloque,int sizeTabla);
@@ -93,6 +89,15 @@ void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cam
 void enviarYLogearMensajeError(int socket, char* mensaje);
 void enviarOMostrarYLogearInfo(int socket, char* mensaje);
 void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
+void inicializarRegistroError();
+
+void inicializarRegistroError(){
+	registroConNombreTabla* registroError = malloc(sizeof(registro));
+	registroError->timestamp = 1;
+	registroError->key = 1;
+	registroError->value = string_duplicate("Error");
+	registroError->nombreTabla = string_duplicate("1");
+}
 
 
 
@@ -113,11 +118,11 @@ void enviarYLogearMensajeError(int socket, char* mensaje) {
 void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
 }
-void agregarALista(char* timestamp,char* key,char* value,t_list* head){
-	registro* guardarRegistro = malloc (sizeof(registro)) ;
-	guardarRegistro->timestamp = atoi(timestamp);
-	guardarRegistro->key = atoi(key);
-	guardarRegistro->value = string_duplicate(value);
+void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
+	registro* guardarRegistro = malloc (sizeof(registro));
+	guardarRegistro->timestamp = atoi(unTimestamp);
+	guardarRegistro->key = atoi(unaKey);
+	guardarRegistro->value = string_duplicate(unValue);
 	list_add(head,guardarRegistro);
 }
 
@@ -243,6 +248,9 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	void* liberarRegistro(registro* registro) {
 		free(registro);
 	}
+	if(memtable->elements_count== 0){
+		enviarYLogearMensajeError(-1,"Error la memtable esta vacia");
+	}
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
@@ -300,13 +308,13 @@ char* infoEnBloque(char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la
 
 
 
-metadata obtenerMetadata(char* nombreTabla){
+metadata* obtenerMetadata(char* nombreTabla){
 	string_to_upper(nombreTabla);
 	t_config* configMetadata;
 	int cantParticiones;
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
-	metadata unaMetadata ;
+	metadata* unaMetadata = malloc(sizeof(metadata));
 
 
 	char* ruta = string_new();
@@ -318,13 +326,13 @@ metadata obtenerMetadata(char* nombreTabla){
 	configMetadata = config_create(ruta);
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
-	//como hago con esto te lo tome siendo que es un enum? con esto toma siempre 0
 	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
 	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTATION_TIME");
 
-	unaMetadata.cantParticiones = cantParticiones;
-	unaMetadata.tipoConsistencia = tipoConsistencia;
-	unaMetadata.tiempoCompactacion = tiempoCompactacion;
+	unaMetadata->cantParticiones = cantParticiones;
+	unaMetadata->tipoConsistencia = tipoConsistencia;
+	unaMetadata->tiempoCompactacion = tiempoCompactacion;
+	unaMetadata->nombreTabla = string_duplicate(nombreTabla);
 
 	config_destroy(configMetadata);
 	free(ruta);
@@ -423,14 +431,16 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 					if (registrosConLaKeyEnListaRegistros->elements_count == 0){
 						enviarOMostrarYLogearInfo(socket,"No se encuentra la key");
 						printf("No se encuentra la key\n");
+						registroBuscado = registroError; 
 						}
+					else{
 				registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
 				enviarOMostrarYLogearInfo(socket,"Registro encontrado en bloques");
+				}
 				return registroBuscado;
 }
 
 void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
-	dump();
 	char** argSeparados = string_n_split(argumentos,2," ");
 	char* particion;
 	t_config* part;
@@ -465,13 +475,13 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		log_info(logger, "Directorio de tabla valido");
 		pthread_mutex_unlock(&mutexLogger);
 
-		metadata metadataTabla = obtenerMetadata(*(argSeparados+0));
+		metadata* metadataTabla = obtenerMetadata(*(argSeparados+0));
 
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Metadata cargado");
 		pthread_mutex_unlock(&mutexLogger);
 
-		particion = string_itoa(calcularParticion(key,metadataTabla.cantParticiones)); //cant de particiones de la tabla
+		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones)); //cant de particiones de la tabla
 		char* buffer = string_new();
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Tables/");
@@ -517,9 +527,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_lock(&mutexMemtable);
 
 		if (memtable->elements_count == 0){
-			pthread_mutex_lock(&mutexLogger);
-						log_info(logger, "No hay elementos en la memtable");
-						pthread_mutex_unlock(&mutexLogger);
+			enviarOMostrarYLogearInfo(-1,"El registro no se encuentra en la memtable");
+
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
 			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
@@ -527,7 +536,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 				log_info(logger, "El registro no se encuentra en la memtable");
 				pthread_mutex_unlock(&mutexLogger);
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket);
-			}}
+			}
+			}
 
 		pthread_mutex_unlock(&mutexMemtable);
 
@@ -544,9 +554,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 		//ver si la funcion tiene que devolver el registro
 		printf("Registro seleccionado: %s \n",registroBuscado->value);
-		enviarOMostrarYLogearInfo(socket,"Se encontro el registro");
-		if(socket==1){
-			puts("ahora lo termino"); //test
+		enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
+		if(socket!=-1){
+			serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
 		}
 		}
 
@@ -577,7 +587,7 @@ void funcionInsert(char* argumentos,int socket) {
 		timestamp = atoi(valorTimestamp);
 	}
 
-//	obtenerMetadata(nombreTabla);
+//	obtener(nombreTabla);
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = key;
@@ -726,10 +736,10 @@ void funcionCreate(char* argumentos,int socket) {
 		puts("ya existe");
 	}
 
-
 	crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
+	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
 	free(directorioTabla);
 
 }
@@ -807,13 +817,16 @@ int existeArchivo(char * filename){
 }
 
 void funcionDescribe(char* argumentos,int socket) {
-	metadata metadataBuscado;
+	metadata* metadataBuscado = NULL;
 	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
 	if(1){
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 		metadataBuscado = obtenerMetadata(argumentos);
-		enviarOMostrarYLogearInfo(socket,"Se encontro el metadata buscado");
-
+		enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
+		if(socket!=-1){
+			serializarYEnviarMetadata(socket,metadataBuscado);
+			//liberarMetadata(metada)
+		}
 		}
 	}
 }

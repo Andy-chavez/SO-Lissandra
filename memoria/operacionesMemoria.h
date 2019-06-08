@@ -4,6 +4,8 @@
  *  Created on: 4 may. 2019
  *      Author: utnso
  */
+
+
 #include "structsYVariablesGlobales.h"
 
 // ------------------------------------------------------------------------ //
@@ -147,10 +149,11 @@ paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro,int deDondeVengo) { 
 		// TODO Avisar que no se pudo guardar en memoria.
 		return NULL;
 	};
-	if(deDondeVengo == 0)
+	if(deDondeVengo == 0){
 		pagina->flag = NO;
-	if(deDondeVengo == 1)
+	} else if (deDondeVengo == 1) {
 		pagina->flag = SI;
+	}
 
 	return pagina;
 }
@@ -238,6 +241,10 @@ void* pedirALFS(operacionLQL *operacion) {
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 	void* bufferRegistroConTabla = pedirALFS(operacion);
 	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
+
+	if(atoi(paginaEncontradaEnLFS->nombreTabla)) {
+		return NULL;
+	}
 
 	return paginaEncontradaEnLFS;
 }
@@ -415,10 +422,9 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 	*/
 }
 
-void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro, char** parametrosSpliteados) {
+void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
 	free(nombreTabla);
 	liberarRegistro(unRegistro);
-	liberarParametrosSpliteados(parametrosSpliteados);
 }
 
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
@@ -454,39 +460,41 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 		};
 	}
 	// TODO else journal();
-
+	liberarParametrosSpliteados(parametrosSpliteados);
 	liberarRecursosInsertLQL(nombreTabla, registroNuevo);
-	/*size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAMANIOMEM");
+	/*size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 	mem_hexdump(MEMORIA_PRINCIPAL->base, length);
 	*/
 
 }
 
 void createLQL(operacionLQL* operacionCreate, int socketKernel) {
-	/*char* mensaje = (char*) pedirALFS(operacionCreate);
+	char* mensaje = (char*) pedirALFS(operacionCreate);
 
 	if(!mensaje) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
 	}
 
+	else{
 	enviarOMostrarYLogearInfo(socketKernel, mensaje);
 
 	free(mensaje);
-	*/
-	enviarOMostrarYLogearInfo(socketKernel, "sisi lo hice tranqui");
+	}
 }
 
 void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
 	void* bufferMetadata = pedirALFS(operacionCreate);
 
 	if(!bufferMetadata) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
+		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE");
+		return;
 	}
 
 	metadata* unaMetadata = deserializarMetadata(bufferMetadata);
 
 	serializarYEnviarMetadata(socketKernel, unaMetadata);
 
+	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
 	free(bufferMetadata);
 }

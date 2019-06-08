@@ -144,7 +144,7 @@ int sintaxisCorrecta(char caso,char* parametros){
 			retorno = 1;
 			break;
 		case '3': //3.create
-			//verificar dps todo
+			//todo verificar dps
 			retorno = 1;
 			break;
 		case '4': //4.describe tabla
@@ -164,12 +164,13 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	}
 //	memoria* mem =encontrarMemoriaStrong();
 //	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	//if(socketClienteKernel){
+	//if(socketClienteKernel){ //TODO AGREGAR IF CON STRING_CONTAINS ERROR:
 		int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 		serializarYEnviarOperacionLQL(socket, opAux);
-		printf("\n\nEnviado\n\n");
+		log_info(kernel_configYLog->log, "Enviado %s", operacion);
 		char * recibido= (char*) recibir(socket);
-		printf("\n\nValor recibido:%s\n\n",recibido);
+		log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
+		//log_info(kernel_configYLog->log, "%s\n", recibido);
 		//cerrarConexion(socket);
 		free(recibido);
 		return 1;
@@ -190,9 +191,9 @@ int kernel_select(char* operacion){
 		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			printf("\n\nEnviado\n\n");
+			log_info(kernel_configYLog->log, "Enviado %s", operacion);
 			char * recibido= (char*) recibir(socket);
-			printf("\n\nValor recibido:%s\n\n",recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
 			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -214,9 +215,9 @@ int kernel_create(char* operacion){
 		//if(socketClienteKernel){
 			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 			serializarYEnviarOperacionLQL(socket, opAux);
-			printf("\n\nEnviado\n\n");
+			log_info(kernel_configYLog->log, "Enviado %s", operacion);
 			char * recibido= (char*) recibir(socket);
-			printf("\n\nValor recibido:%s\n\n",recibido);
+			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
 			//cerrarConexion(socket);
 			free(recibido);
 			return 1;
@@ -227,28 +228,27 @@ int kernel_create(char* operacion){
 	return 0;
 }
 int kernel_describe(char* operacion){
-	printf("Almost done describe\n");
+	//printf("Almost done describe\n");
 	operacionLQL* opAux=splitear_operacion(operacion);
 	if(sintaxisCorrecta('3',opAux->parametros)==0){
 			//abortarProceso(char*operacion);
 			return 0;
 		}
-	//	memoria* mem =encontrarMemoriaStrong();
-	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-		//if(socketClienteKernel){
-			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
-			serializarYEnviarOperacionLQL(socket, opAux);
-			printf("\n\nEnviado\n\n");
-			char * recibido= (char*) recibir(socket);
-			printf("\n\nValor recibido:%s\n\n",recibido);
-			cerrarConexion(socket);
-			free(recibido);
-			return 1;
-		//}
+	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	serializarYEnviarOperacionLQL(socket, opAux);
+	log_info(kernel_configYLog->log, "Enviado %s", operacion);
+	void* recibirBuffer = recibir(socket);;
+	metadata* met = deserializarMetadata(recibirBuffer);
+	//TODO ACTUALIZAR ESTRUCTURAS
+	log_info(kernel_configYLog->log, "valor recibido: %s %d", met->nombreTabla, met->tipoConsistencia);
+	free(recibirBuffer);
+	free(met->nombreTabla);
+	free(met);
+	//return 1;
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 0;
+	return 1;
 }
 int kernel_drop(char* operacion){
 	printf("Not yet -> drop\n");
@@ -296,7 +296,7 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	free(parametrosSpliteados);
 }
 int kernel_add(char* operacion){
-	printf("Almost done add memory\n");
+	//printf("Almost done add memory\n");
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
@@ -367,6 +367,9 @@ void kernel_roundRobin(){
 				}
 				//instruccion* instruc=malloc(sizeof(instruccion));
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
+				if (instruc == NULL){
+					break;
+				}
 				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==0){
@@ -474,6 +477,9 @@ void kernel_run(char* operacion){
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
+		if(*(lineaLeida + leer - 1) == '\n') {
+			*(lineaLeida + leer - 1) = '\0';
+		}
 		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 	}

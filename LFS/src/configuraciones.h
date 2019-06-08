@@ -34,9 +34,9 @@ char* ipLisandra;
 char* puertoLisandra;
 char* puntoMontaje;
 int tiempoDump;
-//int tiempoDump y int Retardo por ahora no, pueden ir cambiando
+
 int tamanioValue;
-int tiempoRetardo;
+int retardo;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
@@ -56,7 +56,7 @@ void leerConfig(char* ruta){
 	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
 	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
-	tiempoRetardo = config_get_int_value(archivoDeConfig,"RETARDO");
+	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
 
 }
 

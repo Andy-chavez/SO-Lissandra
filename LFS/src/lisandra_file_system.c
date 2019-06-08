@@ -20,45 +20,42 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include <commonsPropias/conexiones.h>
-#include <commonsPropias/serializacion.h>
 #include "compactador.h"
 #include <semaphore.h>
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
-
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
-				printf("INSERT\n");
-				//	parserGeneral(*opYArg,*(opYArg+1));
+			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT");
 				funcionInsert(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
-				puts("SELECT\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT");
 				funcionSelect(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DESCRIBE")) {
-				printf("DESCRIBE\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE");
 				funcionDescribe(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "CREATE")) {
-				printf("CREATE\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE");
 				funcionCreate(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
-				printf("DROP\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
 			}
 	else {
 		printf("no entendi xD");
 	}
 	liberarOperacionLQL(operacionAParsear);
+	usleep(retardo*1000);
 }
 
 void realizarHandshake(int socket){
 	void* buffer = recibir(socket);
 	int esCero= deserializarHandshake(buffer);
 	if(esCero==0){
-		serializarYEnviarHandshake(socket, &tamanioValue);
+		serializarYEnviarHandshake(socket, tamanioValue);
 	}
 	else {
 		log_error(logger, "no se pudo realizar Handshake");//poner semaforo
@@ -72,7 +69,7 @@ int APIProtocolo(void* buffer, int socket) {
 	case OPERACIONLQL:
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Recibi una operacion");
-		pthread_mutex_lock(&mutexLogger);
+		pthread_mutex_unlock(&mutexLogger);
 		parserGeneral(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
@@ -80,14 +77,15 @@ int APIProtocolo(void* buffer, int socket) {
 	case DESCONEXION:
 		pthread_mutex_lock(&mutexLogger);
 		log_error(logger, "Se cierra la conexion");
-		pthread_mutex_lock(&mutexLogger);
+		pthread_mutex_unlock(&mutexLogger);
 		cerrarConexion(socket);
 		return 0;
 	}
 	free(buffer);
 }
 
-void trabajarConexion(int socketMemoria){
+void trabajarConexion(void* socket){
+	int socketMemoria = *(int*) socket;
 	int hayMensaje = 1;
 	while(hayMensaje) {
 			void* bufferRecepcion = recibir(socketMemoria); //quizas vaya semaforo
@@ -113,7 +111,7 @@ void* servidorLisandra(){
 		if(socketMemoria == -1) {
 			pthread_mutex_lock(&mutexLogger);
 			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
-			pthread_mutex_lock(&mutexLogger);
+			pthread_mutex_unlock(&mutexLogger);
 			continue;
 		}
 
@@ -122,9 +120,7 @@ void* servidorLisandra(){
 
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
-			pthread_mutex_lock(&mutexLogger);
-			log_error(logger,"No se pudo crear thread para la memoria");
-			pthread_mutex_unlock(&mutexLogger);
+			enviarYLogearMensajeError(socketMemoria,"No se pudo crear socket para memoria");
 		}
 		pthread_join(threadMemoria,NULL);
 		//else{
@@ -189,22 +185,19 @@ int main(int argc, char* argv[]) {
 
 	inicializarArchivoBitmap();
 	inicializarBitmap();
-
-
-	//funcionSelect("PELICULAS 10", -1);
-	//	compactar("PELICULAS");
+	inicializarRegistroError();
 
 	pthread_t threadConsola;
+	pthread_t threadServer ;
 	pthread_t threadDump;
 
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
+	pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 	pthread_create(&threadDump, NULL,(void*) dump, NULL);
 
 	pthread_join(threadConsola,NULL);
+	pthread_join(threadServer,NULL);
 	pthread_join(threadDump,NULL);
-	//pthread_join(threadDump,NULL);
-	//servidorLisandra();
-	//leerConsola();
 
 
 

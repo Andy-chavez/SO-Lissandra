@@ -4,7 +4,7 @@ HEADER	:= compactador.h configuraciones.h dump.h funcionesLFS.h
 OUT	:= elLFS.o
 CC	 := gcc
 FLAGS	 := -g -c -Wall
-LFLAGS	 := -lpthread -lcommonsPropias -lcommons -lreadline
+LFLAGS	 := -lpthread -lcommonsPropias -lcommons -lreadline -lm
 
 all: $(OBJS)
 	$(CC) -g $(OBJS) -o $(OUT) $(LFLAGS)
