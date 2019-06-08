@@ -61,6 +61,10 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un JOURNAL");
 		}
+	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
+		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
+		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
+	}
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}

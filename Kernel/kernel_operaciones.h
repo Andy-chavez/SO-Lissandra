@@ -239,16 +239,16 @@ int kernel_describe(char* operacion){
 	log_info(kernel_configYLog->log, "Enviado %s", operacion);
 	void* recibirBuffer = recibir(socket);;
 	metadata* met = deserializarMetadata(recibirBuffer);
-
-	char * recibido= (char*)
-	log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
-	cerrarConexion(socket);
-	free(recibido);
+	//TODO ACTUALIZAR ESTRUCTURAS
+	log_info(kernel_configYLog->log, "valor recibido: %s %d", met->nombreTabla, met->tipoConsistencia);
+	free(recibirBuffer);
+	free(met->nombreTabla);
+	free(met);
 	//return 1;
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 0;
+	return 1;
 }
 int kernel_drop(char* operacion){
 	printf("Not yet -> drop\n");
@@ -367,6 +367,9 @@ void kernel_roundRobin(){
 				}
 				//instruccion* instruc=malloc(sizeof(instruccion));
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
+				if (instruc == NULL){
+					break;
+				}
 				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==0){
