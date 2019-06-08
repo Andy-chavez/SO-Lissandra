@@ -112,7 +112,7 @@ void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
 	registro* guardarRegistro = malloc (sizeof(registro));
 	guardarRegistro->timestamp = atoi(unTimestamp);
 	guardarRegistro->key = atoi(unaKey);
-	guardarRegistro->value = unValue;
+	guardarRegistro->value = string_duplicate(unValue);
 	list_add(head,guardarRegistro);
 }
 
@@ -237,8 +237,10 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	void* liberarRegistro(registro* registro) {
 		free(registro);
 	}
+	if(memtable->elements_count== 0){
+		enviarYLogearMensajeError(-1,"Error la memtable esta vacia");
+	}
 
-	pthread_mutex_lock(&mutexMemtable);
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
 
 
@@ -254,7 +256,6 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 	log_info(logger, "Registro encontrado en la memtable");
 
-	pthread_mutex_unlock(&mutexMemtable);
 
 //	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistro);
 
@@ -309,7 +310,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 	string_append(&ruta, puntoMontaje);
 	string_append(&ruta,"Tables/");
 	string_append(&ruta,nombreTabla);
-	string_append(&ruta,"/metadata.bin"); //cambiar esto en create
+	string_append(&ruta,"/Metadata");
 
 	configMetadata = config_create(ruta);
 
@@ -385,6 +386,11 @@ char* cargarInfoDeTmp(char* buffer, char* nombreTabla, int key){
 
 
 void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
+	registroConNombreTabla* registroError = malloc(sizeof(registro));
+	registroError->timestamp = 1;
+	registroError->key = 1;
+	registroError->value = string_duplicate("Error");
+	registroError->nombreTabla = string_duplicate("1");
 	char** argSeparados = string_n_split(argumentos,2," ");
 	char* particion;
 	t_config* part;
@@ -468,14 +474,22 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		//puts(buffer);
 		//y aca afuera haria la busqueda del registro.
 		pthread_mutex_lock(&mutexMemtable);
+		if(memtable->elements_count==0) {
+			printf("%d\n",memtable->elements_count);
+			serializarYEnviarRegistro(socket,registroError); //sacar esto
+			pthread_mutex_unlock(&mutexMemtable);
+			return;
+		}//esto es si la memtable esta vacia
 		if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
-			pthread_mutex_lock(&mutexLogger);
-			log_info(logger, "El registro no se encuentra en la memtable");
-			pthread_mutex_unlock(&mutexLogger);
+			enviarOMostrarYLogearInfo(-1,"El registro no se encuentra en la memtable");
+			serializarYEnviarRegistro(socket,registroError);
+			return; //sacar despues
 			t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 			if (registrosConLaKeyEnListaRegistros->elements_count == 0){
-				enviarOMostrarYLogearInfo(socket,"No se encuentra la key");
+				enviarOMostrarYLogearInfo(-1,"No se encuentra la key");
+				serializarYEnviarRegistro(socket,registroError);
 				printf("No se encuentra la key\n");
+				return;
 				}
 		registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
 		enviarOMostrarYLogearInfo(socket,"Registro encontrado en bloques");
@@ -604,7 +618,7 @@ void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones,
 
 	FILE *archivoMetadata;
 	string_append(&rutaMetadata, ruta);
-	string_append(&rutaMetadata, "/metadata.bin");
+	string_append(&rutaMetadata, "/Metadata");
 
 
 	guardarInfoEnArchivo(rutaMetadata, infoDelMetadata);
@@ -767,6 +781,7 @@ void funcionDescribe(char* argumentos,int socket) {
 		enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
 		if(socket!=-1){
 			serializarYEnviarMetadata(socket,metadataBuscado);
+			//liberarMetadata(metada)
 		}
 		}
 	}

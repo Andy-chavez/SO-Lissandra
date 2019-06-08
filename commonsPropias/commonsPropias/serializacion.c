@@ -104,19 +104,19 @@ void* serializarUnRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffe
 	memcpy(bufferRegistro + desplazamiento, unRegistro->nombreTabla, largoDeNombreTabla);
 	desplazamiento+= sizeof(char)*largoDeNombreTabla;
 	//Tamaño de timestamp
-	memcpy(bufferRegistro + desplazamiento, &tamanioTimeStamp, tamanioTimeStamp);
+	memcpy(bufferRegistro + desplazamiento, &tamanioTimeStamp, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Nombre de timestamp
 	memcpy(bufferRegistro + desplazamiento, &(unRegistro->timestamp), tamanioTimeStamp);
 	desplazamiento+= tamanioTimeStamp;
 	//Tamaño de key
-	memcpy(bufferRegistro + desplazamiento, &tamanioKey, tamanioKey);
+	memcpy(bufferRegistro + desplazamiento, &tamanioKey, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Nombre de key
 	memcpy(bufferRegistro + desplazamiento, &(unRegistro->key), sizeof(u_int16_t));
 	desplazamiento+= tamanioKey;
 	//Tamaño de value
-	memcpy(bufferRegistro + desplazamiento, &largoDeValue, largoDeValue);
+	memcpy(bufferRegistro + desplazamiento, &largoDeValue, sizeof(int));
 	desplazamiento+= sizeof(int);
 	//Nombre de value
 	memcpy(bufferRegistro + desplazamiento, unRegistro->value, largoDeValue);

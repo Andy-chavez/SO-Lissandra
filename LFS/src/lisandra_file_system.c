@@ -27,8 +27,7 @@
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
-				printf("INSERT\n");
-				//	parserGeneral(*opYArg,*(opYArg+1));
+			enviarOMostrarYLogearInfo(-1,"Se recibio un insert");
 				funcionInsert(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
@@ -50,6 +49,7 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 		printf("no entendi xD");
 	}
 	liberarOperacionLQL(operacionAParsear);
+	usleep(retardo*1000);
 }
 
 void realizarHandshake(int socket){
@@ -188,16 +188,16 @@ int main(int argc, char* argv[]) {
 	inicializarBitmap();
 
 	pthread_t threadConsola;
-	pthread_t threadServer ; //habria que ver tambien thread dumping.
-		//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+	pthread_t threadServer ;
+	pthread_t threadDump;
+
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 	pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-	//pthread_t threadDump;
-	//pthread_create(&threadDump, NULL,(void*) dump, NULL);
+	pthread_create(&threadDump, NULL,(void*) dump, NULL);
+
 	pthread_join(threadConsola,NULL);
 	pthread_join(threadServer,NULL);
-	//pthread_join(threadDump,NULL);
-	//pthread_join(threadDump,NULL);
+	pthread_join(threadDump,NULL);
 	//servidorLisandra();
 	//leerConsola();
 
