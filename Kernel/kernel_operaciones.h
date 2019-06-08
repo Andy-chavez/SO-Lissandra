@@ -367,6 +367,9 @@ void kernel_roundRobin(){
 				}
 				//instruccion* instruc=malloc(sizeof(instruccion));
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
+				if (instruc == NULL){
+					break;
+				}
 				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==0){
