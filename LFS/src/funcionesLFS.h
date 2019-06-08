@@ -92,7 +92,7 @@ void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 void inicializarRegistroError();
 
 void inicializarRegistroError(){
-	registroConNombreTabla* registroError = malloc(sizeof(registro));
+	registroError = malloc(sizeof(registro));
 	registroError->timestamp = 1;
 	registroError->key = 1;
 	registroError->value = string_duplicate("Error");
@@ -429,9 +429,8 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 
 		t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 					if (registrosConLaKeyEnListaRegistros->elements_count == 0){
-						enviarOMostrarYLogearInfo(socket,"No se encuentra la key");
 						printf("No se encuentra la key\n");
-						registroBuscado = registroError; 
+						return NULL;
 						}
 					else{
 				registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
@@ -553,13 +552,17 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		free(buffer);
 
 		//ver si la funcion tiene que devolver el registro
-		printf("Registro seleccionado: %s \n",registroBuscado->value);
-		enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
+		//printf("Registro seleccionado: %s \n",registroBuscado->value);
+		//enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
 		if(socket!=-1){
-			serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
+			if(!registroBuscado) {
+				serializarYEnviarRegistro(socket, registroError);
+			}
+			else {
+				serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
+			}
 		}
-		}
-
+	}
 }
 
 
