@@ -27,23 +27,23 @@
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
-			enviarOMostrarYLogearInfo(-1,"Se recibio un insert");
+			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT");
 				funcionInsert(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
-				puts("SELECT\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT");
 				funcionSelect(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DESCRIBE")) {
-				printf("DESCRIBE\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE");
 				funcionDescribe(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "CREATE")) {
-				printf("CREATE\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE");
 				funcionCreate(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
-				printf("DROP\n");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
 			}
 	else {
 		printf("no entendi xD");
