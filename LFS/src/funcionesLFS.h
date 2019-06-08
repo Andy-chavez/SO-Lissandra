@@ -430,7 +430,7 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 }
 
 void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
-
+	dump();
 	char** argSeparados = string_n_split(argumentos,2," ");
 	char* particion;
 	t_config* part;
