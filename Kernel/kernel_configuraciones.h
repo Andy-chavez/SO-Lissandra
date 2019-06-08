@@ -33,7 +33,7 @@ void kernel_crearListas(){
 	cola_proc_nuevos = list_create();
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
-	cola_proc_ejecutando = list_create();
+	cola_proc_ejecutando = list_create(); //todo verificar esa lista exec
 	criterios[HASH].unCriterio = SH;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;
@@ -100,7 +100,7 @@ void liberarPCB(pcb* elemento) {
 	free(elemento->operacion);
 	free(elemento);
 }
-void liberarListas(){
+void liberarListas(){ //todo agregar listas je
 	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
