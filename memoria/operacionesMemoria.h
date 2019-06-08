@@ -4,6 +4,8 @@
  *  Created on: 4 may. 2019
  *      Author: utnso
  */
+
+
 #include "structsYVariablesGlobales.h"
 
 // ------------------------------------------------------------------------ //
@@ -239,6 +241,10 @@ void* pedirALFS(operacionLQL *operacion) {
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 	void* bufferRegistroConTabla = pedirALFS(operacion);
 	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
+
+	if(atoi(paginaEncontradaEnLFS->nombreTabla)) {
+		return NULL;
+	}
 
 	return paginaEncontradaEnLFS;
 }
@@ -488,6 +494,7 @@ void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
 
 	serializarYEnviarMetadata(socketKernel, unaMetadata);
 
+	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
 	free(bufferMetadata);
 }

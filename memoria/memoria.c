@@ -12,6 +12,7 @@
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
 #include "structsYVariablesGlobales.h"
+#include <unistd.h>
 
 int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
@@ -64,7 +65,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
 	liberarOperacionLQL(operacionAParsear);
-	sleep((config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM") + 500) / 1000); // pasaje a segundos del retardo
+	usleep((config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM"))*1000);
 }
 
 //------------------------------------------------------------------------
