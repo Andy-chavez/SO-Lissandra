@@ -44,7 +44,6 @@ t_bitarray* bitarray;
 
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
-		pthread_mutex_init(&mutexDump, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
 //		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
 
@@ -100,7 +99,7 @@ void inicializarBitmap() {
 void leerMetadataFS (){
 	char* rutaMetadata = string_new();
 	string_append(&rutaMetadata,puntoMontaje);
-	string_append(&rutaMetadata,"Metadata/Metadata.bin");
+	string_append(&rutaMetadata,"Metadata/Metadata");
 	archivoMetadata= config_create(rutaMetadata);
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");

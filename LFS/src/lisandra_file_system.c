@@ -9,7 +9,6 @@
  ============================================================================
  */
 
-
 #include <stdio.h>
 #include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
@@ -28,7 +27,7 @@
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
-	liberarOperacionLQL(operacionAParsear);
+
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
 				printf("INSERT\n");
 				//	parserGeneral(*opYArg,*(opYArg+1));
@@ -191,11 +190,14 @@ int main(int argc, char* argv[]) {
 	inicializarArchivoBitmap();
 	inicializarBitmap();
 
-	leerConsola();
-	pthread_t threadConsola;
-	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 
+	//funcionSelect("PELICULAS 10", -1);
+	//	compactar("PELICULAS");
+
+	pthread_t threadConsola;
 	pthread_t threadDump;
+
+	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 	pthread_create(&threadDump, NULL,(void*) dump, NULL);
 
 	pthread_join(threadConsola,NULL);

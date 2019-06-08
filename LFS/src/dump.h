@@ -42,7 +42,7 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 void dump(){
 	while(1){
 	sleep(tiempoDump);
-	pthread_mutex_lock(&mutexLogger);
+	pthread_mutex_lock(&mutexMemtable);
 	int tamanioTotalADumpear =0;
 	char* buffer;
 	void cargarRegistro(registro* unRegistro){
@@ -121,15 +121,12 @@ void dump(){
 		liberarDoblePuntero(bloquesAsignados);
 	}
 
-	pthread_mutex_lock(&mutexMemtable);
 	list_iterate(memtable,(void*)dumpearTabla);
-	pthread_mutex_unlock(&mutexMemtable);
 
-	funcionSelect("PELICULAS 10");
+	//funcionSelect("PELICULAS 10");
 	liberarMemtable();
-	pthread_mutex_unlock(&mutexMemtable);
 
-	pthread_mutex_unlock(&mutexDump);
+	pthread_mutex_unlock(&mutexMemtable);
 	}
 
 }
