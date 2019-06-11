@@ -1,5 +1,6 @@
 #include "serializacion.h"
-#include <commons/memory.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
@@ -340,4 +341,60 @@ void liberarRegistroConNombreTabla(registroConNombreTabla* registro) {
 	free(registro->nombreTabla);
 	free(registro->value);
 	free(registro);
+}
+
+void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
+	int tamanioTotal = sizeof(operacionProtocolo);
+	t_list* buffersAFoldear = list_create();
+	void* bufferTotal;
+	int desplazamiento = 0;
+	operacionProtocolo protocolo = PAQUETEREGISTROS;
+
+	void* agregarOperacionAListaDeBuffers(operacionLQL *unaOperacion) {
+		bufferConTamanio* bufferOperacion = malloc(sizeof(bufferConTamanio));
+		bufferOperacion->buffer = serializarOperacionLQL(unaOperacion, &bufferOperacion->tamanio);
+		tamanioTotal += bufferOperacion->tamanio;
+		list_add(buffersAFoldear, bufferOperacion);
+	}
+
+	void* agregarBufferDeOperacionABufferTotal(bufferConTamanio* bufferDeOperacion) {
+		memcpy(bufferTotal + desplazamiento, bufferDeOperacion->buffer, bufferDeOperacion->tamanio);
+		free(bufferDeOperacion->buffer);
+		free(bufferDeOperacion);
+	}
+
+	list_iterate(operacionesLQL, agregarOperacionAListaDeBuffers);
+	bufferTotal = malloc(tamanioTotal);
+
+	memcpy(bufferTotal, &protocolo, sizeof(operacionProtocolo));
+	desplazamiento += sizeof(operacionProtocolo);
+
+	list_iterate(buffersAFoldear, agregarBufferDeOperacionABufferTotal);
+
+	*(tamanio) = tamanioTotal;
+
+	return bufferTotal;
+}
+
+void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL) {
+	int tamanioAEnviar;
+	void* bufferAEnviar = serializarPaqueteDeOperacionesLQL(operacionesLQL, &tamanioAEnviar);
+	enviar(socket, bufferAEnviar, tamanioAEnviar);
+	free(bufferAEnviar);
+}
+
+void recibirYDeserializarPaqueteDeOperacionesLQLRealizando(int socket, void(*accion)(operacionLQL*)) {
+	int desplazamiento = 0;
+	int tamanioTotal;
+	void* bufferTotal;
+
+	recv(socket, &tamanioTotal, sizeof(int), MSG_WAITALL);
+	bufferTotal = malloc(&tamanioTotal);
+	recv(socket, bufferTotal, tamanioTotal, MSG_WAITALL);
+
+	while(desplazamiento < tamanioTotal) {
+		operacionLQL* unaOperacion = deserializarOperacionLQL(bufferTotal + desplazamiento);
+		accion(unaOperacion);
+		liberarOperacionLQL(unaOperacion);
+	}
 }

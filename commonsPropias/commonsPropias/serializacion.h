@@ -19,6 +19,11 @@
 #include "conexiones.h"
 
 typedef struct {
+	void* buffer;
+	int tamanio;
+} bufferConTamanio;
+
+typedef struct {
 	time_t timestamp;
 	u_int16_t key;
 	char* value;
