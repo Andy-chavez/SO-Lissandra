@@ -14,9 +14,11 @@
 #include <fcntl.h>
 #include <math.h>
 #include <unistd.h>
-#include <semaphore.h>
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
+#include <sys/types.h>
+#include <dirent.h>
+
 
 
 /* SELECT: FACU , INSERT: PABLO
@@ -821,15 +823,22 @@ int existeArchivo(char * filename){
 
 void funcionDescribe(char* argumentos,int socket) {
 	metadata* metadataBuscado = NULL;
-	//if(argumentos==NULL){} //seria el describe all argumentos==NULL
-	if(1){
+	if(argumentos=="ALL"){
+		char* rutaDirectorioTablas = string_new();
+		string_append(&rutaDirectorioTablas,
+		DIR* dir;
+		opendir(rutaDirectorioTablas);
+		closedir(dir);
+		free(rutaDirectorioTablas );
+	}
+	else{
 		if(verificarExistenciaDirectorioTabla(argumentos)){
-		metadataBuscado = obtenerMetadata(argumentos);
-		enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
+			metadataBuscado = obtenerMetadata(argumentos);
+			enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
 		if(socket!=-1){
 			serializarYEnviarMetadata(socket,metadataBuscado);
-			//liberarMetadata(metada)
 		}
+		free(metadataBuscado->nombreTabla);
 		}
 	}
 }

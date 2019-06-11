@@ -15,12 +15,11 @@
 #include <sys/types.h>
 #include <sys/io.h>
 #include <fcntl.h>
-#include <semaphore.h>
 
 pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
 pthread_mutex_t mutexDump;
-//sem_t mutexOperacion;
+pthread_mutex_t mutexOperacion;
 t_log* logger;
 t_log* loggerConsola;
 
@@ -45,6 +44,7 @@ t_bitarray* bitarray;
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
+		pthread_mutex_init(&mutexOperacion,NULL);
 //		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
 
 }
@@ -60,6 +60,19 @@ void leerConfig(char* ruta){
 
 }
 
+void inicializarBloques(){
+	for(int i=0;i<cantDeBloques;i++){
+		char* ruta= string_new();
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Bloques/");
+		string_append(&ruta,string_itoa(i));
+		string_append(&ruta,".bin");
+		FILE *bloque = fopen(ruta,"w");
+		free(ruta);
+		fclose(bloque);
+	}
+}
+
 
 void inicializarArchivoBitmap(){
 	FILE *f;
@@ -70,7 +83,7 @@ void inicializarArchivoBitmap(){
 	string_append(&ruta,"Metadata/Bitmap.bin");
 	f = fopen(ruta, "wb");
 
-	for(i=0; i < 64; i++){
+	for(i=0; i < cantDeBloques/8; i++){
 		fputc(0,f);
 	}
 	free(ruta);

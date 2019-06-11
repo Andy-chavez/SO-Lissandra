@@ -5,7 +5,6 @@
  *      Author: utnso
  */
 #include "funcionesLFS.h"
-#include <semaphore.h>
 
 char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 

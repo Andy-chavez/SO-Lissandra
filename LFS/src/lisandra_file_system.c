@@ -21,7 +21,7 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include "compactador.h"
-#include <semaphore.h>
+
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
@@ -89,7 +89,9 @@ void trabajarConexion(void* socket){
 	int hayMensaje = 1;
 	while(hayMensaje) {
 			void* bufferRecepcion = recibir(socketMemoria); //quizas vaya semaforo
+			pthread_mutex_lock(&mutexOperacion);
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
+			pthread_mutex_unlock(&mutexOperacion);
 		}
 
 		pthread_exit(0);
@@ -109,9 +111,7 @@ void* servidorLisandra(){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
 		if(socketMemoria == -1) {
-			pthread_mutex_lock(&mutexLogger);
-			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
-			pthread_mutex_unlock(&mutexLogger);
+			enviarYLogearMensajeError(-1,"No se pudo crear socket para memoria");
 			continue;
 		}
 
@@ -121,34 +121,11 @@ void* servidorLisandra(){
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
 			enviarYLogearMensajeError(socketMemoria,"No se pudo crear socket para memoria");
+			continue;
 		}
 		pthread_join(threadMemoria,NULL);
-		//else{
-			/*char* mensajeRecibido = recibir(socketMemoria);
-			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
-			registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
-			char* nombreTabla = "TABLA1";
-			int tamanioBuffer;
-			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
-			enviar(socketMemoria,registroMandar, 98);*/
 
-		//}
-
-
-		//char* mensaje = "hola";
-
-		//int tamanio = strlen(mensaje) + 1;
-
-		//void* mensaje = serializarHandshake(tamanioValue);
-
-//		enviar(socketMemoria, mensaje, 2*sizeof(int));
-
-		//char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
-
-		//log_info(logger, "Recibi: %s", mensaje);
-
-		//free(mensaje);
-		//cerrarConexion(socketMemoria);
+		cerrarConexion(socketMemoria);
 	}
 
 	cerrarConexion(socketServidorLisandra);
@@ -178,15 +155,19 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 
-	leerConfig("../lisandra.config");
+	//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
+	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandraConsola.log");
+	inicializarBloques();
+	inicializarSemaforos();
 
-	inicializarArchivoBitmap();
+	inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
 	inicializarBitmap();
 	inicializarRegistroError();
 
+	leerConsola();
 	pthread_t threadConsola;
 	pthread_t threadServer ;
 	pthread_t threadDump;
