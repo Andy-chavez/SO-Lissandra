@@ -211,8 +211,11 @@ operacionLQL* splitear_operacion(char* operacion){
 		strcpy(operacionAux->parametros, "ALL");
 	} else {
 		opSpliteada = string_n_split(operacion,2," ");
-		operacionAux->operacion=*opSpliteada;
-		operacionAux->parametros=*(opSpliteada+1);
+		operacionAux->operacion=string_duplicate(*opSpliteada);
+		operacionAux->parametros=string_duplicate(*(opSpliteada+1));
+		free(*opSpliteada);
+		free(*(opSpliteada + 1));
+		free(opSpliteada);
 	}
 
 
