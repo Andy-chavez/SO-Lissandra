@@ -178,7 +178,7 @@ void leerConsola() {
 int main(int argc, char* argv[]) {
 
 
-	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+	leerConfig("../lisandra.config");
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandraConsola.log");

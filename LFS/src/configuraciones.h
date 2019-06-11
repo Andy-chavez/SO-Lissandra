@@ -64,13 +64,16 @@ void leerConfig(char* ruta){
 void inicializarArchivoBitmap(){
 	FILE *f;
 	int i;
-
-	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wb");
+	
+	char* ruta = string_new();
+	string_append(&ruta,puntoMontaje);
+	string_append(&ruta,"Metadata/Bitmap.bin");
+	f = fopen(ruta, "wb");
 
 	for(i=0; i < 64; i++){
 		fputc(0,f);
 	}
-
+	free(ruta);
 	fclose(f);
 }
 
@@ -99,11 +102,12 @@ void inicializarBitmap() {
 void leerMetadataFS (){
 	char* rutaMetadata = string_new();
 	string_append(&rutaMetadata,puntoMontaje);
-	string_append(&rutaMetadata,"Metadata/Metadata");
+	string_append(&rutaMetadata,"Metadata/Metadata.bin");
 	archivoMetadata= config_create(rutaMetadata);
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+	free(rutaMetadata);
 }
 void inicializarMemtable(){
 
