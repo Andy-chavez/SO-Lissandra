@@ -825,7 +825,8 @@ void funcionDescribe(char* argumentos,int socket) {
 	metadata* metadataBuscado = NULL;
 	if(argumentos=="ALL"){
 		char* rutaDirectorioTablas = string_new();
-		string_append(&rutaDirectorioTablas,
+		string_append(&rutaDirectorioTablas,puntoMontaje);
+		string_append(&rutaDirectorioTablas,"Tables");
 		DIR* dir;
 		opendir(rutaDirectorioTablas);
 		closedir(dir);
