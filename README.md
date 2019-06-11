@@ -41,7 +41,7 @@ de Memoria a LFS -> OperacionLQL
 
 de LFS a Memoria -> metadata
 
-de Memoria a Kernel -> String
+de Memoria a Kernel -> metadata
 
 ### DESCRIBE ALL 
 
