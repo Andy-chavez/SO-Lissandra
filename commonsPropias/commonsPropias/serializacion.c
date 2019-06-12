@@ -205,11 +205,11 @@ operacionLQL* splitear_operacion(char* operacion){
 	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
 	char** opSpliteada;
 
-	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE")) {
+	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE") || string_equals_ignore_case(operacion, "HEXDUMP")) {
 		operacionAux->operacion = operacion;
 		operacionAux->parametros = malloc(3);
 		strcpy(operacionAux->parametros, "ALL");
-	} else {
+	} else if (){
 		opSpliteada = string_n_split(operacion,2," ");
 		operacionAux->operacion=string_duplicate(*opSpliteada);
 		operacionAux->parametros=string_duplicate(*(opSpliteada+1));

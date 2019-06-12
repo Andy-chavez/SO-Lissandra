@@ -26,9 +26,15 @@ typedef enum {
 
 typedef struct {
 	int numeroPagina;
-	void *unRegistro;
+	int marco;
 	flagModificado flag;
 } paginaEnTabla;
+
+typedef struct {
+	int marco;
+	int estaEnUso;
+	void* lugarEnMemoria;
+} marco;
 
 typedef struct {
 	char *nombreTabla;
@@ -63,8 +69,11 @@ sem_t BINARIO_SOCKET_KERNEL;
 sem_t MUTEX_SOCKET_LFS;
 
 memoria* MEMORIA_PRINCIPAL;
+t_list* TABLA_MARCOS;
 
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
 t_log* LOGGER_CONSOLA;
+
+
 
 #endif

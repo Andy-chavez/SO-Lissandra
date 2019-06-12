@@ -168,10 +168,10 @@ void *servidorMemoria() {
 
 }
 
+
 int main() {
 	pthread_t threadServer, threadConsola; // threadTimedJournal, threadTimedGossiping;
-	inicializarArchivos();
-	inicializarSemaforos();
+	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {
@@ -181,6 +181,7 @@ int main() {
 	};
 
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion, ARCHIVOS_DE_CONFIG_Y_LOG);
+	inicializarTablaMarcos();
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
@@ -193,8 +194,9 @@ int main() {
 	//pthread_detach(threadTimedJournal);
 	//pthread_detach(threadTimedGossiping);
 
-	liberarMemoria(MEMORIA_PRINCIPAL);
+	liberarMemoria();
 	liberarConfigYLogs();
+	liberarTablaMarcos();
 	return 0;
 
 }
