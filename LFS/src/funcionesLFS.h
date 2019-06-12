@@ -872,6 +872,7 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 	liberarDoblePuntero(bloques);
 	config_destroy(archivo);
 	free(ruta);
+	remove(nombreArchivo);
 
 }
 
