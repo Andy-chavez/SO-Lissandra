@@ -43,6 +43,7 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
 				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
+				funcionDrop(operacionAParsear->parametros,socket);
 			}
 	else {
 		printf("no entendi xD");
