@@ -139,7 +139,7 @@ void leerConsola() {
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
 	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
-	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
+	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
 	//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
-	inicializarMemtable();
+	inicializarListas();
 	inicializarLog("lisandraConsola.log");
 	inicializarBloques();
 	inicializarSemaforos();
@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
 
 	leerConsola();
 	pthread_t threadConsola;
-	pthread_t threadServer ;
+	pthread_t threadServer;
 	pthread_t threadDump;
 
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);

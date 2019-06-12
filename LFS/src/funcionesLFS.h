@@ -196,7 +196,9 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 		tablaMem* tabla = elemento;
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
+			pthread_mutex_lock(&mutexMemtable);
 			list_add(tabla->listaRegistros, unRegistro);
+			pthread_mutex_unlock(&mutexMemtable);
 			pthread_mutex_lock(&mutexLogger);
 			log_info(logger, "Se añadio registro");
 			pthread_mutex_unlock(&mutexLogger);
@@ -329,7 +331,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
 	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
-	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTATION_TIME");
+	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTION_TIME"); //OJO ES COMPACTION TIME Y NO COMPACTATION
 
 	unaMetadata->cantParticiones = cantParticiones;
 	unaMetadata->tipoConsistencia = tipoConsistencia;
@@ -662,7 +664,7 @@ void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones,
 	string_append(&infoDelMetadata, "PARTITIONS=");
 	string_append(&infoDelMetadata, numeroParticiones);
 	string_append(&infoDelMetadata, "\n");
-	string_append(&infoDelMetadata, "COMPACTATION_TIME=");
+	string_append(&infoDelMetadata, "COMPACTION_TIME=");
 	string_append(&infoDelMetadata, tiempoCompactacion);
 
 	FILE *archivoMetadata;
@@ -745,6 +747,7 @@ void funcionCreate(char* argumentos,int socket) {
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
 	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
+	//compactar(); cada vez que se crea una tabla habria que crear un hilo compactacion
 	free(directorioTabla);
 
 }
@@ -821,14 +824,68 @@ int existeArchivo(char * filename){
     return 0;
 }
 
+//bool agregarTabla(metadata* unMetadata ,void * elemento){
+//		metadata* tabla = elemento;
+//
+//		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
+//			list_add(tabla->listaRegistros, unRegistro);
+//			pthread_mutex_lock(&mutexLogger);
+//			log_info(logger, "Se añadio registro");
+//			pthread_mutex_unlock(&mutexLogger);
+//			return true;
+//		}else{
+//			return false;
+//		}
+//
+//}
+
+void agregarTablaALista(char* nombreTabla){
+	metadata* metadataBuscado = obtenerMetadata(nombreTabla);
+		bool seEncuentraTabla(void* elemento){
+			metadata* unMetadata = elemento;
+			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+		}
+	pthread_mutex_lock(&mutexListaTabla);
+	if(!list_find(listaDeTablas, seEncuentraTabla)){
+		list_add(listaDeTablas,metadataBuscado);
+		pthread_mutex_unlock(&mutexListaTabla);
+		//aca deberiamos abrir tambien un hilo de compactacion
+	}
+}
+
 void funcionDescribe(char* argumentos,int socket) {
+	void loggearYMostarTabla(metadata* unMetadata){
+		log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
+				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
+				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
+	}
 	metadata* metadataBuscado = NULL;
-	if(argumentos=="ALL"){
+	DIR* dir;
+	struct dirent *sd;
+	if(string_equals_ignore_case(argumentos,"ALL")){
 		char* rutaDirectorioTablas = string_new();
 		string_append(&rutaDirectorioTablas,puntoMontaje);
 		string_append(&rutaDirectorioTablas,"Tables");
-		DIR* dir;
-		opendir(rutaDirectorioTablas);
+		if((dir = opendir(rutaDirectorioTablas))==NULL)
+				enviarOMostrarYLogearInfo(-1,"No se pudo abrir el directorio");
+
+		while((sd=readdir(dir))!=NULL){
+			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ); //no me lo ignoraba sino de otra manera
+			else{
+				agregarTablaALista(sd->d_name);
+
+			}
+
+		}
+		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
+		if(socket==-1){
+			pthread_mutex_lock(&mutexListaTabla);
+			list_iterate(listaDeTablas,(void*)loggearYMostarTabla);
+			pthread_mutex_unlock(&mutexListaTabla);
+		}
+		else{
+			//aca deberiamos ver de mandar la lista a memoria
+		}
 		closedir(dir);
 		free(rutaDirectorioTablas );
 	}
