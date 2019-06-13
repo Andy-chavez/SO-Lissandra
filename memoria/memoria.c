@@ -12,7 +12,6 @@
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
 #include "structsYVariablesGlobales.h"
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/inotify.h>
 
@@ -76,11 +75,11 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	liberarOperacionLQL(operacionAParsear);
 
-	sem_wait(&MUTEX_RETARDOS);
-	int retardoMemoria = RETARDO_MEMORIA;
-	sem_post(&MUTEX_RETARDOS);
+	sem_wait(&MUTEX_RETARDO_MEMORIA);
+	int retardoMemoria = RETARDO_MEMORIA * 1000;
+	sem_post(&MUTEX_RETARDO_MEMORIA);
 
-	usleep(retardoMemoria*1000);
+	usleep(retardoMemoria);
 }
 
 //------------------------------------------------------------------------
@@ -210,11 +209,15 @@ void* cambiosConfig() {
 			if (event->mask & IN_MODIFY) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
-				sem_wait(&MUTEX_RETARDOS);
+				sem_wait(&MUTEX_RETARDO_GOSSIP);
 				RETARDO_GOSSIP = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
+				sem_post(&MUTEX_RETARDO_GOSSIP);
+				sem_wait(&MUTEX_RETARDO_JOURNAL);
 				RETARDO_JOURNAL = config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL");
+				sem_post(&MUTEX_RETARDO_JOURNAL);
+				sem_wait(&MUTEX_RETARDO_MEMORIA);
 				RETARDO_MEMORIA = config_get_int_value(configConNuevosDatos, "RETARDO_MEM");
-				sem_post(&MUTEX_RETARDOS);
+				sem_post(&MUTEX_RETARDO_MEMORIA);
 			}
 
 			config_destroy(configConNuevosDatos);

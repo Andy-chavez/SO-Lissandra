@@ -7,6 +7,7 @@
 
 
 #include "structsYVariablesGlobales.h"
+#include <unistd.h>
 
 // ------------------------------------------------------------------------ //
 // 1) INICIALIZACIONES Y FINALIZACIONES //
@@ -37,6 +38,15 @@ void inicializarTablaMarcos() {
 	};
 }
 
+void inicializarTablaGossip() {
+	seed* seedPropia = malloc(sizeof(seed));
+	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
+	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
+
+	TABLA_GOSSIP = list_create();
+	list_add(TABLA_GOSSIP, seedPropia);
+}
+
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLogs* ARCHIVOS_DE_CONFIG_Y_LOG) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
 	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
@@ -55,7 +65,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 		return NULL;
 	}
 
-
+	inicializarTablaGossip();
 
 	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Memoria inicializada.");
 	return nuevaMemoria;
@@ -68,7 +78,7 @@ void inicializarArchivos() {
 	if(!ARCHIVOS_DE_CONFIG_Y_LOG->config) {
 		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Hubo un error al abrir el archivo de config");
 	}
-	LOGGER_CONSOLA = log_create("memoria_consola.log", "MEMORIA_CONSOLE", 1, LOG_LEVEL_INFO);
+	LOGGER_CONSOLA = log_create("memoria_consola.log", "MEMORIA_CONSOLE", 0, LOG_LEVEL_INFO);
 }
 
 void inicializarSemaforos() {
@@ -76,7 +86,11 @@ void inicializarSemaforos() {
 	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
 	sem_init(&MUTEX_LOG, 0, 1);
 	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
-	sem_init(&MUTEX_RETARDOS, 0, 1);
+	sem_init(&MUTEX_RETARDO_MEMORIA, 0, 1);
+	sem_init(&MUTEX_RETARDO_GOSSIP, 0, 1);
+	sem_init(&MUTEX_RETARDO_JOURNAL, 0, 1);
+	sem_init(&MUTEX_LOG_CONSOLA, 0, 1);
+	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
 }
 
 void* liberarSegmentos(segmento* unSegmento) {
@@ -391,7 +405,9 @@ void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)) 
 		sem_post(&MUTEX_LOG);
 		enviar(socket, mensaje, strlen(mensaje) + 1);
 	} else {
+		sem_wait(&MUTEX_LOG_CONSOLA);
 		log(LOGGER_CONSOLA, mensaje);
+		sem_post(&MUTEX_LOG_CONSOLA);
 	}
 }
 
@@ -558,6 +574,63 @@ void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
 // ------------------------------------------------------------------------ //
 // 7) TIMED OPERATIONS //
 
-void* timedGossip() {
+void cargarSeeds(t_list* listaSeeds) {
+	char** IPs = config_get_array_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_SEEDS");
+	char** puertos = config_get_array_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO_SEEDS");
 
+	int i = 0;
+	while(*(IPs + i) != NULL && *(puertos + i) != NULL) {
+		seed *unaSeed = malloc(sizeof(seed));
+		unaSeed->ip = string_duplicate(*(IPs + i));
+		unaSeed->puerto = string_duplicate(*(puertos + i));
+
+		list_add(listaSeeds, unaSeed);
+
+		free(*(IPs + i));
+		free(*(puertos + i));
+		i++;
+	}
+
+	free(IPs);
+	free(puertos);
+}
+
+void intercambiarTablasGossip(int unSocketMemoria) {
+	sem_wait(&MUTEX_TABLA_GOSSIP);
+	serializarYEnviarTablaGossip(unSocketMemoria, TABLA_GOSSIP);
+	recibirYGuardarEnTablaGossip(unSocketMemoria, TABLA_GOSSIP);
+	sem_post(&MUTEX_TABLA_GOSSIP);
+}
+
+void intentarConexiones(t_list* listaSeeds) {
+	void* intentarConexion(seed* unaSeed) {
+		int socketMemoria = crearSocketCliente(unaSeed->ip, unaSeed->puerto);
+
+		if(socketMemoria == -1) {
+			sem_wait(&MUTEX_LOG_CONSOLA);
+			log_info(LOGGER_CONSOLA, "No se pudo conectar con la memoriade IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
+			sem_post(&MUTEX_LOG_CONSOLA);
+			return NULL;
+		}
+
+		intercambiarTablasGossip(socketMemoria);
+	}
+
+	list_iterate(listaSeeds, intentarConexion);
+}
+
+void* timedGossip() {
+	t_list* seeds = list_create();
+
+	cargarSeeds(seeds);
+
+	while(1) {
+		intentarConexiones(seeds);
+
+		sem_wait(&MUTEX_RETARDO_GOSSIP);
+		int retardoGossip = RETARDO_GOSSIP * 1000;
+		sem_post(&MUTEX_RETARDO_GOSSIP);
+
+		usleep(retardoGossip);
+	}
 }
