@@ -595,10 +595,20 @@ void cargarSeeds(t_list* listaSeeds) {
 	free(puertos);
 }
 
+void recibirYGuardarEnTablaGossip(int socketMemoria) {
+	void guardarEnTablaGossip(seed* unaSeed) {
+		sem_wait(&MUTEX_TABLA_GOSSIP);
+		list_add(TABLA_GOSSIP, unaSeed);
+		sem_post(&MUTEX_TABLA_GOSSIP);
+	}
+
+	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
+}
+
 void intercambiarTablasGossip(int unSocketMemoria) {
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	serializarYEnviarTablaGossip(unSocketMemoria, TABLA_GOSSIP);
-	recibirYGuardarEnTablaGossip(unSocketMemoria, TABLA_GOSSIP);
+	recibirYGuardarEnTablaGossip(unSocketMemoria);
 	sem_post(&MUTEX_TABLA_GOSSIP);
 }
 
