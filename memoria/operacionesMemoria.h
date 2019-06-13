@@ -14,6 +14,13 @@
 void inicializarProcesoMemoria() {
 	inicializarArchivos();
 	inicializarSemaforos();
+	inicializarRetardos();
+}
+
+void inicializarRetardos() {
+	RETARDO_GOSSIP = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_GOSSIPING");
+	RETARDO_JOURNAL = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_JOURNAL");
+	RETARDO_MEMORIA = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM");
 }
 
 void inicializarTablaMarcos() {
@@ -58,6 +65,9 @@ void inicializarArchivos() {
 	ARCHIVOS_DE_CONFIG_Y_LOG = malloc(sizeof(configYLogs));
 	ARCHIVOS_DE_CONFIG_Y_LOG->logger = log_create("memoria.log", "MEMORIA", 0, LOG_LEVEL_INFO);
 	ARCHIVOS_DE_CONFIG_Y_LOG->config = config_create("memoria.config");
+	if(!ARCHIVOS_DE_CONFIG_Y_LOG->config) {
+		log_error(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Hubo un error al abrir el archivo de config");
+	}
 	LOGGER_CONSOLA = log_create("memoria_consola.log", "MEMORIA_CONSOLE", 1, LOG_LEVEL_INFO);
 }
 
@@ -66,6 +76,7 @@ void inicializarSemaforos() {
 	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
 	sem_init(&MUTEX_LOG, 0, 1);
 	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
+	sem_init(&MUTEX_RETARDOS, 0, 1);
 }
 
 void* liberarSegmentos(segmento* unSegmento) {
@@ -542,4 +553,11 @@ void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
 	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
 	free(bufferMetadata);
+}
+
+// ------------------------------------------------------------------------ //
+// 7) TIMED OPERATIONS //
+
+void* timedGossip() {
+
 }
