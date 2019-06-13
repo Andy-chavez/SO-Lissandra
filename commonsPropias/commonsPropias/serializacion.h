@@ -65,6 +65,11 @@ typedef struct {
 	char* nombreTabla;
 } metadata;
 
+typedef struct {
+	char* ip;
+	char* puerto;
+} seed;
+
 /*
  * Para saber que es lo que me estan mandando, utilizar
  * esta funcion. Devuelve la descripcion de lo que me enviaron

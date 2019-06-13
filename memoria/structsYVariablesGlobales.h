@@ -57,11 +57,6 @@ typedef struct {
 	int tamanio;
 } datosInicializacion;
 
-typedef struct {
-	char* ip;
-	char* puerto;
-} seed;
-
 int SOCKET_LFS;
 
 int TAMANIO_UN_REGISTRO_EN_MEMORIA;
