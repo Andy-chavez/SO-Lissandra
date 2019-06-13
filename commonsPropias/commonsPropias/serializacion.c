@@ -2,6 +2,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+// ------------------------------------------------------------------------ //
+// 1) FUNCIONES/PROCEDIMIENTOS DE ORDEN SUPERIOR //
 
 void serializarYEnviarAlgo(int socket, void* algo, void*(funcionQueSerializa)(void*, int*)) {
 	int tamanioBuffer;
@@ -64,6 +66,8 @@ void* serializarPaqueteDeAlgo(void* listaDeAlgo, int* tamanio, void*(funcionQueS
 	return bufferTotal;
 }
 
+// ------------------------------------------------------------------------ //
+// 2) SERIALIZACIONES/DESERIALIZACIONES //
 
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
@@ -74,11 +78,6 @@ operacionProtocolo empezarDeserializacion(void **buffer) {
 	return protocolo;
 }
 
-void* liberarOperacionLQL(operacionLQL* operacion) {
-	free(operacion->operacion);
-	free(operacion->parametros);
-	free(operacion);
-}
 
 void* serializarHandshake(int tamanioValue, int* tamanioBuffer){
 	int desplazamiento = 0;
@@ -103,10 +102,6 @@ int deserializarHandshake(void* bufferHandshake){
 
 	free(bufferHandshake);
 	return tamanioDelValue;
-}
-
-void serializarYEnviarHandshake(int socket, int tamanioValue) {
-	serializarYEnviarAlgo(socket, (void*) tamanioValue, serializarHandshake);
 }
 
 registroConNombreTabla* deserializarRegistro(void* bufferRegistro) {
@@ -188,10 +183,6 @@ void* serializarUnRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffe
 	return bufferRegistro;
 }
 
-void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro) {
-	serializarYEnviarAlgo(socket, (void*) unRegistro, serializarUnRegistro);
-}
-
 operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioTotal) {
 	int desplazamiento = 4;
 	int tamanioOperacion,largoDeParametros;
@@ -257,31 +248,6 @@ void* serializarOperacionLQL(operacionLQL* operacionLQL, int* tamanio) {
 	return bufferOperacion;
 }
 
-operacionLQL* splitear_operacion(char* operacion){
-	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
-	char** opSpliteada;
-
-	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE") || string_equals_ignore_case(operacion, "HEXDUMP")) {
-		operacionAux->operacion = operacion;
-		operacionAux->parametros = malloc(3);
-		strcpy(operacionAux->parametros, "ALL");
-	} else {
-		opSpliteada = string_n_split(operacion,2," ");
-		operacionAux->operacion=string_duplicate(*opSpliteada);
-		operacionAux->parametros=string_duplicate(*(opSpliteada+1));
-		free(*opSpliteada);
-		free(*(opSpliteada + 1));
-		free(opSpliteada);
-	}
-
-
-	return operacionAux;
-}
-
-void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL) {
-	serializarYEnviarAlgo(socket, (void*) operacionLQL, serializarOperacionLQL);
-}
-
 /*
 	Serializa una metadata. Toma un parametro:
 	unaMetadata: La metadata a serializar
@@ -334,10 +300,6 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 	*tamanioBuffer = desplazamiento;
 
 	return bufferMetadata;
-}
-
-void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
-	serializarYEnviarAlgo(socket, (void*) unaMetadata, serializarMetadata);
 }
 
 metadata* _deserializarMetadataSinFree(void* bufferMetadata, int *tamanio) {
@@ -397,6 +359,84 @@ char* string_trim_quotation(char* string) {
 	return stringRespuesta;
 };
 
+// ------------------------------------------------------------------------ //
+// 3) SERIALIZACIONES/DESERIALIZACIONES DE PAQUETES //
+
+void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
+	serializarPaqueteDeAlgo((void*) operacionesLQL, tamanio, serializarOperacionLQL, PAQUETEOPERACIONES);
+}
+
+void* serializarPaqueteDeMetadatas(t_list* metadatas, int* tamanio) {
+	serializarPaqueteDeAlgo((void*) metadatas, tamanio, serializarMetadata, PAQUETEMETADATAS);
+}
+
+void recibirYDeserializarPaqueteDeOperacionesLQLRealizando(int socket, void(*accion)(operacionLQL*)) {
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, (void*) _deserializarOperacionSinFree, liberarOperacionLQL);
+}
+
+void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*)) {
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, _deserializarMetadataSinFree, liberarMetadata);
+}
+
+// ------------------------------------------------------------------------ //
+// 4) SERIALIZACIONES Y ENVIO EXPRESS //
+
+void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL) {
+	serializarYEnviarAlgo(socket, (void*) operacionesLQL, serializarPaqueteDeOperacionesLQL);
+}
+
+void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas) {
+	serializarYEnviarAlgo(socket, (void*) metadatas, serializarPaqueteDeMetadatas);
+}
+
+
+void serializarYEnviarHandshake(int socket, int tamanioValue) {
+	serializarYEnviarAlgo(socket, (void*) tamanioValue, serializarHandshake);
+}
+
+void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro) {
+	serializarYEnviarAlgo(socket, (void*) unRegistro, serializarUnRegistro);
+}
+
+void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL) {
+	serializarYEnviarAlgo(socket, (void*) operacionLQL, serializarOperacionLQL);
+}
+
+void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
+	serializarYEnviarAlgo(socket, (void*) unaMetadata, serializarMetadata);
+}
+
+// ------------------------------------------------------------------------ //
+// 4) FUNCIONES QUE DEBERIAN DE ESTAR EN OTRO ARCHIVO DE LAS COMMONS PERO QUEDARON IGUAL ACA PARA NO HACER MUCHOS CAMBIOS YA FUE ESA DEUDA TECNICA //
+
+void* liberarOperacionLQL(operacionLQL* operacion) {
+	free(operacion->operacion);
+	free(operacion->parametros);
+	free(operacion);
+}
+
+operacionLQL* splitear_operacion(char* operacion){
+	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
+	char** opSpliteada;
+
+	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE") || string_equals_ignore_case(operacion, "HEXDUMP")) {
+		operacionAux->operacion = operacion;
+		operacionAux->parametros = malloc(3);
+		strcpy(operacionAux->parametros, "ALL");
+	} else {
+		opSpliteada = string_n_split(operacion,2," ");
+		operacionAux->operacion=string_duplicate(*opSpliteada);
+		operacionAux->parametros=string_duplicate(*(opSpliteada+1));
+		free(*opSpliteada);
+		free(*(opSpliteada + 1));
+		free(opSpliteada);
+	}
+
+
+	return operacionAux;
+}
+
+
 registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* nombreTabla) {
 	registroConNombreTabla* registroParaEnviar = malloc(sizeof(registroConNombreTabla));
 
@@ -419,26 +459,3 @@ void* liberarMetadata(metadata* unaMetadata) {
 	free(unaMetadata);
 }
 
-void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
-	serializarPaqueteDeAlgo((void*) operacionesLQL, tamanio, serializarOperacionLQL, PAQUETEOPERACIONES);
-}
-
-void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL) {
-	serializarYEnviarAlgo(socket, (void*) operacionesLQL, serializarPaqueteDeOperacionesLQL);
-}
-
-void recibirYDeserializarPaqueteDeOperacionesLQLRealizando(int socket, void(*accion)(operacionLQL*)) {
-	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, (void*) _deserializarOperacionSinFree, liberarOperacionLQL);
-}
-
-void* serializarPaqueteDeMetadatas(t_list* metadatas, int* tamanio) {
-	serializarPaqueteDeAlgo((void*) metadatas, tamanio, serializarMetadata, PAQUETEMETADATAS);
-}
-
-void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas) {
-	serializarYEnviarAlgo(socket, (void*) metadatas, serializarPaqueteDeMetadatas);
-}
-
-void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*)) {
-	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, _deserializarMetadataSinFree, liberarMetadata);
-}
