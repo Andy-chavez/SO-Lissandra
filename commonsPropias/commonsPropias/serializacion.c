@@ -2,6 +2,69 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+
+void serializarYEnviarAlgo(int socket, void* algo, void*(funcionQueSerializa)(void*, int*)) {
+	int tamanioBuffer;
+	void* bufferAEnviar = funcionQueSerializa(algo, &tamanioBuffer);
+	enviar(socket, bufferAEnviar, tamanioBuffer);
+	free(bufferAEnviar);
+}
+
+void recibirYDeserializarPaqueteDeAlgoRealizando(int socket, void(*accion)(void*), void*(funcionQueDeserializa)(void*, int*), void*(funcionQueLibera)(void*)) {
+	int desplazamiento = 4;
+	int tamanioTotal;
+	int tamanioUnaOperacion;
+	void* bufferTotal;
+
+	recv(socket, &tamanioTotal, sizeof(int), MSG_WAITALL);
+	bufferTotal = malloc(tamanioTotal);
+	recv(socket, bufferTotal, tamanioTotal, MSG_WAITALL);
+
+	while(desplazamiento < tamanioTotal) {
+		void* algo = funcionQueDeserializa(bufferTotal + desplazamiento, &tamanioUnaOperacion);
+		accion(algo);
+		funcionQueLibera(algo);
+		desplazamiento += tamanioUnaOperacion;
+	}
+	free(bufferTotal);
+}
+
+void* serializarPaqueteDeAlgo(void* listaDeAlgo, int* tamanio, void*(funcionQueSerializa)(void*, int*), operacionProtocolo protocolo) {
+	int tamanioTotal = sizeof(operacionProtocolo);
+	t_list* buffersAFoldear = list_create();
+	void* bufferTotal;
+	int desplazamiento = 0;
+
+	void* agregarOperacionAListaDeBuffers(void *algo) {
+		bufferConTamanio* bufferOperacion = malloc(sizeof(bufferConTamanio));
+		bufferOperacion->buffer = funcionQueSerializa(algo, &bufferOperacion->tamanio);
+		tamanioTotal += bufferOperacion->tamanio;
+		list_add(buffersAFoldear, bufferOperacion);
+	}
+
+	void* agregarBufferDeOperacionABufferTotal(bufferConTamanio* bufferDeOperacion) {
+		memcpy(bufferTotal + desplazamiento, bufferDeOperacion->buffer, bufferDeOperacion->tamanio);
+		desplazamiento += bufferDeOperacion->tamanio;
+		free(bufferDeOperacion->buffer);
+		free(bufferDeOperacion);
+	}
+
+	list_iterate((t_list*) listaDeAlgo, agregarOperacionAListaDeBuffers);
+	bufferTotal = malloc(tamanioTotal);
+
+	memcpy(bufferTotal, &protocolo, sizeof(operacionProtocolo));
+	desplazamiento += sizeof(operacionProtocolo);
+
+	list_iterate(buffersAFoldear, agregarBufferDeOperacionABufferTotal);
+
+	*(tamanio) = tamanioTotal;
+
+	list_destroy(buffersAFoldear);
+
+	return bufferTotal;
+}
+
+
 operacionProtocolo empezarDeserializacion(void **buffer) {
 	operacionProtocolo protocolo;
 	if(*buffer == NULL) {
@@ -11,7 +74,7 @@ operacionProtocolo empezarDeserializacion(void **buffer) {
 	return protocolo;
 }
 
-void liberarOperacionLQL(operacionLQL* operacion) {
+void* liberarOperacionLQL(operacionLQL* operacion) {
 	free(operacion->operacion);
 	free(operacion->parametros);
 	free(operacion);
@@ -43,10 +106,7 @@ int deserializarHandshake(void* bufferHandshake){
 }
 
 void serializarYEnviarHandshake(int socket, int tamanioValue) {
-	int tamanioBuffer;
-	void* bufferAEnviar = serializarHandshake(tamanioValue, &tamanioBuffer);
-	enviar(socket, bufferAEnviar, tamanioBuffer);
-	free(bufferAEnviar);
+	serializarYEnviarAlgo(socket, (void*) tamanioValue, serializarHandshake);
 }
 
 registroConNombreTabla* deserializarRegistro(void* bufferRegistro) {
@@ -129,10 +189,7 @@ void* serializarUnRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffe
 }
 
 void serializarYEnviarRegistro(int socket, registroConNombreTabla* unRegistro) {
-	int tamanioAEnviar;
-	void* bufferAEnviar = serializarUnRegistro(unRegistro, &tamanioAEnviar);
-	enviar(socket, bufferAEnviar, tamanioAEnviar);
-	free(bufferAEnviar);
+	serializarYEnviarAlgo(socket, (void*) unRegistro, serializarUnRegistro);
 }
 
 operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioTotal) {
@@ -159,7 +216,6 @@ operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioT
 	return unaOperacion;
 }
 
-//void *memcpy(void *dest, const void *src, size_t n);
 operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 	int yeahIWontUseThis; // i hate C
 	operacionLQL *unaOperacion = _deserializarOperacionSinFree(bufferOperacion, &yeahIWontUseThis);
@@ -205,7 +261,7 @@ operacionLQL* splitear_operacion(char* operacion){
 	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
 	char** opSpliteada;
 
-	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE")) {
+	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE") || string_equals_ignore_case(operacion, "HEXDUMP")) {
 		operacionAux->operacion = operacion;
 		operacionAux->parametros = malloc(3);
 		strcpy(operacionAux->parametros, "ALL");
@@ -223,10 +279,7 @@ operacionLQL* splitear_operacion(char* operacion){
 }
 
 void serializarYEnviarOperacionLQL(int socket, operacionLQL* operacionLQL) {
-	int tamanioBuffer;
-	void* bufferAEnviar = serializarOperacionLQL(operacionLQL, &tamanioBuffer);
-	enviar(socket, bufferAEnviar, tamanioBuffer);
-	free(bufferAEnviar);
+	serializarYEnviarAlgo(socket, (void*) operacionLQL, serializarOperacionLQL);
 }
 
 /*
@@ -284,10 +337,7 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 }
 
 void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
-	int tamanioAEnviar;
-	void* bufferAEnviar = serializarMetadata(unaMetadata, &tamanioAEnviar);
-	enviar(socket, bufferAEnviar, tamanioAEnviar);
-	free(bufferAEnviar);
+	serializarYEnviarAlgo(socket, (void*) unaMetadata, serializarMetadata);
 }
 
 metadata* _deserializarMetadataSinFree(void* bufferMetadata, int *tamanio) {
@@ -364,127 +414,31 @@ void liberarRegistroConNombreTabla(registroConNombreTabla* registro) {
 	free(registro);
 }
 
+void* liberarMetadata(metadata* unaMetadata) {
+	free(unaMetadata->nombreTabla);
+	free(unaMetadata);
+}
+
 void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
-	int tamanioTotal = sizeof(operacionProtocolo);
-	t_list* buffersAFoldear = list_create();
-	void* bufferTotal;
-	int desplazamiento = 0;
-	operacionProtocolo protocolo = PAQUETEOPERACIONES;
-
-	void* agregarOperacionAListaDeBuffers(operacionLQL *unaOperacion) {
-		bufferConTamanio* bufferOperacion = malloc(sizeof(bufferConTamanio));
-		bufferOperacion->buffer = serializarOperacionLQL(unaOperacion, &bufferOperacion->tamanio);
-		tamanioTotal += bufferOperacion->tamanio;
-		list_add(buffersAFoldear, bufferOperacion);
-	}
-
-	void* agregarBufferDeOperacionABufferTotal(bufferConTamanio* bufferDeOperacion) {
-		memcpy(bufferTotal + desplazamiento, bufferDeOperacion->buffer, bufferDeOperacion->tamanio);
-		desplazamiento += bufferDeOperacion->tamanio;
-		free(bufferDeOperacion->buffer);
-		free(bufferDeOperacion);
-	}
-
-	list_iterate(operacionesLQL, agregarOperacionAListaDeBuffers);
-	bufferTotal = malloc(tamanioTotal);
-
-	memcpy(bufferTotal, &protocolo, sizeof(operacionProtocolo));
-	desplazamiento += sizeof(operacionProtocolo);
-
-	list_iterate(buffersAFoldear, agregarBufferDeOperacionABufferTotal);
-
-	*(tamanio) = tamanioTotal;
-
-	list_destroy(buffersAFoldear);
-
-	return bufferTotal;
+	serializarPaqueteDeAlgo((void*) operacionesLQL, tamanio, serializarOperacionLQL, PAQUETEOPERACIONES);
 }
 
 void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL) {
-	int tamanioAEnviar;
-	void* bufferAEnviar = serializarPaqueteDeOperacionesLQL(operacionesLQL, &tamanioAEnviar);
-	enviar(socket, bufferAEnviar, tamanioAEnviar);
-	free(bufferAEnviar);
+	serializarYEnviarAlgo(socket, (void*) operacionesLQL, serializarPaqueteDeOperacionesLQL);
 }
 
 void recibirYDeserializarPaqueteDeOperacionesLQLRealizando(int socket, void(*accion)(operacionLQL*)) {
-	int desplazamiento = 4;
-	int tamanioTotal;
-	int tamanioUnaOperacion;
-	void* bufferTotal;
-
-	recv(socket, &tamanioTotal, sizeof(int), MSG_WAITALL);
-	bufferTotal = malloc(tamanioTotal);
-	recv(socket, bufferTotal, tamanioTotal, MSG_WAITALL);
-
-	while(desplazamiento < tamanioTotal) {
-		operacionLQL* unaOperacion = _deserializarOperacionSinFree(bufferTotal + desplazamiento, &tamanioUnaOperacion);
-		accion(unaOperacion);
-		liberarOperacionLQL(unaOperacion);
-		desplazamiento += tamanioUnaOperacion;
-	}
-	free(bufferTotal);
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, (void*) _deserializarOperacionSinFree, liberarOperacionLQL);
 }
 
 void* serializarPaqueteDeMetadatas(t_list* metadatas, int* tamanio) {
-	int tamanioTotal = sizeof(operacionProtocolo);
-	t_list* buffersAFoldear = list_create();
-	void* bufferTotal;
-	int desplazamiento = 0;
-	operacionProtocolo protocolo = PAQUETEMETADATAS;
-
-	void* agregarOperacionAListaDeBuffers(metadata* unaMetadata) {
-		bufferConTamanio* bufferMetadata = malloc(sizeof(bufferConTamanio));
-		bufferMetadata->buffer = serializarMetadata(unaMetadata, &bufferMetadata->tamanio);
-		tamanioTotal += bufferMetadata->tamanio;
-		list_add(buffersAFoldear, bufferMetadata);
-	}
-
-	void* agregarBufferDeOperacionABufferTotal(bufferConTamanio* bufferDeOperacion) {
-		memcpy(bufferTotal + desplazamiento, bufferDeOperacion->buffer, bufferDeOperacion->tamanio);
-		desplazamiento += bufferDeOperacion->tamanio;
-		free(bufferDeOperacion->buffer);
-		free(bufferDeOperacion);
-	}
-
-	list_iterate(metadatas, agregarOperacionAListaDeBuffers);
-	bufferTotal = malloc(tamanioTotal);
-
-	memcpy(bufferTotal, &protocolo, sizeof(operacionProtocolo));
-	desplazamiento += sizeof(operacionProtocolo);
-
-	list_iterate(buffersAFoldear, agregarBufferDeOperacionABufferTotal);
-
-	*(tamanio) = tamanioTotal;
-
-	list_destroy(buffersAFoldear);
-
-	return bufferTotal;
+	serializarPaqueteDeAlgo((void*) metadatas, tamanio, serializarMetadata, PAQUETEMETADATAS);
 }
 
 void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas) {
-	int tamanioAEnviar;
-	void* bufferAEnviar = serializarPaqueteDeMetadatas(metadatas, &tamanioAEnviar);
-	enviar(socket, bufferAEnviar, tamanioAEnviar);
-	free(bufferAEnviar);
+	serializarYEnviarAlgo(socket, (void*) metadatas, serializarPaqueteDeMetadatas);
 }
 
 void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*)) {
-	int desplazamiento = 4;
-	int tamanioTotal;
-	int tamanioUnaMetadata;
-	void* bufferTotal;
-
-	recv(socket, &tamanioTotal, sizeof(int), MSG_WAITALL);
-	bufferTotal = malloc(tamanioTotal);
-	recv(socket, bufferTotal, tamanioTotal, MSG_WAITALL);
-
-	while(desplazamiento < tamanioTotal) {
-		metadata* unaMetadata = _deserializarMetadataSinFree(bufferTotal + desplazamiento, &tamanioUnaMetadata);
-		accion(unaMetadata);
-		free(unaMetadata->nombreTabla);
-		free(unaMetadata);
-		desplazamiento += tamanioUnaMetadata;
-	}
-	free(bufferTotal);
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, _deserializarMetadataSinFree, liberarMetadata);
 }
