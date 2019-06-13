@@ -78,6 +78,46 @@ operacionProtocolo empezarDeserializacion(void **buffer) {
 	return protocolo;
 }
 
+void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
+	int desplazamiento = 0;
+	int tamanioIP = strlen(unaSeed->ip) + 1;
+	int tamanioPuerto = strlen(unaSeed->puerto) + 1;
+	void *buffer = malloc(2*sizeof(int) + tamanioIP + tamanioPuerto);
+
+	memcpy(buffer + desplazamiento, &tamanioIP, sizeof(int));
+	desplazamiento += sizeof(int);
+	memcpy(buffer + desplazamiento, unaSeed->ip, tamanioIP);
+	desplazamiento += tamanioIP;
+	memcpy(buffer + desplazamiento, &tamanioPuerto, sizeof(int));
+	desplazamiento += sizeof(int);
+	memcpy(buffer + desplazamiento, unaSeed->ip, tamanioPuerto);
+	desplazamiento += tamanioPuerto;
+
+	*(tamanioBuffer) = desplazamiento;
+
+	return buffer;
+};
+
+seed* deserializarSeed(void* buffer) {
+	int desplazamiento = 0;
+	seed* unaSeed = malloc(sizeof(seed));
+	int tamanioIP, tamanioPuerto;
+
+	memcpy(&tamanioIP, buffer + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+	unaSeed->ip = malloc(tamanioIP);
+
+	memcpy(unaSeed->ip, buffer + desplazamiento, tamanioIP);
+	desplazamiento += tamanioIP;
+
+	memcpy(&tamanioPuerto, buffer + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
+	unaSeed->puerto = malloc(tamanioPuerto);
+
+	memcpy(unaSeed->ip, buffer + desplazamiento, tamanioPuerto);
+
+	return unaSeed;
+}
 
 void* serializarHandshake(int tamanioValue, int* tamanioBuffer){
 	int desplazamiento = 0;
@@ -360,7 +400,11 @@ char* string_trim_quotation(char* string) {
 };
 
 // ------------------------------------------------------------------------ //
-// 3) SERIALIZACIONES/DESERIALIZACIONES DE PAQUETES //
+// 3) SERIALIZACIONES/DESERIALIZACIONES DE PAQUETES/TABLAS //
+
+void* serializarTablaGossip(t_list* tablaGossip, int* tamanio) {
+	serializarPaqueteDeAlgo((void*) tablaGossip, tamanio, serializarSeed, TABLAGOSSIP);
+}
 
 void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
 	serializarPaqueteDeAlgo((void*) operacionesLQL, tamanio, serializarOperacionLQL, PAQUETEOPERACIONES);
@@ -378,8 +422,16 @@ void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(
 	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, _deserializarMetadataSinFree, liberarMetadata);
 }
 
+void recibirYDeserializarTablaDeGossipRealizando(int socket, void(*accion)(seed*)) {
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, deserializarSeed, liberarSeed);
+}
+
 // ------------------------------------------------------------------------ //
 // 4) SERIALIZACIONES Y ENVIO EXPRESS //
+
+void serializarYEnviarTablaGossip(int socket, t_list* tablaGossip) {
+	serializarYEnviarAlgo(socket, (void*) tablaGossip, serializarTablaGossip);
+}
 
 void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL) {
 	serializarYEnviarAlgo(socket, (void*) operacionesLQL, serializarPaqueteDeOperacionesLQL);
@@ -388,7 +440,6 @@ void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL) 
 void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas) {
 	serializarYEnviarAlgo(socket, (void*) metadatas, serializarPaqueteDeMetadatas);
 }
-
 
 void serializarYEnviarHandshake(int socket, int tamanioValue) {
 	serializarYEnviarAlgo(socket, (void*) tamanioValue, serializarHandshake);
@@ -457,5 +508,11 @@ void liberarRegistroConNombreTabla(registroConNombreTabla* registro) {
 void* liberarMetadata(metadata* unaMetadata) {
 	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
+}
+
+void* liberarSeed(seed* unaSeed) {
+	free(unaSeed->ip);
+	free(unaSeed->puerto);
+	free(unaSeed);
 }
 

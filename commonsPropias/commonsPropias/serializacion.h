@@ -49,7 +49,8 @@ typedef enum {
 	METADATA,
 	PAQUETEMETADATAS,
 	HANDSHAKE,
-	DESCONEXION
+	DESCONEXION,
+	TABLAGOSSIP
 } operacionProtocolo;
 
 typedef struct {
@@ -167,5 +168,7 @@ void* serializarPaqueteDeMetadatas(t_list* metadatas, int* tamanio);
 void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas);
 
 void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*));
+
+void* liberarSeed(seed* unaSeed);
 
 #endif /* SERIALIZACION_H_ */
