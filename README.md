@@ -72,3 +72,14 @@ de LFS a Memoria -> paquete de Strings (Información de cada insert que se reali
 
 de Memoria a Kernel -> String
 
+## HANDSHAKES
+
+### LFS <-> MEMORIA
+de Memoria a LFS -> hello how are you (enviar cualquier cosa, es para decir hola nomas)
+
+de LFS a Memoria -> tamaño Value
+
+### KERNEL <-> MEMORIA
+de Kernel a Memoria -> hello how are you (enviar cualquier cosa, es para decir hola nomas)
+
+de Memoria a Kernel -> TABLA GOSSIP (Serialización in progress)
