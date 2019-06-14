@@ -134,11 +134,34 @@ int calcularEspacioParaUnRegistro(int tamanioMaximo) {
 	return timeStamp + key + value;
 }
 
-void *algoritmoLRU() {
-	// TODO algoritmo Last Recently Used.
-	// Debe retornar un espacio en memoria (marco) donde pueda guardar la pagina
-	// y NULL si no pudo hacerlo.
+marco* encontrarMarcoEscrito(int numeroMarco) {
+	marco* marco = list_get(TABLA_MARCOS, numeroMarco);
+	return marco;
 }
+
+marco* algoritmoLRU() {
+	paginaEnTabla* paginaACambiar = NULL;
+
+	void compararTimestamp(paginaEnTabla* pagina){
+		if(pagina->flag == SI && (pagina->timestamp < paginaACambiar->timestamp || paginaACambiar == NULL)){
+			paginaACambiar = pagina;
+		}
+	}
+
+	void iterarSegmento(segmento* segmento){
+		list_iterate(segmento->tablaPaginas, compararTimestamp);
+	}
+
+	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, iterarSegmento);
+
+		if(paginaACambiar == NULL){
+			return NULL;
+		}
+
+	return encontrarMarcoEscrito(paginaACambiar->marco);
+
+}
+
 
 marco* encontrarEspacio() {
 	void* encontrarLibreEnTablaMarcos(marco* unMarcoEnTabla) {
@@ -157,10 +180,7 @@ marco* encontrarEspacio() {
 	return marcoLibre;
 }
 
-marco* encontrarMarcoEscrito(int numeroMarco) {
-	marco* marco = list_get(TABLA_MARCOS, numeroMarco);
-	return marco;
-}
+
 
 bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tamanioValueMaximo) {
 	bufferDePagina* buffer = malloc(sizeof(bufferDePagina));
@@ -208,6 +228,7 @@ int guardarEnMemoria(registroConNombreTabla* unRegistro) {
 	return marcoGuardado->marco;
 }
 
+
 paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 	int marco = guardarEnMemoria(unRegistro);
@@ -218,6 +239,7 @@ paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, i
 
 	pagina->marco = marco;
 	pagina->numeroPagina = numeroPagina;
+	pagina->timestamp = time;
 
 	if(deDondeVengo == 0){ // es un select
 		pagina->flag = NO;
@@ -383,8 +405,10 @@ paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 	bool tieneIgualKeyQueDada(paginaEnTabla* unRegistro) {
 			return igualKeyRegistro(unRegistro, keyDada);
 	}
+	paginaEnTabla* paginaEncontrada = (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
+	paginaEncontrada->timestamp = time;
 
-	return (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
+	return paginaEncontrada;
 }
 
 char* valueRegistro(segmento* unSegmento, int key){

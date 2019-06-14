@@ -27,6 +27,7 @@ typedef enum {
 typedef struct {
 	int numeroPagina;
 	int marco;
+	time_t timestamp;
 	flagModificado flag;
 } paginaEnTabla;
 
