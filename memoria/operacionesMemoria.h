@@ -608,8 +608,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 void intercambiarTablasGossip(int unSocketMemoria) {
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	serializarYEnviarTablaGossip(unSocketMemoria, TABLA_GOSSIP);
-	recibirYGuardarEnTablaGossip(unSocketMemoria);
 	sem_post(&MUTEX_TABLA_GOSSIP);
+	recibirYGuardarEnTablaGossip(unSocketMemoria);
+
 }
 
 void intentarConexiones(t_list* listaSeeds) {
@@ -618,11 +619,12 @@ void intentarConexiones(t_list* listaSeeds) {
 
 		if(socketMemoria == -1) {
 			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "No se pudo conectar con la memoriade IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
+			log_info(LOGGER_CONSOLA, "No se pudo conectar con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
 			sem_post(&MUTEX_LOG_CONSOLA);
 			return NULL;
 		}
 
+		log_info(LOGGER_CONSOLA, "Intercambiando tablas Gossip con la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
 		intercambiarTablasGossip(socketMemoria);
 	}
 

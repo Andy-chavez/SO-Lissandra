@@ -90,7 +90,7 @@ void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
 	desplazamiento += tamanioIP;
 	memcpy(buffer + desplazamiento, &tamanioPuerto, sizeof(int));
 	desplazamiento += sizeof(int);
-	memcpy(buffer + desplazamiento, unaSeed->ip, tamanioPuerto);
+	memcpy(buffer + desplazamiento, unaSeed->puerto, tamanioPuerto);
 	desplazamiento += tamanioPuerto;
 
 	*(tamanioBuffer) = desplazamiento;
@@ -98,7 +98,7 @@ void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
 	return buffer;
 };
 
-seed* deserializarSeed(void* buffer) {
+seed* deserializarSeed(void* buffer, int* tamanioSeed) {
 	int desplazamiento = 0;
 	seed* unaSeed = malloc(sizeof(seed));
 	int tamanioIP, tamanioPuerto;
@@ -114,7 +114,10 @@ seed* deserializarSeed(void* buffer) {
 	desplazamiento += sizeof(int);
 	unaSeed->puerto = malloc(tamanioPuerto);
 
-	memcpy(unaSeed->ip, buffer + desplazamiento, tamanioPuerto);
+	memcpy(unaSeed->puerto, buffer + desplazamiento, tamanioPuerto);
+	desplazamiento += tamanioPuerto;
+
+	*(tamanioSeed) = desplazamiento;
 
 	return unaSeed;
 }
@@ -462,7 +465,9 @@ void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
 
 void* liberarOperacionLQL(operacionLQL* operacion) {
 	free(operacion->operacion);
-	free(operacion->parametros);
+	if(operacion->parametros) {
+		free(operacion->parametros);
+	}
 	free(operacion);
 }
 
@@ -477,9 +482,13 @@ operacionLQL* splitear_operacion(char* operacion){
 	} else {
 		opSpliteada = string_n_split(operacion,2," ");
 		operacionAux->operacion=string_duplicate(*opSpliteada);
-		operacionAux->parametros=string_duplicate(*(opSpliteada+1));
+		if(*(opSpliteada+1)){
+			operacionAux->parametros=string_duplicate(*(opSpliteada+1));
+			free(*(opSpliteada + 1));
+		} else {
+			operacionAux->parametros = NULL;
+		}
 		free(*opSpliteada);
-		free(*(opSpliteada + 1));
 		free(opSpliteada);
 	}
 
