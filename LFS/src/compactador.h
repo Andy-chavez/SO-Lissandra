@@ -9,13 +9,111 @@
 #include <stdio.h>
 
 
-void cargarInfoDeBloquesParaCompactacion(char** buffer, char**arrayDeBloques, int sizeParticion){
+bool cargarInfoDeBloquesParaCompactacion(char** buffer, char**arrayDeBloques, int sizeParticion){
 	int i = 0;
 		while(*(arrayDeBloques+i)!= NULL){
-							char* informacion = infoEnBloque(*(arrayDeBloques+i),sizeParticion);
-							string_append(buffer, informacion);
-							i++;
-						}
+			//el archivo esta vacio
+			if(infoEnBloque(*(arrayDeBloques+i),sizeParticion) == NULL){
+					return false;
+			}else{
+				char* informacion = infoEnBloque(*(arrayDeBloques+i),sizeParticion);
+				string_append(buffer, informacion);
+			i++;
+			}
+		}
+		return true;
+}
+
+
+void crearArchivoConRegistrosACompactar(char*ruta){
+	char* rutaRegistros = string_new();
+	string_append(&rutaRegistros, ruta);
+	string_append(&rutaRegistros, "c");
+	//crear el archivo
+
+	FILE *archivoPartc = fopen(rutaRegistros,"w");
+
+	fclose(archivoPartc);
+	free(rutaRegistros);
+}
+
+void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizeParticion, char* bufferTemporales){
+
+	int tamanioDelBuffer = strlen(bufferTemporales);
+	int cantBloquesNecesarios =  ceil((float) (tamanioDelBuffer/ (float) tamanioBloques));
+	int i;
+	//si solo se necesita un bloque se guarda en el unico bloque que se le asigno a la particion al cargar la tabla
+	if (cantBloquesNecesarios == 1){
+		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, &bufferTemporales);
+	//Si no, hay que darle mas bloques libres y cargarlos al array
+
+	}else{
+
+	//i = 1 , porque hay uno que ya esta asignado en la posicion 0 del array
+		//i = size of del array de bloques en ese momento !!!!!!
+		for(i = 1; i<cantBloquesNecesarios; i++){
+			//se deberia considerar mallokear el array
+			*(arrayDeBloques + i) = devolverBloqueLibre();
+		}
+		//Si no rompe al no reconocer la ultima posicion como NULL
+		*(arrayDeBloques + i) = NULL;
+
+		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, &bufferTemporales);
+
+		//ver si funca esto, dejo asi comentado porque hay que ver el tema del drop si hay algo que se use para borrar archivos
+		/*
+		char* infoAGuardar = string_new();
+			string_append(&infoAGuardar, "SIZE=");
+			string_append(&infoAGuardar, string_itoa(sizeParticion * sizeof(arrayDeBloques)));
+			string_append(&infoAGuardar, "\n");
+			string_append(&infoAGuardar, "BLOCKS=[");
+			while(*(arrayDeBloques + i) != NULL){
+			string_append(&infoAGuardar, string_itoa(*(arrayDeBloques + i)));
+			string(&infoAGuardar, ",");
+			i++;
+			}
+			string_append(&infoAGuardar, "]");
+			guardarInfoEnArchivo(rutaParticion, infoAGuardar);
+			free(infoAGuardar);
+*/
+
+	}
+
+}
+
+bool seEncuentraElRegistroYTieneLaMismaKey(registro* registroOriginal, registro* registroTemporal){
+	return registroOriginal->key == registroTemporal->key;
+}
+
+t_list* agregadoYReemplazoDeRegistros(t_list* listaRegistrosTemporalesDeParticionActual, t_list* listaRegistrosOriginalesDeParticionActual){
+
+	registro* registroACorroborar;
+
+	int i = 0;
+
+	void agregarOReemplazar(registro* registroTemporal){
+
+		bool estaElRegistro(registro* registroOriginal){
+
+			if(seEncuentraElRegistroYTieneLaMismaKey(registroOriginal, registroTemporal)){
+				//registro que queda !!!!!!
+				registro* registroAReemplazar = devolverMayor(registroOriginal, registroTemporal);
+				list_replace(listaRegistrosOriginalesDeParticionActual, i, registroAReemplazar);
+				return true;
+			}else{
+				i++;
+				return false;
+		}
+		}
+	i=0;
+	if(!(registroACorroborar = list_find(listaRegistrosOriginalesDeParticionActual, estaElRegistro))){
+		list_add(listaRegistrosOriginalesDeParticionActual, registroTemporal);
+	}
+	}
+
+	list_iterate(listaRegistrosTemporalesDeParticionActual,(void *) agregarOReemplazar);
+
+	return listaRegistrosOriginalesDeParticionActual;
 }
 
 
@@ -24,11 +122,12 @@ void cargarInfoDeBloquesParaCompactacion(char** buffer, char**arrayDeBloques, in
 void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
 
 	//esto estaba en la de obtener metadata pero no se si se puede ser delegativo con esto
-	t_list* listaRegistrosOriginales = list_create();
+	t_list* listaRegistrosOriginalesDeParticionActual = list_create();
 	//liberar la lista
 
-	char* bufferNuevo = string_new();
+
 	char* rutaMetadata = string_new();
+
 
 	string_append(&rutaMetadata,rutaTabla);
 	string_append(&rutaMetadata,"/Metadata");
@@ -37,49 +136,97 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 	int cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
 
-
 	for (int i = 0; i< cantParticiones; i++){
 
-		string_append(&rutaTabla,"/part"); //vamos a usar la convension PartN.bin
-		string_append(&rutaTabla, i);
-		string_append(&rutaTabla,".bin");
-		t_config* tabla = config_create(rutaTabla);
-		struct stat sb;
+		char* bufferBloques = string_new();
+		char* rutaParticion = string_new();
+		char* bufferParticion = string_new();
+		char* bufferFinal = string_new();
 
-		char** arrayDeBloques = config_get_array_value(rutaTabla,"BLOCKS");
+		bool tieneLaKey(registro* unRegistro){
+			return (calcularParticion(unRegistro->key, cantParticiones) == i);
+		}
 
-		int sizeParticion=config_get_int_value(tabla,"SIZE");
-		int j = 0;
-				while(*(arrayDeBloques+j)!= NULL){
-					char* informacion = infoEnBloque(*(arrayDeBloques+j),sizeParticion);
-					string_append(&bufferNuevo, informacion);
-					j++;
-				}
+		//no se si se puede hacer delegacion de una funcion de orden superior
+		//se cargan los registros de cada particion
+		/*
+		void cargarRegistro(registro* unRegistro){
 
+				char* time = string_itoa(unRegistro->timestamp);
+				char* key = string_itoa(unRegistro->key);
 
-	char** separarRegistro = string_split(bufferNuevo,"\n");
-		int k =0;
-				for(k=0;*(separarRegistro+j)!=NULL;j++){
-						char **aCargar =string_split(*(separarRegistro+j),";");
-						agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistrosOriginales);
-						free(*(aCargar+0));
-						free(*(aCargar+1));
-						free(*(aCargar+2));
-							}
+				string_append(&bufferParticion,time);
+				string_append(&bufferParticion,";");
+				string_append(&bufferParticion,key);
+				string_append(&bufferParticion,";");
+				string_append(&bufferParticion,unRegistro->value);
+				string_append(&bufferParticion,"\n");
 
+				free(time);
+				free(key);
 
+			}
+*/
+		void guardarEnBuffer(registro* unRegistro){
+			char* time = string_itoa(unRegistro->timestamp);
+			char* key = string_itoa(unRegistro->key);
 
-		int archivo = open(rutaTabla,O_RDWR);
-		fstat(archivo,&sb);
-			if (sb.st_size == 0){
-		//		cargarInformacionNueva(rutaTabla);
-				break;
+			string_append(&bufferFinal,time);
+			string_append(&bufferFinal,";");
+			string_append(&bufferFinal,key);
+			string_append(&bufferFinal,";");
+			string_append(&bufferFinal,unRegistro->value);
+			string_append(&bufferFinal,"\n");
+			free(time);
+			free(key);
 			}
 
+		t_list* listaRegistrosTemporalesDeParticionActual = list_filter(listaRegistrosTemporales, tieneLaKey);
 
+		string_append(&rutaParticion, rutaTabla);
+		string_append(&rutaParticion,"part"); //vamos a usar la convension PartN.bin
+		string_append(&rutaParticion, string_itoa(i));
+		string_append(&rutaParticion,".bin");
+		t_config* tabla = config_create(rutaParticion);
+		struct stat sb;
+
+		char** arrayDeBloques = config_get_array_value(tabla,"BLOCKS");
+
+		int sizeParticion=config_get_int_value(tabla,"SIZE");
+
+		if (!cargarInfoDeBloquesParaCompactacion(&bufferBloques, arrayDeBloques, sizeParticion)){
+			if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
+				puts("ACA SE VA TODO A LA VERRRRRRRRRRRRRRGAAAAAA");
+			}
+			//buffer particion en realidad es el buffer temporal !!!!!!
+			ingresarNuevaInfo(rutaTabla, arrayDeBloques, sizeParticion, bufferParticion);
+			//break porque no puede haber una particion que tenga data si la anterior no tenia data
+			//puede ser q sea continue
+			break;
+		}else{
+
+			char** separarRegistro = separarRegistrosDeBuffer(bufferBloques, listaRegistrosOriginalesDeParticionActual);
+			t_list* estoNoFuncaNiAPalo = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
+			list_iterate(estoNoFuncaNiAPalo, (void *)guardarEnBuffer);
+
+			ingresarNuevaInfo(rutaParticion, arrayDeBloques, sizeParticion, bufferFinal);
+
+
+
+			//eliminar archivos originales
+			//nueva info.....
+		//crearArchivoConRegistrosACompactar(rutaTabla);
+			liberarDoblePuntero(separarRegistro);
+		}
 	config_destroy(tabla);
+	free(rutaParticion);
+	free(bufferBloques);
+	free(bufferParticion);
+	free(bufferFinal);
 	}
 
+
+	free(rutaMetadata);
 
 }
 
@@ -123,36 +270,17 @@ void compactar(char* nombreTabla){
 		int j = 0;
 
 		cargarInfoDeBloquesParaCompactacion(&bufferTemporales, arrayDeBloques, sizeParticion);
+		char** separarRegistro = separarRegistrosDeBuffer(bufferTemporales, listaRegistrosTemporales);
+		//hay que trabajar ahora con la listaRegistrosTemporales
 
-		/*
-		while(*(arrayDeBloques+j)!= NULL){
-			char* informacion = infoEnBloque(*(arrayDeBloques+j),sizeParticion);
-			string_append(&bufferTemporales, informacion);
-			j++;
-		}
-		*/
-
-		//para cerrar este checkpoint guardar eso en los bloques originales y chau
-
-		//cargar en lista de temporales //REUTILIZA CODIGO, HACER DELEGACION
-
-		char** separarRegistro = string_split(bufferTemporales,"\n");
-				int k =0;
-				for(k=0;*(separarRegistro+j)!=NULL;j++){
-					char **aCargar =string_split(*(separarRegistro+j),";");
-					agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistrosTemporales);
-					free(*(aCargar+0));
-					free(*(aCargar+1));
-					free(*(aCargar+2));
-				}
-
-		free(rutaTabla);
 		free(rutaTmpOriginal);
 		free(rutaTmpCompactar);
 		config_destroy(archivoTmp);
 	}
 
 	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporales);
+	free(rutaTabla);
+	free(bufferTemporales);
 
 //	string_append(bufferRegistrosTemporales, infoDeTmps);
 

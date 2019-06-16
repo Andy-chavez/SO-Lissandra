@@ -2,7 +2,7 @@
 /*
  ============================================================================
  Name        : lisandra_file_system.c
- Author      : 
+ Author      :
  Version     :
  Copyright   : Your copyright notice
  Description :
@@ -160,12 +160,26 @@ int main(int argc, char* argv[]) {
 	leerMetadataFS();
 	inicializarMemtable();
 	inicializarLog("lisandraConsola.log");
-	inicializarBloques();
+	log_info(logger, "sopa de macaco");
+	//DESCOMENTARLO DESPUES
+	//inicializarBloques();
 	inicializarSemaforos();
 
 	inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
 	inicializarBitmap();
 	inicializarRegistroError();
+
+	funcionCreate("PELICULAS SC 5 10000", -1);
+	funcionInsert("PELICULAS 10 \"GAY STORY\"", -1);
+	funcionInsert("PELICULAS 10 \"FUCK STORY\"", -1);
+	funcionInsert("PELICULAS 1110 \"HARRY PORONGA\"", -1);
+	funcionInsert("PELICULAS 100 \"BENDITA TV\"", -1);
+	funcionInsert("PELICULAS 1000 \"SANTA CLOOUS\"", -1);
+
+	dump();
+
+	compactar("PELICULAS");
+
 
 	leerConsola();
 	pthread_t threadConsola;
@@ -195,7 +209,6 @@ int main(int argc, char* argv[]) {
 	pthread_t threadLeerConsola;
     pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
     pthread_join(threadLeerConsola,NULL);
-
     pthread_mutex_destroy(&mutexLog);
     liberarConfigYLogs(archivosDeConfigYLog);*/
 
@@ -207,6 +220,3 @@ int main(int argc, char* argv[]) {
 	liberarConfigYLogs();
 	return EXIT_SUCCESS;
 }
-
-
-

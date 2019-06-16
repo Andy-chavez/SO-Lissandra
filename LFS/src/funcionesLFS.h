@@ -278,32 +278,26 @@ return registroDeMayorTimestamp;
 
 char* infoEnBloque(char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
+	struct stat sb;
 
-	/*bool encontrarLaKey(void *elemento){
-			return estaLaKey(key, elemento);
-		}
-	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
-		registro* primerElemento = elemento1;
-		registro* segundoElemento = elemento2;
-		return devolverMayor(primerElemento, segundoElemento);
-	}*/
 	char* rutaBloque = string_new();
 	string_append(&rutaBloque,puntoMontaje);
 	string_append(&rutaBloque,"Bloques/");
 	string_append(&rutaBloque,numeroBloque);
 	string_append(&rutaBloque,".bin");
 	int archivo = open(rutaBloque,O_RDWR);
-	//char* informacion = malloc(tamanioBloques);
-	//fread(informacion,tamanioBloques,1,archivo);
+
+	fstat(archivo,&sb);
+	if (sb.st_size == 0){
+				return NULL;
+	}
+
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);
-	//char* informacion = mmap(NULL,sb.st_size,PROT_READ,MAP_PRIVATE,archivo,0);
-	//parsear informacion
 
-//	t_list* registrosDeLaTabla = list_filter(listaRegistros, encontrarLaKey);
-//
-//	registro* registroADevolver = list_fold(registrosDeLaTabla, list_get(registrosDeLaTabla,0), cualEsElMayorTimestamp);
 
-	//puts(informacion);
+
+
+
 	free(rutaBloque);
 	return informacion;
 }
@@ -441,6 +435,18 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 				return registroBuscado;
 }
 
+char** separarRegistrosDeBuffer(char* buffer, t_list* listaRegistros){
+	char** separarRegistro = string_split(buffer,"\n");
+			int j =0;
+			for(j=0;*(separarRegistro+j)!=NULL;j++){
+				char **aCargar =string_split(*(separarRegistro+j),";");
+				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+				liberarDoblePuntero(aCargar);
+			}
+
+		return separarRegistro;
+}
+
 void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
 	char* particion;
@@ -493,8 +499,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		part = config_create(ruta);
 
 
-
-
 		char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 		int sizeParticion=config_get_int_value(part,"SIZE");
 
@@ -513,14 +517,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		log_info(logger, "Informacion de bloques cargada");
 		pthread_mutex_unlock(&mutexLogger);
 
+		char** separarRegistro = separarRegistrosDeBuffer(buffer, listaRegistros);
 
-		char** separarRegistro = string_split(buffer,"\n");
-		int j =0;
-		for(j=0;*(separarRegistro+j)!=NULL;j++){
-			char **aCargar =string_split(*(separarRegistro+j),";");
-			agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
-			liberarDoblePuntero(aCargar);
-		}
+
 
 		//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
 		//puts(buffer);

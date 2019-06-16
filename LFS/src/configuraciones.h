@@ -61,6 +61,8 @@ void leerConfig(char* ruta){
 }
 
 void inicializarBloques(){
+	struct stat sb;
+
 	for(int i=0;i<cantDeBloques;i++){
 		char* ruta= string_new();
 		string_append(&ruta,puntoMontaje);
@@ -70,6 +72,7 @@ void inicializarBloques(){
 		FILE *bloque = fopen(ruta,"w");
 		free(ruta);
 		fclose(bloque);
+
 	}
 }
 
@@ -77,7 +80,7 @@ void inicializarBloques(){
 void inicializarArchivoBitmap(){
 	FILE *f;
 	int i;
-	
+
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");

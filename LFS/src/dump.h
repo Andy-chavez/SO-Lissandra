@@ -24,6 +24,7 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	string_append(&info,"\n");
 	string_append(&info,"BLOCKS=[");
 
+
 	while(cantidadDeBloques>0){
 		char* bloqueLibre = devolverBloqueLibre();
 		string_append(&info,bloqueLibre);
@@ -37,8 +38,46 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	return rutaTmp;
 }
 
+void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char** buffer) {
+
+	int desplazamiento=0;
+	int restante = tamanioTotalADumpear;
+	int i;
+	int j=0; //esto es para no desperdiciar espacio
+	for(i=0; i<cantBloquesNecesarios;i++){
+		j= i+1; //osea el proximo
+
+		if(*(bloquesAsignados+j) == NULL){ //osea si es el ultimo bloque
+
+			char* rutaBloque = string_new();
+			string_append(&rutaBloque,puntoMontaje);
+			string_append(&rutaBloque,"Bloques/");
+			string_append(&rutaBloque,*(bloquesAsignados+i));
+			string_append(&rutaBloque,".bin");
+			FILE* fd = fopen(rutaBloque,"w");
+			fwrite(*buffer+desplazamiento,1,restante,fd);
+			fclose(fd);
+			break;
+		}
+
+		char* rutaBloque = string_new();
+		string_append(&rutaBloque,puntoMontaje);
+		string_append(&rutaBloque,"Bloques/");
+		string_append(&rutaBloque,*(bloquesAsignados+i)); //este es el numero de bloque donde escribo
+		string_append(&rutaBloque,".bin");
+		FILE* fd = fopen(rutaBloque,"w");
+		fwrite(*buffer+desplazamiento,1,tamanioBloques,fd);
+		desplazamiento+= tamanioBloques;
+		restante-=tamanioBloques;
+		fclose(fd);
+		free(rutaBloque);
+	}
+	liberarDoblePuntero(bloquesAsignados);
+}
 
 void dump(){
+//DESCOMENTARLO DESPUES
+	/*
 	while(1){
 	usleep(tiempoDump*1000);
 	pthread_mutex_lock(&mutexMemtable);
@@ -46,10 +85,10 @@ void dump(){
 		pthread_mutex_unlock(&mutexMemtable);
 		continue;
 	}
+	*/
 	int tamanioTotalADumpear =0;
 	char* buffer;
 	void cargarRegistro(registro* unRegistro){
-
 
 		char* time = string_itoa(unRegistro->timestamp);
 		char* key = string_itoa(unRegistro->key);
@@ -87,47 +126,17 @@ void dump(){
 		t_config* temporal =config_create(rutaTmp);
 		char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
 
-		int desplazamiento=0;
-		int restante = tamanioTotalADumpear;
-		int i;
-		int j=0; //esto es para no desperdiciar espacio
-		for(i=0; i<cantBloquesNecesarios;i++){
-			j= i+1; //osea el proximo
-
-			if(*(bloquesAsignados+j) == NULL){ //osea si es el ultimo bloque
-
-				char* rutaBloque = string_new();
-				string_append(&rutaBloque,puntoMontaje);
-				string_append(&rutaBloque,"Bloques/");
-				string_append(&rutaBloque,*(bloquesAsignados+i));
-				string_append(&rutaBloque,".bin");
-				FILE* fd = fopen(rutaBloque,"w");
-				fwrite(buffer+desplazamiento,1,restante,fd);
-				fclose(fd);
-				break;
-			}
-
-			char* rutaBloque = string_new();
-			string_append(&rutaBloque,puntoMontaje);
-			string_append(&rutaBloque,"Bloques/");
-			string_append(&rutaBloque,*(bloquesAsignados+i)); //este es el numero de bloque donde escribo
-			string_append(&rutaBloque,".bin");
-			FILE* fd = fopen(rutaBloque,"w");
-			fwrite(buffer+desplazamiento,1,tamanioBloques,fd);
-			desplazamiento+= tamanioBloques;
-			restante-=tamanioBloques;
-			fclose(fd);
-			free(rutaBloque);
-		}
-		config_destroy(temporal);
+		guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, &buffer);
 		free(buffer);
-		liberarDoblePuntero(bloquesAsignados);
+		config_destroy(temporal);
+
+
 	}
 	list_iterate(memtable,(void*)dumpearTabla);
 	liberarMemtable();
 
 	pthread_mutex_unlock(&mutexMemtable);
-	}
 
 }
 
+//}
