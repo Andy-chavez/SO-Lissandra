@@ -73,7 +73,7 @@ int largoBloque(char* numeroDeBloque); //este quizas no vaya
 bool estaLaKey(int key,void* elemento);
 bool esIgualAlNombre(char* nombreTabla,void * elemento);
 void* devolverMayor(registro* registro1, registro* registro2);
-bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento); //este es para memtable
+bool agregarRegistro(char* nombreTabla, registro* unRegistro, tablaMem * tabla); //este es para memtable
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key);
 void liberarDoblePuntero(char** doblePuntero);
 void funcionSelect(char* argumentos,int socket);
@@ -188,13 +188,11 @@ void* devolverMayor(registro* registro1, registro* registro2){
 }
 
 
-bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
-		tablaMem* tabla = elemento;
+bool agregarRegistro(char* nombreTabla, registro* unRegistro, tablaMem* tabla){
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
-			pthread_mutex_lock(&mutexMemtable);
 			list_add(tabla->listaRegistros, unRegistro);
-			pthread_mutex_unlock(&mutexMemtable);
+
 			pthread_mutex_lock(&mutexLogger);
 			log_info(logger, "Se añadio registro");
 			pthread_mutex_unlock(&mutexLogger);
@@ -208,7 +206,7 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 //Guarda un registro en la memtable
 void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 
-	bool buscarPorNombre(void *elemento){
+	bool buscarPorNombre(tablaMem* elemento){
 		return agregarRegistro(nombreTabla, unRegistro, elemento);
 	}
 	pthread_mutex_lock(&mutexMemtable);
@@ -219,9 +217,9 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 						nuevaTabla->listaRegistros = list_create();
 						list_add(nuevaTabla->listaRegistros, unRegistro);
 						list_add(memtable, nuevaTabla);
-						pthread_mutex_lock(&mutexLogger);
-						log_info(logger, "Se añadio la tabla a la memtable");
-						pthread_mutex_unlock(&mutexLogger);
+						//pthread_mutex_lock(&mutexLogger);
+						log_info(loggerConsola, "Se añadio la tabla a la memtable");
+						//pthread_mutex_unlock(&mutexLogger);
 	}
 	pthread_mutex_unlock(&mutexMemtable);
 }
@@ -787,10 +785,11 @@ void liberarTabla(tablaMem* tabla) {
 }
 
 void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
+	list_clean_and_destroy_elements(memtable,(void*) liberarTabla);
+	//list_destroy_and_destroy_elements(memtable,(void*) liberarTabla);
 
-	pthread_mutex_lock(&mutexMemtable);
-	list_destroy_and_destroy_elements(memtable,(void*) liberarTabla);
-	pthread_mutex_unlock(&mutexMemtable);
+
+
 }
 int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
 											//REUTILIZAR EN COMPACTACION

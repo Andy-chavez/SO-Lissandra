@@ -76,8 +76,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 }
 
 void dump(){
-//DESCOMENTARLO DESPUES
-	/*
+/*
 	while(1){
 	usleep(tiempoDump*1000);
 	pthread_mutex_lock(&mutexMemtable);
@@ -134,6 +133,7 @@ void dump(){
 	}
 	list_iterate(memtable,(void*)dumpearTabla);
 	liberarMemtable();
+	//memtable = list_create();
 
 	pthread_mutex_unlock(&mutexMemtable);
 

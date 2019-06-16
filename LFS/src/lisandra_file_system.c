@@ -153,71 +153,85 @@ void leerConsola() {
 	    free (linea);  // free memory allocated by getline
 }
 
+
+
 int main(int argc, char* argv[]) {
 
 
-	//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
-	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
-	leerMetadataFS();
-	inicializarListas();
-	inicializarLog("lisandraConsola.log");
-	log_info(logger, "sopa de macaco");
-	//DESCOMENTARLO DESPUES
-	//inicializarBloques();
-	inicializarSemaforos();
+		//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
+		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		leerMetadataFS();
+		inicializarListas();
+		inicializarLog("lisandraConsola.log");
 
-	inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
-	inicializarBitmap();
-	inicializarRegistroError();
+		inicializarBloques();
+		inicializarSemaforos();
 
-	funcionCreate("PELICULAS SC 5 10000", -1);
-	funcionInsert("PELICULAS 10 \"GAY STORY\"", -1);
-	funcionInsert("PELICULAS 10 \"FUCK STORY\"", -1);
-	funcionInsert("PELICULAS 1110 \"HARRY PORONGA\"", -1);
-	funcionInsert("PELICULAS 100 \"BENDITA TV\"", -1);
-	funcionInsert("PELICULAS 1000 \"SANTA CLOOUS\"", -1);
+		inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
+		inicializarBitmap();
+		inicializarRegistroError();
+	//	pthread_t threadDump;
 
-	dump();
-
-	compactar("PELICULAS");
+//		pthread_create(&threadDump, NULL,(void*) dump, NULL);
+	//	pthread_join(threadDump,NULL);
+	//
 
 
-	leerConsola();
-	pthread_t threadConsola;
-	pthread_t threadServer;
-	pthread_t threadDump;
+		funcionCreate("PELICULAS SC 5 10000", -1);
+		funcionInsert("PELICULAS 10 \"GAY STORY\"", -1);
+		funcionInsert("PELICULAS 10 \"FUCK STORY\"", -1);
+		dump();
 
-	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
-	pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-	pthread_create(&threadDump, NULL,(void*) dump, NULL);
 
-	pthread_join(threadConsola,NULL);
-	pthread_join(threadServer,NULL);
-	pthread_join(threadDump,NULL);
+		funcionInsert("PELICULAS 1110 \"HARRY PORONGA\"", -1);
+		funcionInsert("PELICULAS 100 \"BENDITA TV\"", -1);
+		dump();
+		funcionInsert("PELICULAS 1000 \"SANTA CLOOUS\"", -1);
 
 
 
-//	registro* registroParaMemoria = funcionSelect("TABLA1 56");
+	//	compactar("PELICULAS");
 
-	//funcionInsert("TABLA1 56 alo");
 
-	//funcionInsert("tablaA", 13, "alo", 8000);
+	//	leerConsola();
 
-	//ver de liberar la memtable al final
-	/*obtenerMetadata("tablaA");
-	int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
-	pthread_mutex_init(&mutexLog,NULL);
-	pthread_t threadLeerConsola;
-    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
-    pthread_join(threadLeerConsola,NULL);
-    pthread_mutex_destroy(&mutexLog);
-    liberarConfigYLogs(archivosDeConfigYLog);*/
 
-	//pthread_t threadServer ; //habria que ver tambien thread dumping.
-	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-	//pthread_join(threadServer,NULL);
-	//servidorLisandra(archivosDeConfigYLog);
+		pthread_t threadConsola;
+		pthread_t threadServer;
+		pthread_t threadDump;
 
-	liberarConfigYLogs();
-	return EXIT_SUCCESS;
+		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
+		pthread_create(&threadDump, NULL,(void*) dump, NULL);
+		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+
+	//	compactar("PELICULAS");
+
+
+	//	registro* registroParaMemoria = funcionSelect("TABLA1 56");
+
+		//funcionInsert("TABLA1 56 alo");
+
+		//ver de liberar la memtable al final
+		/*obtenerMetadata("tablaA");
+		int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
+		pthread_mutex_init(&mutexLog,NULL);
+		pthread_t threadLeerConsola;
+	    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
+	    pthread_join(threadLeerConsola,NULL);
+	    pthread_mutex_destroy(&mutexLog);
+	    liberarConfigYLogs(archivosDeConfigYLog);*/
+
+		//pthread_t threadServer ; //habria que ver tambien thread dumping.
+		//pthread_create(&threadServer, NULL, servidorLisandra, NULL);S
+		//pthread_join(threadServer,NULL);
+		//servidorLisandra(archivosDeConfigYLog);
+
+		liberarConfigYLogs();
+		return EXIT_SUCCESS;
 }
+
+

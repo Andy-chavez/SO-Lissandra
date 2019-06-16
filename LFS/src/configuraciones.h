@@ -75,7 +75,7 @@ void inicializarBloques(){
 		string_append(&ruta,"Bloques/");
 		string_append(&ruta,string_itoa(i));
 		string_append(&ruta,".bin");
-		FILE *bloque = fopen(ruta,"w");
+		FILE *bloque = fopen(ruta,"a");
 		free(ruta);
 		fclose(bloque);
 
