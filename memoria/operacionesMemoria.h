@@ -123,7 +123,7 @@ void vaciarMemoria() {
 
 	list_iterate(TABLA_MARCOS, marcarMarcoComoDisponible);
 	size_t tamanioMemoria = MEMORIA_PRINCIPAL->limite - MEMORIA_PRINCIPAL->base;
-	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria);
+	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria); // para que se vea lindo despues de hacer el journal tambien
 }
 
 void liberarTablaMarcos() {
@@ -620,8 +620,8 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 	}
 }
 
-void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
-	void* bufferMetadata = pedirALFS(operacionCreate);
+void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
+	void* bufferMetadata = pedirALFS(operacionDescribe);
 
 	if(!bufferMetadata) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE");
@@ -637,6 +637,9 @@ void describeLQL(operacionLQL* operacionCreate, int socketKernel) {
 	free(bufferMetadata);
 }
 
+void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
+
+}
 // ------------------------------------------------------------------------ //
 // 7) TIMED OPERATIONS //
 
