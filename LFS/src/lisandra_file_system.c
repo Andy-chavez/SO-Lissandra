@@ -43,6 +43,7 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
 				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
+				funcionDrop(operacionAParsear->parametros,socket);
 			}
 	else {
 		printf("no entendi xD");
@@ -139,7 +140,7 @@ void leerConsola() {
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
 	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
-	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
+	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
@@ -158,7 +159,7 @@ int main(int argc, char* argv[]) {
 	//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
 	leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 	leerMetadataFS();
-	inicializarMemtable();
+	inicializarListas();
 	inicializarLog("lisandraConsola.log");
 	log_info(logger, "sopa de macaco");
 	//DESCOMENTARLO DESPUES
@@ -183,7 +184,7 @@ int main(int argc, char* argv[]) {
 
 	leerConsola();
 	pthread_t threadConsola;
-	pthread_t threadServer ;
+	pthread_t threadServer;
 	pthread_t threadDump;
 
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);

@@ -142,20 +142,16 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
 	    {
 		pthread_mutex_lock(&mutexLogger);
-	    	log_info(logger,"La tabla existe en el FS");
+	    	log_info(loggerConsola,"La tabla existe en el FS");
 	    	pthread_mutex_unlock(&mutexLogger);
-	    	//pthread_mutex_unlock(&mutexLog); revisar tema semaforos creo que me esta quedando muy grande la region critica,nose si son tan necesarios en este caso
-	    	printf("existe la tabla en el directorio\n");
 	    	validacion=1;
 	    }
 	    else
 	    {
 	    	pthread_mutex_lock(&mutexLogger);
-	    	log_info(logger,"Error no existe tabla en ruta indicada %s \n",rutaDirectorio);
+	    	log_info(loggerConsola,"Error no existe tabla en ruta indicada %s \n",rutaDirectorio);
 	    	pthread_mutex_unlock(&mutexLogger);
-	    	//pthread_mutex_unlock(&mutexLog);
 	    	validacion=0;
-	    	printf("No se ha encontrado el directorio de la tabla en la ruta: %s \n",rutaDirectorio);
 	    }
 	free(rutaDirectorio);
 	return validacion;
@@ -196,7 +192,9 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, void * elemento){
 		tablaMem* tabla = elemento;
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
+			pthread_mutex_lock(&mutexMemtable);
 			list_add(tabla->listaRegistros, unRegistro);
+			pthread_mutex_unlock(&mutexMemtable);
 			pthread_mutex_lock(&mutexLogger);
 			log_info(logger, "Se añadio registro");
 			pthread_mutex_unlock(&mutexLogger);
@@ -310,7 +308,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 	int cantParticiones;
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
-	metadata* unaMetadata = malloc(sizeof(metadata));
+	metadata* unaMetadata;//= malloc(sizeof(metadata)); //ver si es necesario malloc, no me acuerdo porque lo pusimos
 
 
 	char* ruta = string_new();
@@ -323,7 +321,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
 	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
-	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTATION_TIME");
+	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTION_TIME"); //OJO ES COMPACTION TIME Y NO COMPACTATION
 
 	unaMetadata->cantParticiones = cantParticiones;
 	unaMetadata->tipoConsistencia = tipoConsistencia;
@@ -380,7 +378,7 @@ void cargarInfoDeTmp(char** buffer, char* nombreTabla){
 			string_append(&ruta,puntoMontaje);
 			string_append(&ruta,"Tables/");
 			string_append(&ruta,nombreTabla);
-			string_append(&ruta,"/"); //vamos a usar la convension PartN.bin
+			string_append(&ruta,"/"); //vamos a usar la convension partN.bin
 			string_append(&ruta,string_itoa(i));
 			string_append(&ruta,".tmp");
 			part = config_create(ruta);
@@ -632,8 +630,10 @@ char* devolverBloqueLibre(){
 	int encontroBloque = 0;
 	char* numero;
 
-	for(i=0; i < 64; i++){
+	for(i=0; i < cantDeBloques; i++){
+		pthread_mutex_lock(&mutexBitarray);
 		bool bit = bitarray_test_bit(bitarray, i);
+		pthread_mutex_unlock(&mutexBitarray);
 
 		if(bit == 0){
 			encontroBloque = 1;
@@ -644,7 +644,9 @@ char* devolverBloqueLibre(){
 	}
 
 	if (encontroBloque == 1){
+		pthread_mutex_lock(&mutexBitarray);
 		bitarray_set_bit(bitarray, bloqueEncontrado);
+		pthread_mutex_unlock(&mutexBitarray);
 		numero = string_itoa(bloqueEncontrado);
 	}
 	return numero;
@@ -661,7 +663,7 @@ void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones,
 	string_append(&infoDelMetadata, "PARTITIONS=");
 	string_append(&infoDelMetadata, numeroParticiones);
 	string_append(&infoDelMetadata, "\n");
-	string_append(&infoDelMetadata, "COMPACTATION_TIME=");
+	string_append(&infoDelMetadata, "COMPACTION_TIME=");
 	string_append(&infoDelMetadata, tiempoCompactacion);
 
 	FILE *archivoMetadata;
@@ -744,6 +746,7 @@ void funcionCreate(char* argumentos,int socket) {
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
 	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
+	//compactar(); cada vez que se crea una tabla habria que crear un hilo compactacion
 	free(directorioTabla);
 
 }
@@ -820,14 +823,126 @@ int existeArchivo(char * filename){
     return 0;
 }
 
+//liberarBloquesAsignados(int cant,int flagtmp,char* rutaTabla){
+//	int i;
+//	for(i=0;i<cant;i++){
+//			char* ruta = string_new();
+//			string_append(&ruta,rutaTabla);
+//			string_append(&ruta,"/");
+//			if(flagtmp){
+//			string_append(&ruta,string_itoa(i));
+//			string_append(&ruta,".tmp");
+//			}
+//			else{
+//				string_append(&ruta,".part"); //es part1.bin
+//				string_append(&ruta,string_itoa(i));
+//				string_append(&ruta,".bin");
+//			}
+//			t_config* archivo= config_create(ruta);
+//			char **bloques = config_get_array_value(archivo);
+//			int pos =0;
+//			while(*(bloques+pos)!=NULL){
+//				pthread_mutex_lock(&mutexBitarray);
+//				bitarray_clean_bit(bitarray,itoa(*(bloques+pos)));
+//				pthread_mutex_unlock(&mutexBitarray);
+//			}
+//
+//			liberarDoblePuntero(bloques);
+//			config_destroy(archivo);
+//			free(ruta);
+//		}
+//}
+void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
+	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
+		remove(nombreArchivo);
+		return;
+	}
+	char* ruta = string_new();
+
+	t_config* archivo= config_create(ruta);
+	char **bloques = config_get_array_value(archivo,"BLOCKS");
+	int pos =0;
+	while(*(bloques+pos)!=NULL){
+		pthread_mutex_lock(&mutexBitarray);
+		bitarray_clean_bit(bitarray,string_itoa(*(bloques+pos)));
+		pthread_mutex_unlock(&mutexBitarray);
+	}
+
+	liberarDoblePuntero(bloques);
+	config_destroy(archivo);
+	free(ruta);
+	remove(nombreArchivo);
+
+}
+
+void funcionDrop(char* nombreTabla,int socket){
+	//int cantTmp = obtenerCantTemporales(nombreTabla);
+	if(verificarExistenciaDirectorioTabla(nombreTabla)){
+		char* ruta = string_new();
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Tables/");
+		string_append(&ruta,nombreTabla);
+		DIR* dir=opendir(ruta);
+		struct dirent *sd;
+		while((sd=readdir(dir))!=NULL){
+			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
+			puts(sd->d_name);
+			liberarBloquesDeTmpYPart(sd->d_name,ruta);
+		}
+		//ver tema de un semaforo aca pero de la tabla
+
+		free(ruta);
+	}
+	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
+}
+
+void agregarTablaALista(char* nombreTabla){
+	metadata* metadataBuscado = obtenerMetadata(nombreTabla);
+		bool seEncuentraTabla(void* elemento){
+			metadata* unMetadata = elemento;
+			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+		}
+	pthread_mutex_lock(&mutexListaTabla);
+	if(!list_find(listaDeTablas, seEncuentraTabla)){
+		list_add(listaDeTablas,metadataBuscado);
+		pthread_mutex_unlock(&mutexListaTabla);
+		//aca deberiamos abrir tambien un hilo de compactacion
+	}
+}
+
 void funcionDescribe(char* argumentos,int socket) {
+	void loggearYMostarTabla(metadata* unMetadata){
+		log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
+				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
+				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
+	}
 	metadata* metadataBuscado = NULL;
-	if(argumentos=="ALL"){
+	DIR* dir;
+	struct dirent *sd;
+	if(string_equals_ignore_case(argumentos,"ALL")){
 		char* rutaDirectorioTablas = string_new();
 		string_append(&rutaDirectorioTablas,puntoMontaje);
 		string_append(&rutaDirectorioTablas,"Tables");
-		DIR* dir;
-		opendir(rutaDirectorioTablas);
+		if((dir = opendir(rutaDirectorioTablas))==NULL)
+				enviarOMostrarYLogearInfo(-1,"No se pudo abrir el directorio");
+
+		while((sd=readdir(dir))!=NULL){
+			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;} //no me lo ignoraba sino de otra manera
+			else{
+				agregarTablaALista(sd->d_name);
+
+			}
+
+		}
+		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
+		if(socket==-1){
+			pthread_mutex_lock(&mutexListaTabla);
+			list_iterate(listaDeTablas,(void*)loggearYMostarTabla);
+			pthread_mutex_unlock(&mutexListaTabla);
+		}
+		else{
+			//aca deberiamos ver de mandar la lista a memoria
+		}
 		closedir(dir);
 		free(rutaDirectorioTablas );
 	}

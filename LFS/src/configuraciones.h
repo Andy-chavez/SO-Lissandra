@@ -20,6 +20,8 @@ pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
 pthread_mutex_t mutexDump;
 pthread_mutex_t mutexOperacion;
+pthread_mutex_t mutexListaTabla;
+pthread_mutex_t mutexBitarray;
 t_log* logger;
 t_log* loggerConsola;
 
@@ -39,12 +41,16 @@ int retardo;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
+t_list* listaDeTablas;
 t_bitarray* bitarray;
 
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
 		pthread_mutex_init(&mutexOperacion,NULL);
+		pthread_mutex_init(&mutexListaTabla,NULL);
+		pthread_mutex_init(&mutexDump,NULL);
+		pthread_mutex_init(&mutexBitarray,NULL);
 //		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
 
 }
@@ -125,11 +131,9 @@ void leerMetadataFS (){
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
 	free(rutaMetadata);
 }
-void inicializarMemtable(){
-
-	pthread_mutex_lock(&mutexMemtable);
+void inicializarListas(){
 	memtable = list_create();
-	pthread_mutex_unlock(&mutexMemtable);
+	listaDeTablas = list_create();
 }
 
 void inicializarLog(char* ruta){
