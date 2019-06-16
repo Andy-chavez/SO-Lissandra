@@ -173,7 +173,7 @@ marco* encontrarEspacio() {
 		enviarOMostrarYLogearInfo(-1, "No se encontro espacio libre en la tabla de marcos. Empezando algoritmo LRU");
 		if(!(marcoLibre = algoritmoLRU())) {
 			enviarOMostrarYLogearInfo(-1, "el algoritmo LRU no pudo liberar memoria. empezando proceso de journal");
-			//journal();
+			//informar a Kernel para que fuerze un JournalLQL()
 		};
 	}
 
@@ -205,6 +205,11 @@ void liberarbufferDePagina(bufferDePagina* buffer) {
 	free(buffer);
 }
 
+void guardarEnMarco(marco* unMarco, bufferDePagina* bufferAGuardar) {
+	memcpy(unMarco->lugarEnMemoria, bufferAGuardar->buffer, bufferAGuardar->tamanio);
+	unMarco->tamanioValue = bufferAGuardar->tamanio - sizeof(time_t) - sizeof(uint16_t); // restando estos tipos obtenemos el tamanio del value.
+}
+
 marco* guardar(registroConNombreTabla* unRegistro) {
 	bufferDePagina *bufferAGuardar = armarBufferDePagina(unRegistro, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
@@ -214,12 +219,10 @@ marco* guardar(registroConNombreTabla* unRegistro) {
 		return NULL;
 	}
 
-	memcpy(guardarEn->lugarEnMemoria, bufferAGuardar->buffer, bufferAGuardar->tamanio);
-
-	liberarbufferDePagina(bufferAGuardar);
-
+	guardarEnMarco(guardarEn, bufferAGuardar);
 	guardarEn->estaEnUso = 1;
 
+	liberarbufferDePagina(bufferAGuardar);
 	return guardarEn;
 }
 
@@ -295,28 +298,20 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	memcpy(&(registroARetornar->key), (uint16_t*) (marcoEnMemoria->lugarEnMemoria + desplazamiento), sizeof(uint16_t));
 	desplazamiento += sizeof(uint16_t);
 
-	int tamanioValue = obtenerTamanioValue((marcoEnMemoria->lugarEnMemoria + desplazamiento)) + 1;
-	registroARetornar->value = malloc(tamanioValue);
-	memcpy(registroARetornar->value, (marcoEnMemoria->lugarEnMemoria + desplazamiento), tamanioValue);
+	registroARetornar->value = malloc(marcoEnMemoria->tamanioValue);
+	memcpy(registroARetornar->value, (marcoEnMemoria->lugarEnMemoria + desplazamiento), marcoEnMemoria->tamanioValue);
 
 	return registroARetornar;
 }
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
 	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, MEMORIA_PRINCIPAL->tamanioMaximoValue);
-	//memcpy(registroACambiar->unRegistro, bufferParaCambio->buffer, bufferParaCambio->tamanio);
-	liberarbufferDePagina(bufferParaCambio);
-}
 
-int obtenerTamanioValue(void* valueBuffer) {
-	int tamanio = 0;
-	char prueba = *((char*) valueBuffer);
-	while(prueba != '\0') {
-		tamanio++;
-		valueBuffer++;
-		prueba = *((char*) valueBuffer);
-	}
-	return tamanio;
+	marco* marcoACambiarValue = list_get(TABLA_MARCOS, registroACambiar->marco);
+
+	guardarEnMarco(marcoACambiarValue, bufferParaCambio);
+
+	liberarbufferDePagina(bufferParaCambio);
 }
 
 // ------------------------------------------------------------------------ //
@@ -406,13 +401,15 @@ paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 			return igualKeyRegistro(unRegistro, keyDada);
 	}
 	paginaEnTabla* paginaEncontrada = (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
+	if(!paginaEncontrada) {
+		return NULL;
+	}
 	paginaEncontrada->timestamp = time;
 
 	return paginaEncontrada;
 }
 
-char* valueRegistro(segmento* unSegmento, int key){
-	paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,key);
+char* valueRegistro(paginaEnTabla* paginaEncontrada){
 
 	registro* registroReal = leerDatosEnMemoria(paginaEncontrada);
 	char* value = malloc(strlen(registroReal->value) + 1);
@@ -457,6 +454,11 @@ int esInsertOSelectEjecutable(char* parametros) {
 // ------------------------------------------------------------------------ //
 // 6) OPERACIONESLQL //
 
+
+void journalLQL() {
+
+}
+
 void liberarRecursosSelectLQL(char* nombreTabla, int *key) {
 	free(nombreTabla);
 	free(key);
@@ -474,7 +476,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 
 		if(paginaEncontrada = encontrarRegistroPorKey(unSegmento,key)){
 
-			char* value = valueRegistro(unSegmento,key);
+			char* value = valueRegistro(paginaEncontrada);
 			char *mensaje = string_new();
 			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", value);
 

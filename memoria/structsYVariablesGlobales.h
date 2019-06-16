@@ -34,6 +34,7 @@ typedef struct {
 typedef struct {
 	int marco;
 	int estaEnUso;
+	int tamanioValue;
 	void* lugarEnMemoria;
 } marco;
 

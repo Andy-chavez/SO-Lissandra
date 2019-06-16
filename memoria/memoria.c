@@ -233,6 +233,7 @@ void* cambiosConfig() {
 }
 
 int main() {
+	printf("%d %d\n", sizeof(time_t), sizeof(uint16_t));
 	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping; // threadTimedJournal,
 	inicializarProcesoMemoria();
 
