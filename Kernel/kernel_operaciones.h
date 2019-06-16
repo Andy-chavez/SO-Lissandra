@@ -7,12 +7,6 @@
 
 #ifndef KERNEL_OPERACIONES_H_
 #define KERNEL_OPERACIONES_H_
-#include <commons/string.h>
-#include <commonsPropias/serializacion.h>
-#include <stdbool.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "kernel_configuraciones.h"
 #include "kernel_structs-basicos.h"
 
@@ -287,20 +281,22 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 // ---------------.: THREAD ROUND ROBIN :.---------------
 void kernel_roundRobin(){
 	while(1){
-	sem_wait(&hayReady);
-	pcb* pcb_auxiliar;
-	pthread_mutex_lock(&colaListos);
-	pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,0);
-	pthread_mutex_unlock(&colaListos);
+		sem_wait(&hayReady);
+		pcb* pcb_auxiliar;
+		pthread_mutex_lock(&colaListos);
+		pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,0);
+		pthread_mutex_unlock(&colaListos);
 
-	if(pcb_auxiliar->instruccion == NULL){
+		if(pcb_auxiliar->instruccion == NULL){
 				pcb_auxiliar->ejecutado=1;
 				if(kernel_api(pcb_auxiliar->operacion)==0)
 					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
-		}
+				usleep(sleepEjecucion*1000);
+				continue;
+			}
 		else if(pcb_auxiliar->instruccion !=NULL){
 			int ERROR= 0;
 			for(int quantum=0;quantum<quantumMax;quantum++){
@@ -322,6 +318,7 @@ void kernel_roundRobin(){
 					ERROR = -1;
 					break;
 				}
+				usleep(sleepEjecucion*1000);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
 				pthread_mutex_lock(&colaListos);
@@ -333,9 +330,11 @@ void kernel_roundRobin(){
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados, pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
+				usleep(sleepEjecucion*1000);
+				continue;
 			}
+
 		}
-		//sleep(sleepEjecucion);
 	}
 }
 

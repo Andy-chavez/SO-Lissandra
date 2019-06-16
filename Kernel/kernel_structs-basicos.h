@@ -12,6 +12,12 @@
 #include <commons/collections/list.h>
 #include <stdlib.h>
 #include <semaphore.h>
+#include <commons/string.h>
+#include <commonsPropias/serializacion.h>
+#include <stdbool.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <unistd.h>
 
 #define HASH 2
 #define STRONG 1
