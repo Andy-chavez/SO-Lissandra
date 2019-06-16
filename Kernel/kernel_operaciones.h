@@ -296,7 +296,6 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	free(parametrosSpliteados);
 }
 int kernel_add(char* operacion){
-	//printf("Almost done add memory\n");
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
@@ -324,32 +323,20 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 }
 // ---------------.: THREAD ROUND ROBIN :.---------------
 void kernel_roundRobin(){
-	//while(!list_is_empty(cola_proc_listos)){
-		//TODO poner semaforo
 	while(1){
 	sem_wait(&hayReady);
-	pcb* pcb_auxiliar;// = malloc(sizeof(pcb));
+	pcb* pcb_auxiliar;
 	pthread_mutex_lock(&colaListos);
 	pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,0);
 	pthread_mutex_unlock(&colaListos);
-	//printf("%s\n", pcb_auxiliar->operacion);
+
 	if(pcb_auxiliar->instruccion == NULL){
-//			if(pcb_auxiliar->ejecutado ==1){  innecesario?
-//				pthread_mutex_lock(&colaTerminados);
-//				list_add(cola_proc_terminados,pcb_auxiliar);
-//				pthread_mutex_unlock(&colaTerminados);
-//				//free(pcb_auxiliar);
-//			}
-//			else
-//			{
 				pcb_auxiliar->ejecutado=1;
 				if(kernel_api(pcb_auxiliar->operacion)==0)
 					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
-				//free(pcb_auxiliar);
-//			}
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
 			int ERROR= 0;
@@ -358,25 +345,17 @@ void kernel_roundRobin(){
 					pcb_auxiliar->ejecutado=1;
 					if(kernel_api(pcb_auxiliar->operacion)==0){
 						log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
-//						pthread_mutex_lock(&colaTerminados);
-//						list_add(cola_proc_terminados,pcb_auxiliar);
-//						pthread_mutex_unlock(&colaTerminados);
 						ERROR = -1;
 						break;
 					}
 				}
-				//instruccion* instruc=malloc(sizeof(instruccion));
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
 				if (instruc == NULL){
 					break;
 				}
-				//printf("%s", instruc->operacion);
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==0){
 					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
-//					pthread_mutex_lock(&colaTerminados);
-//					list_add(cola_proc_terminados,pcb_auxiliar);
-//					pthread_mutex_unlock(&colaTerminados);
 					ERROR = -1;
 					break;
 				}
@@ -395,8 +374,6 @@ void kernel_roundRobin(){
 		}
 		//sleep(sleepEjecucion);
 	}
-//		free(pcb_auxiliar->operacion);
-//		free(pcb_auxiliar);
 }
 
 // ---------------.: THREAD CONSOLA A NEW :.---------------
@@ -473,7 +450,6 @@ void kernel_run(char* operacion){
 	pcb_auxiliar->ejecutado = 1 ;
 	pcb_auxiliar->instruccion =list_create();
 
-	//instruccion** instruccion_auxiliar;
 	while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 		instruccion* instruccion_auxiliar = malloc(sizeof(instruccion));
 		instruccion_auxiliar->ejecutado= 0;
@@ -483,44 +459,17 @@ void kernel_run(char* operacion){
 		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 	}
-//	instruccion* in1 = list_get(pcb_auxiliar->instruccion,0);
-//	printf("%s\n",in1->operacion);
-//	instruccion* in2 = list_get(pcb_auxiliar->instruccion,1);
-//	printf("%s\n",in2->operacion);
-//	instruccion* in3 = list_get(pcb_auxiliar->instruccion,2);
-//	printf("%s\n",in3->operacion);
-//	instruccion* in4 = list_get(pcb_auxiliar->instruccion,3);
-//	printf("%s\n",in4->operacion);
-//	instruccion* in5 = list_get(pcb_auxiliar->instruccion,4);
-//	printf("%s\n",in5->operacion);
-//	instruccion* in6 = list_get(pcb_auxiliar->instruccion,5);
-//	printf("%s\n",in6->operacion);
-//	instruccion* in7= list_get(pcb_auxiliar->instruccion,6);
-//	printf("%s\n",in7->operacion);
-//	instruccion* in8 = list_get(pcb_auxiliar->instruccion,7);
-//	printf("%s\n",in8->operacion);
-//	instruccion* in9 = list_get(pcb_auxiliar->instruccion,8);
-//	printf("%s\n",in9->operacion);
-//	instruccion* in10 = list_get(pcb_auxiliar->instruccion,9);
-//	printf("%s\n",in10->operacion);
-//
-
 	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_listos,pcb_auxiliar);
 	pthread_mutex_unlock(&colaNuevos);
-//free(lineaLeida);
-//free(pcb_auxiliar->operacion);
-//free(pcb_auxiliar);
-//free(lineaAGuardar);
 	free(*(opYArg+1));
 	free(*(opYArg));
 	free(opYArg);
 	fclose(archivoALeer);
 	sem_post(&hayReady);
 }
-int kernel_api(char* operacionAParsear) //cuando ya esta en el rr
+int kernel_api(char* operacionAParsear)
 {
-	//printf("%s\n\n", operacionAParsear);
 	if(string_contains(operacionAParsear, "INSERT")) {
 		return kernel_insert(operacionAParsear);
 	}
@@ -543,9 +492,6 @@ int kernel_api(char* operacionAParsear) //cuando ya esta en el rr
 		free(operacionAParsear);
 		return kernel_journal();
 	}
-//	else if (string_contains(operacionAParsear, "RUN")) {
-//		return kernel_run(operacionAParsear);
-//	}
 	else if (string_contains(operacionAParsear, "METRICS")) {
 		free(operacionAParsear);
 		return kernel_metrics();

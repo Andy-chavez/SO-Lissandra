@@ -68,6 +68,7 @@ t_list* conexionesMemoria;
 criterio criterios[3];
 sem_t hayNew;
 sem_t hayReady;
+sem_t modificables;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
@@ -76,13 +77,11 @@ char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel
 char* ipMemoria;
 char* puertoMemoria;
 configYLogs *kernel_configYLog;
-int quantumMax;
 int multiprocesamiento;
+// CAMBIAN EN TIEMPO DE EXEC
+int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
-
-//------------------------TEST CHEHCKPOINT --------------------------------------
-int numPrueba = 1;
 
 
 #endif /* KERNEL_STRUCTS_BASICOS_H_ */
