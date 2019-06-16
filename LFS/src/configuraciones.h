@@ -34,9 +34,9 @@ char* ipLisandra;
 char* puertoLisandra;
 char* puntoMontaje;
 int tiempoDump;
-//int tiempoDump y int Retardo por ahora no, pueden ir cambiando
+
 int tamanioValue;
-int tiempoRetardo;
+int retardo;
 t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
@@ -44,7 +44,6 @@ t_bitarray* bitarray;
 
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
-		pthread_mutex_init(&mutexDump, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
 //		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
 
@@ -57,7 +56,7 @@ void leerConfig(char* ruta){
 	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
 	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
-	tiempoRetardo = config_get_int_value(archivoDeConfig,"RETARDO");
+	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
 
 }
 
@@ -65,13 +64,16 @@ void leerConfig(char* ruta){
 void inicializarArchivoBitmap(){
 	FILE *f;
 	int i;
-
-	f = fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Metadata/Bitmap.bin", "wb");
+	
+	char* ruta = string_new();
+	string_append(&ruta,puntoMontaje);
+	string_append(&ruta,"Metadata/Bitmap.bin");
+	f = fopen(ruta, "wb");
 
 	for(i=0; i < 64; i++){
 		fputc(0,f);
 	}
-
+	free(ruta);
 	fclose(f);
 }
 
@@ -105,6 +107,7 @@ void leerMetadataFS (){
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+	free(rutaMetadata);
 }
 void inicializarMemtable(){
 
