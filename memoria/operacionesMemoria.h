@@ -52,7 +52,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 
 	nuevaMemoria->base = malloc(tamanioMemoria);
-	memset(nuevaMemoria->base, 0, tamanioMemoria);
+	memset(nuevaMemoria->base, 0, tamanioMemoria); // para que se vea linda jajajajaja
 	nuevaMemoria->limite = nuevaMemoria->base + tamanioMemoria;
 	nuevaMemoria->tamanioMaximoValue = datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
@@ -114,6 +114,16 @@ void liberarMemoria() {
 	free(MEMORIA_PRINCIPAL->base);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmentos);
 	free(MEMORIA_PRINCIPAL);
+}
+
+void vaciarMemoria() {
+	void* marcarMarcoComoDisponible(marco* unMarco) {
+		unMarco->estaEnUso = 0;
+	}
+
+	list_iterate(TABLA_MARCOS, marcarMarcoComoDisponible);
+	size_t tamanioMemoria = MEMORIA_PRINCIPAL->limite - MEMORIA_PRINCIPAL->base;
+	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria);
 }
 
 void liberarTablaMarcos() {
@@ -454,18 +464,26 @@ int esInsertOSelectEjecutable(char* parametros) {
 // ------------------------------------------------------------------------ //
 // 6) OPERACIONESLQL //
 
+operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEnTabla* unaPagina) {
+	operacionLQL* operacionARetornar = malloc(sizeof(operacionLQL));
+	registro* unRegistro = leerDatosEnMemoria(unaPagina);
+
+	operacionARetornar->operacion = string_duplicate("INSERT");
+	operacionARetornar->parametros = string_from_format("%s %d \"%s\" %d", nombreTablaPerteneciente, unRegistro->key, unRegistro->value, unRegistro->timestamp);
+}
 
 void journalLQL(int socketKernel) {
 	t_list* insertsAEnviar = list_create();
 
-	void* agregarAPaqueteSiModificado(paginaEnTabla* unaPagina) {
-		if(unaPagina->flag) {
-			operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unaPagina);
-			list_add(insertsAEnviar, unaOperacion);
-		}
-	}
-
 	void* armarPaqueteParaEnviarALFS(segmento* unSegmento) {
+
+		void* agregarAPaqueteSiModificado(paginaEnTabla* unaPagina) {
+				if(unaPagina->flag) {
+					operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unSegmento->nombreTabla, unaPagina);
+					list_add(insertsAEnviar, unaOperacion);
+				}
+			}
+
 		list_iterate(unSegmento->tablaPaginas, agregarAPaqueteSiModificado);
 	}
 
@@ -477,6 +495,7 @@ void journalLQL(int socketKernel) {
 
 	vaciarMemoria();
 
+	list_destroy_and_destroy_elements(insertsAEnviar, liberarOperacionLQL);
 	enviarOMostrarYLogearInfo(socketKernel, "Se realizo el Journal exitosamente.");
 }
 
