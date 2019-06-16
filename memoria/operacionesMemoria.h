@@ -455,8 +455,29 @@ int esInsertOSelectEjecutable(char* parametros) {
 // 6) OPERACIONESLQL //
 
 
-void journalLQL() {
+void journalLQL(int socketKernel) {
+	t_list* insertsAEnviar = list_create();
 
+	void* agregarAPaqueteSiModificado(paginaEnTabla* unaPagina) {
+		if(unaPagina->flag) {
+			operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unaPagina);
+			list_add(insertsAEnviar, unaOperacion);
+		}
+	}
+
+	void* armarPaqueteParaEnviarALFS(segmento* unSegmento) {
+		list_iterate(unSegmento->tablaPaginas, agregarAPaqueteSiModificado);
+	}
+
+	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, armarPaqueteParaEnviarALFS);
+
+	sem_wait(&MUTEX_SOCKET_LFS);
+	serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
+	sem_post(&MUTEX_SOCKET_LFS);
+
+	vaciarMemoria();
+
+	enviarOMostrarYLogearInfo(socketKernel, "Se realizo el Journal exitosamente.");
 }
 
 void liberarRecursosSelectLQL(char* nombreTabla, int *key) {
