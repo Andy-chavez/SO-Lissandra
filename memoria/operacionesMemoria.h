@@ -621,8 +621,13 @@ void cargarSeeds(t_list* listaSeeds) {
 
 void recibirYGuardarEnTablaGossip(int socketMemoria) {
 	void guardarEnTablaGossip(seed* unaSeed) {
+		// Duplicamos strings de IP y Puerto ya que la funcion de recibir libera la seed
+		seed* seedAGuardar = malloc(sizeof(seed));
+		seedAGuardar->ip = string_duplicate(unaSeed->ip);
+		seedAGuardar->puerto = string_duplicate(unaSeed->puerto);
+
 		sem_wait(&MUTEX_TABLA_GOSSIP);
-		list_add(TABLA_GOSSIP, unaSeed);
+		list_add(TABLA_GOSSIP, seedAGuardar);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 	}
 
@@ -638,8 +643,37 @@ void intercambiarTablasGossip(int unSocketMemoria) {
 }
 
 void intentarConexiones(t_list* listaSeeds) {
+
 	void* intentarConexion(seed* unaSeed) {
+
+		void* esIgualA(seed* otraSeed) {
+			return string_equals_ignore_case(unaSeed->ip, otraSeed->ip) && string_equals_ignore_case(unaSeed->puerto, otraSeed->puerto);
+		};
+
 		int socketMemoria = crearSocketCliente(unaSeed->ip, unaSeed->puerto);
+
+		sem_wait(&MUTEX_TABLA_GOSSIP);
+		if(list_find(TABLA_GOSSIP, esIgualA)) {
+			sem_post(&MUTEX_TABLA_GOSSIP);
+
+			sem_wait(&MUTEX_LOG_CONSOLA);
+			log_info(LOGGER_CONSOLA, "Intentando conexion de nuevo de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
+			sem_post(&MUTEX_LOG_CONSOLA);
+
+			if(socketMemoria == -1) {
+				sem_wait(&MUTEX_LOG_CONSOLA);
+				log_info(LOGGER_CONSOLA, "se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
+				sem_post(&MUTEX_LOG_CONSOLA);
+
+				list_remove_by_condition(TABLA_GOSSIP, esIgualA);
+			} else {
+				log_info(LOGGER_CONSOLA, "hay conexion todavia con esta IP y este puerto.");
+				cerrarConexion(socketMemoria);
+			}
+
+			return NULL;
+		}
+		sem_post(&MUTEX_TABLA_GOSSIP);
 
 		if(socketMemoria == -1) {
 			sem_wait(&MUTEX_LOG_CONSOLA);
@@ -650,6 +684,7 @@ void intentarConexiones(t_list* listaSeeds) {
 
 		log_info(LOGGER_CONSOLA, "Intercambiando tablas Gossip con la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
 		intercambiarTablasGossip(socketMemoria);
+		cerrarConexion(socketMemoria);
 	}
 
 	list_iterate(listaSeeds, intentarConexion);
