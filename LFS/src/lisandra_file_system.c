@@ -161,7 +161,6 @@ int main(int argc, char* argv[]) {
 	leerMetadataFS();
 	inicializarListas();
 	inicializarLog("lisandraConsola.log");
-	log_info(logger, "sopa de macaco");
 	//DESCOMENTARLO DESPUES
 	//inicializarBloques();
 	inicializarSemaforos();
@@ -169,31 +168,31 @@ int main(int argc, char* argv[]) {
 	inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
 	inicializarBitmap();
 	inicializarRegistroError();
+//
+//	funcionCreate("PELICULAS SC 5 10000", -1);
+//	funcionInsert("PELICULAS 10 \"GAY STORY\"", -1);
+//	funcionInsert("PELICULAS 10 \"FUCK STORY\"", -1);
+//	funcionInsert("PELICULAS 1110 \"HARRY PORONGA\"", -1);
+//	funcionInsert("PELICULAS 100 \"BENDITA TV\"", -1);
+//	funcionInsert("PELICULAS 1000 \"SANTA CLOOUS\"", -1);
+//
+//	dump();
+//
+//	compactar("PELICULAS");
 
-	funcionCreate("PELICULAS SC 5 10000", -1);
-	funcionInsert("PELICULAS 10 \"GAY STORY\"", -1);
-	funcionInsert("PELICULAS 10 \"FUCK STORY\"", -1);
-	funcionInsert("PELICULAS 1110 \"HARRY PORONGA\"", -1);
-	funcionInsert("PELICULAS 100 \"BENDITA TV\"", -1);
-	funcionInsert("PELICULAS 1000 \"SANTA CLOOUS\"", -1);
 
-	dump();
-
-	compactar("PELICULAS");
-
-
-	leerConsola();
+	//leerConsola();
 	pthread_t threadConsola;
 	pthread_t threadServer;
 	pthread_t threadDump;
 
 	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
-	pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-	pthread_create(&threadDump, NULL,(void*) dump, NULL);
+	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+	//pthread_create(&threadDump, NULL,(void*) dump, NULL);
 
 	pthread_join(threadConsola,NULL);
-	pthread_join(threadServer,NULL);
-	pthread_join(threadDump,NULL);
+	//pthread_join(threadServer,NULL);
+	//pthread_join(threadDump,NULL);
 
 
 
