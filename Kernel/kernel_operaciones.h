@@ -130,31 +130,6 @@ int socketMemoriaSolicitada(consistencia criterio){
 
 	return encontrarSocketDeMemoria(mem->numero);
 }
-//------ SINTAXIS CORRECTA ---------
-int sintaxisCorrecta(char caso,char* parametros){
-	int retorno = 0;
-	switch(caso){
-		case '1': //1.select
-		case '2': //2.insert
-//		{
-//			char** parametrosSpliteados = string_split(parametros, " ");
-//			if(atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) == "0")
-//				retorno = 1;
-//		}
-			retorno = 1;
-			break;
-		case '3': //3.create
-			//todo verificar dps
-			retorno = 1;
-			break;
-		case '4': //4.describe tabla
-			if(encontrarTablaPorNombre(parametros))
-				retorno = 1;
-			break;
-	}
-
-	return retorno;
-}
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
@@ -182,10 +157,6 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 }
 int kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	if(sintaxisCorrecta('3',opAux->parametros)==0){
-		//abortarProceso(char*operacion);
-		return 0;
-	}
 	//	memoria* mem =encontrarMemoriaStrong();
 	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
 		//if(socketClienteKernel){
@@ -205,10 +176,6 @@ int kernel_select(char* operacion){
 }
 int kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	if(sintaxisCorrecta('3',opAux->parametros)==0){
-		//abortarProceso(char*operacion);
-		return 0;
-	}
 	guardarTablaCreada(opAux->parametros);
 	//	memoria* mem =encontrarMemoriaStrong();
 	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
@@ -230,10 +197,6 @@ int kernel_create(char* operacion){
 int kernel_describe(char* operacion){
 	//printf("Almost done describe\n");
 	operacionLQL* opAux=splitear_operacion(operacion);
-	if(sintaxisCorrecta('3',opAux->parametros)==0){
-			//abortarProceso(char*operacion);
-			return 0;
-		}
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
 	log_info(kernel_configYLog->log, "Enviado %s", operacion);
