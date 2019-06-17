@@ -1,116 +1,37 @@
-#ifndef KERNEL_OPERACIONES_H_
-#define KERNEL_OPERACIONES_H_
-#include "kernel_configuraciones.h"
-#include "kernel_structs-basicos.h"
+#ifndef KER_OPERACIONES_H_
+#define KER_OPERACIONES_H_
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
+#include "ker_configuraciones.h"
+#include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-void agregarALista(t_list* lista, pcb* elemento, pthread_mutex_t semaphore);
-void kernel_almacenar_en_cola(char*,char*);
-void kernel_agregar_cola_proc_nuevos(char*);
-void kernel_run(char*);
-void kernel_consola();
-int kernel_api(char*);
-void guardarTablacreada(char*);
-void eliminarTablaCreada(char* );
 /* TODO describe, metrics y journal(a cada una de las memorias asociadas a los criterios), hash de criterio y eventual
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
  */
-void kernel_roundRobin();
-int kernel_insert(char*);
-int kernel_select(char*);
-int kernel_describe(char*);
-int kernel_create(char*);
-int kernel_drop(char*);
+int kernel_create(char* operacion);
+int kernel_describe(char* operacion);
 int kernel_journal();
 int kernel_metrics();
-int kernel_add(char*);
+int kernel_api(char* operacionAParsear);
+int kernel_add(char* operacion);
+int enviarJournal(int socket);
+int kernel_drop(char* operacion);
+int kernel_select(char* operacion);
+int kernel_insert(char* operacion);
+
+void journal_strong();
+void journal_hash();
+void journal_eventual();
+void kernel_almacenar_en_new(char*operacion);
+void kernel_crearPCB(char* operacion);
+void kernel_run(char* operacion);
+void kernel_pasar_a_ready();
+void kernel_consola();
+void kernel_roundRobin(int threadProcesador);
 /******************************IMPLEMENTACIONES******************************************/
-//------ ERRORES ---------
-bool recibidoContiene(char* recibido, char* contiene){
-	string_to_upper(recibido);
-	return string_contains(recibido, contiene);
-}
-//------ TABLAS ---------
-void guardarTablaCreada(char* parametros){
-	char** opAux =string_n_split(parametros,3," ");
-	tabla* tablaAux = malloc(sizeof(tabla));
-	tablaAux->nombreDeTabla= *opAux;
-	if(string_equals_ignore_case(*(opAux+1),"SC")){
-		tablaAux->consistenciaDeTabla = SC;
-	}
-	else if(string_equals_ignore_case(*(opAux+1),"SH")){
-		tablaAux->consistenciaDeTabla = SH;
-	}
-	else if(string_equals_ignore_case(*(opAux+1),"EC")){
-		tablaAux->consistenciaDeTabla = EC;
-	}
-	list_add(tablas,tablaAux);
-}
-void eliminarTablaCreada(char* parametros){
-	tabla* tablaAux = malloc(sizeof(tabla));
-	bool tablaDeNombre(tabla* t){
-			return t->nombreDeTabla == parametros;
-		}
-	tablaAux = list_remove_by_condition(tablas, (void*)tablaDeNombre);
-	free(tablaAux->nombreDeTabla);
-	free(tablaAux);
-}
-tabla* encontrarTablaPorNombre(char* nombre){
-	bool tablaDeNombre(tabla* t){
-			return t->nombreDeTabla == nombre;
-		}
-	return list_find(tablas,(void* ) tablaDeNombre);
-}
-//------ MEMORIAS ---------
-memoria* encontrarMemoria(int numero){
-	bool memoriaEsNumero(memoria* mem) {
-		return mem->numero == numero;
-	}
-	memoria * memory = malloc(sizeof(memoria));
-	memory = (memoria*) list_find(conexionesMemoria, (void*)memoriaEsNumero);
-	return memory;
-}
-memoria* encontrarMemoriaStrong(){
-	return list_get(criterios[STRONG].memorias, 0);
-}
-//------ CRITERIOS ---------
-consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
-	bool encontrarTabla(tabla t){
-		return t.nombreDeTabla == nombreTablaBuscada;
-	}
-	tabla retorno =*(tabla*) list_find(tablas,(void*)encontrarTabla);
-	return retorno.consistenciaDeTabla;
-}
-//------ CONEXION ---------
-int encontrarSocketDeMemoria(int numero){
-	bool encontrarSocket(memoria* unaConex){
-		return unaConex->numero == numero;
-	}
-	memoria* mem = list_find(conexionesMemoria,(void*) encontrarSocket);
-	return mem->socket;
-}
-
-int socketMemoriaSolicitada(consistencia criterio){
-	memoria* mem = NULL;
-	switch (criterio){
-
-		case SC:
-			mem = encontrarMemoriaStrong();
-			break;
-		case SH:
-
-			break;
-		case EC:
-			break;
-	}
-
-	return encontrarSocketDeMemoria(mem->numero);
-}
-
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 int kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
@@ -203,7 +124,7 @@ int kernel_drop(char* operacion){
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 int kernel_journal(){
 	operacionLQL* opAux=splitear_operacion("JOURNAL");
-	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	int socket = socketMemoriaSolicitada(SC);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
 	if(recibidoContiene(recibido, "ERROR")){
@@ -217,22 +138,6 @@ int kernel_metrics(){
 	printf("Not yet -> metrics\n");
 	return 0;
 }
-int enviarJournal(int socket){
-	operacionLQL* opAux=splitear_operacion("JOURNAL");
-	serializarYEnviarOperacionLQL(socket, opAux);
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "ENVIADO: JOURNAL");
-	pthread_mutex_unlock(&mLog);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		return -1;
-	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
-	free(recibido);
-	liberarOperacionLQL(opAux);
-	return 0;
-}
 void journal_strong(){
 	enviarJournal(socketMemoriaSolicitada(SC));
 }
@@ -241,9 +146,6 @@ void journal_hash(){
 }
 void journal_eventual(){
 
-}
-int realizarConexion(memoria* mem){
-	return crearSocketCliente(mem->ip,mem->puerto);
 }
 int kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 	char** opAux = string_n_split(operacion,5," ");
@@ -283,9 +185,6 @@ int kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 	liberarParametrosSpliteados(opAux);
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
-bool instruccion_no_ejecutada(instruccion* instruc){
-	return instruc->ejecutado==0;
-}
 // ---------------.: THREAD ROUND ROBIN :.---------------
 void kernel_roundRobin(int threadProcesador){
 	while(1){
@@ -350,10 +249,8 @@ void kernel_roundRobin(int threadProcesador){
 		}
 	}
 }
-
 // ---------------.: THREAD CONSOLA A NEW :.---------------
 void kernel_almacenar_en_new(char*operacion){
-
 	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
@@ -362,7 +259,6 @@ void kernel_almacenar_en_new(char*operacion){
 	log_info(kernel_configYLog->log, "NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 }
-
 void kernel_consola(){
 	printf("Proceso Kernel:\n	Ingrese la operacion que desea ejecutar y siga su ejecución mediante el archivo KERNEL.log\n");
 	char* linea= NULL;
@@ -480,4 +376,4 @@ int kernel_api(char* operacionAParsear)
 		return 0;
 	}
 }
-#endif /* KERNEL_OPERACIONES_H_ */
+#endif /* KER_OPERACIONES_H_ */

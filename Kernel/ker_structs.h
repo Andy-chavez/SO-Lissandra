@@ -1,5 +1,5 @@
-#ifndef KERNEL_STRUCTS_BASICOS_H_
-#define KERNEL_STRUCTS_BASICOS_H_
+#ifndef KER_STRUCTS_H_
+#define KER_STRUCTS_H_
 #include <commons/log.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
@@ -57,7 +57,7 @@ sem_t hayReady;
 sem_t modificables;
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
-pthread_mutex_t metadataRefresh;
+pthread_mutex_t mMetadataRefresh;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t mMemorias;
 pthread_mutex_t colaListos;
@@ -74,4 +74,4 @@ int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
 
-#endif /* KERNEL_STRUCTS_BASICOS_H_ */
+#endif /* KER_STRUCTS_H_ */

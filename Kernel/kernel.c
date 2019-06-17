@@ -13,7 +13,8 @@
 #include <commons/config.h>
 #include <pthread.h>
 #include <string.h>
-#include "kernel_operaciones.h"
+
+#include "ker_operaciones.h"
 
 /*
  * EJEMPLOS:

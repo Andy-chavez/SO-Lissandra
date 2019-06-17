@@ -1,28 +1,25 @@
-#ifndef KERNEL_CONFIGURACIONES_H_
-#define KERNEL_CONFIGURACIONES_H_
+#ifndef KER_CONFIGURACIONES_H_
+#define KER_CONFIGURACIONES_H_
 #include <commons/config.h>
 #include <commons/string.h>
-#include "kernel_structs-basicos.h"
 #include <commonsPropias/conexiones.h>
 #include <commonsPropias/serializacion.h>
 #include <sys/types.h>
 #include <sys/inotify.h>
+#include "ker_auxiliares.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1 * EVENT_SIZE_CONFIG)
-
+/******************************DECLARACIONES******************************************/
 void kernel_inicializarSemaforos();
 void kernel_crearListas();
 void liberarConfigYLogs();
 void kernel_inicializarVariables();
 void kernel_finalizar();
 int kernel_inicializarMemoria();
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
-void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
-
+/******************************IMPLEMENTACIONES******************************************/
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 //-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
@@ -33,7 +30,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&mMemorias,NULL);
 	pthread_mutex_init(&quantum, NULL);
 	pthread_mutex_init(&sleepExec,NULL);
-	pthread_mutex_init(&metadataRefresh,NULL);
+	pthread_mutex_init(&mMetadataRefresh,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&modificables,0,0);
@@ -54,8 +51,8 @@ void kernel_crearListas(){
 void guardarDatos(seed* unaSeed){ //todo ver conexiones
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
-	memAux->puerto = itoa(unaSeed->puerto);
-	memAux->ip = itoa(unaSeed->ip);
+	memAux->puerto = unaSeed->puerto;
+	memAux->ip = unaSeed->ip;
 	agregarALista(memorias,memAux,mMemorias);
 }
 int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
@@ -99,7 +96,7 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&mMemorias);
 	pthread_mutex_destroy(&quantum);
 	pthread_mutex_destroy(&sleepExec);
-	pthread_mutex_destroy(&metadataRefresh);
+	pthread_mutex_destroy(&mMetadataRefresh);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
@@ -114,7 +111,7 @@ void liberarPCB(pcb* elemento) {
 	free(elemento->operacion);
 	free(elemento);
 }
-void liberarListas(){ //todo agregar listas je
+void liberarListas(){ //todo agregar memorias, tablas,conexiones[3]
 	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
@@ -171,45 +168,14 @@ void* cambiosConfig(){
 				pthread_mutex_lock(&sleepExec);
  				sleepEjecucion = config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION");
  				pthread_mutex_unlock(&sleepExec);
-				pthread_mutex_lock(&metadataRefresh);
- 				metadataRefresh = config_get_int_value(configConNuevosDatos, "METADATA_REFRESH");
- 				pthread_mutex_unlock(&metadataRefresh);
+				pthread_mutex_lock(&mMetadataRefresh);
+				metadataRefresh = config_get_int_value(configConNuevosDatos, "METADATA_REFRESH");
+ 				pthread_mutex_unlock(&mMetadataRefresh);
 			}
  			config_destroy(configConNuevosDatos);
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
 	}
 }
-//----------------- LOGS -----------------------------
-void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
-	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
-}
-void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
-}
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
-	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
-	pthread_mutex_unlock(&mLog);
-}
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
-	pthread_mutex_unlock(&mLog);
-}
-//------ LISTAS ---------
-void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore){
-	pthread_mutex_lock(&semaphore);
-	list_add(lista,elemento);
-	pthread_mutex_unlock(&semaphore);
-}
 
-#endif /* KERNEL_CONFIGURACIONES_H_ */
+#endif /* KER_CONFIGURACIONES_H_ */
