@@ -32,6 +32,7 @@ int main(int argc, char *argv[]){
 
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
+	pthread_t threadInotify;
 	if(argc==1){
 		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.\n");
 		return EXIT_FAILURE;
@@ -42,6 +43,7 @@ int main(int argc, char *argv[]){
 		return EXIT_FAILURE;
 	kernel_inicializarEstructuras();
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
 	for(int i = 0; i<multiprocesamiento;i++){
 		pthread_t i;

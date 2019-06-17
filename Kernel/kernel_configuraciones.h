@@ -120,13 +120,15 @@ void kernel_finalizar(){
 	destruirSemaforos();
 }
 //----------------- CAMBIOS EN EJECUCION -----------------------------
-/*void* cambiosConfig() {
+void* cambiosConfig(){
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
 	char* path = pathConfig;
 
  	if(fdConfig < 0) {
-		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
+		pthread_mutex_lock(&mLog);
+		log_error(kernel_configYLog->log,"Hubo un error con el inotify_init");
+		pthread_mutex_unlock(&mLog);
 	}
 
  	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
@@ -135,13 +137,17 @@ void kernel_finalizar(){
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
 
  		if(size<0) {
-			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
+			pthread_mutex_lock(&mLog);
+			log_error(kernel_configYLog->log,"Hubo un error al leer modificaciones del config");
+			pthread_mutex_unlock(&mLog);
 		}
 
  		t_config* configConNuevosDatos = config_create(path);
 
  		if(!configConNuevosDatos) {
-			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
+			pthread_mutex_lock(&mLog);
+			log_error(kernel_configYLog->log,"Hubo un error al abrir el archivo de config");
+			pthread_mutex_unlock(&mLog);
 		}
 
  		int desplazamiento = 0;
@@ -150,8 +156,9 @@ void kernel_finalizar(){
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
  			if (event->mask & IN_MODIFY) {
-				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
-
+ 				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log,"Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
+				pthread_mutex_unlock(&mLog);
  				sem_wait(&modificables);
  				quantumMax = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
  				metadataRefresh = config_get_int_value(configConNuevosDatos, "METADATA_REFRESH");
@@ -164,7 +171,7 @@ void kernel_finalizar(){
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
 	}
-}*/
+}
 //----------------- LOGS -----------------------------
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	pthread_mutex_lock(&mLog);
