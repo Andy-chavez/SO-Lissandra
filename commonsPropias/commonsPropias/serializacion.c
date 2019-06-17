@@ -82,7 +82,7 @@ void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
 	int desplazamiento = 0;
 	int tamanioIP = strlen(unaSeed->ip) + 1;
 	int tamanioPuerto = strlen(unaSeed->puerto) + 1;
-	void *buffer = malloc(2*sizeof(int) + tamanioIP + tamanioPuerto);
+	void *buffer = malloc(3*sizeof(int) + tamanioIP + tamanioPuerto);
 
 	memcpy(buffer + desplazamiento, &tamanioIP, sizeof(int));
 	desplazamiento += sizeof(int);
@@ -92,6 +92,8 @@ void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
 	desplazamiento += sizeof(int);
 	memcpy(buffer + desplazamiento, unaSeed->puerto, tamanioPuerto);
 	desplazamiento += tamanioPuerto;
+	memcpy(buffer+desplazamiento, &(unaSeed->numero), sizeof(int));
+	desplazamiento += sizeof(int);
 
 	*(tamanioBuffer) = desplazamiento;
 
@@ -116,6 +118,9 @@ seed* deserializarSeed(void* buffer, int* tamanioSeed) {
 
 	memcpy(unaSeed->puerto, buffer + desplazamiento, tamanioPuerto);
 	desplazamiento += tamanioPuerto;
+
+	memcpy(&(unaSeed->numero), buffer + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
 
 	*(tamanioSeed) = desplazamiento;
 
