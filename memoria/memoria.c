@@ -35,7 +35,10 @@ int APIProtocolo(void* buffer, int socket) {
 		return 0;
 	case TABLAGOSSIP:
 		enviarOMostrarYLogearInfo(-1, "llego una memoria. guardando en tabla de gossip y enviando lo que tengo...");
-		intercambiarTablasGossip(socket);
+		sem_wait(&MUTEX_TABLA_GOSSIP);
+		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
+		sem_post(&MUTEX_TABLA_GOSSIP);
+		recibirYGuardarEnTablaGossip(socket);
 		return 1;
 	}
 	free(buffer);

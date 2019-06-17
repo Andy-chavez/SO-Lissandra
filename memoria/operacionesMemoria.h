@@ -728,6 +728,12 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 }
 
 void intercambiarTablasGossip(int unSocketMemoria) {
+	operacionProtocolo* capazEsteHackFunca = malloc(sizeof(operacionProtocolo));
+	*(capazEsteHackFunca) = TABLAGOSSIP;
+	enviar(unSocketMemoria, (void*) capazEsteHackFunca, sizeof(operacionProtocolo));
+
+	free(capazEsteHackFunca);
+
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	serializarYEnviarTablaGossip(unSocketMemoria, TABLA_GOSSIP);
 	sem_post(&MUTEX_TABLA_GOSSIP);
