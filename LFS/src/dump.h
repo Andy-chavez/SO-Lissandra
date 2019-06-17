@@ -38,7 +38,7 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	return rutaTmp;
 }
 
-void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char** buffer) {
+void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer) {
 
 	int desplazamiento=0;
 	int restante = tamanioTotalADumpear;
@@ -55,7 +55,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 			string_append(&rutaBloque,*(bloquesAsignados+i));
 			string_append(&rutaBloque,".bin");
 			FILE* fd = fopen(rutaBloque,"w");
-			fwrite(*buffer+desplazamiento,1,restante,fd);
+			fwrite(buffer+desplazamiento,1,restante,fd);
 			fclose(fd);
 			break;
 		}
@@ -66,7 +66,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 		string_append(&rutaBloque,*(bloquesAsignados+i)); //este es el numero de bloque donde escribo
 		string_append(&rutaBloque,".bin");
 		FILE* fd = fopen(rutaBloque,"w");
-		fwrite(*buffer+desplazamiento,1,tamanioBloques,fd);
+		fwrite(buffer+desplazamiento,1,tamanioBloques,fd);
 		desplazamiento+= tamanioBloques;
 		restante-=tamanioBloques;
 		fclose(fd);
@@ -127,7 +127,7 @@ void dump(){
 			t_config* temporal =config_create(rutaTmp);
 			char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
 
-			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, &buffer);
+			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
 			free(buffer);
 			config_destroy(temporal);
 
