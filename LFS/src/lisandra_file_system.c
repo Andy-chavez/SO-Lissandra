@@ -170,47 +170,6 @@ int main(int argc, char* argv[]) {
 		inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
 		inicializarBitmap();
 		inicializarRegistroError();
-	//	pthread_t threadDump;
-
-//		pthread_create(&threadDump, NULL,(void*) dump, NULL);
-	//	pthread_join(threadDump,NULL);
-	//
-
-
-
-
-		funcionCreate("PELICULAS SC 5 10000", -1);
-
-		funcionInsert("PELICULAS 10 \"Toy story\"", -1);
-				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
-				funcionInsert("PELICULAS 1110 \"Harry Potter\"", -1);
-				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
-				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
-				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
-				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatar\"", -1);
-
-		dump();
-		compactar("PELICULAS");
-
-		//hasta aca working
-		//ver lo de borrar los tmp y arrancar de cero.....
-
-		funcionInsert("PELICULAS 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS 1110 \"Harry2\"", -1);
-		funcionInsert("PELICULAS 100 \"BENDITA TV\"", -1);
-		funcionInsert("PELICULAS 1000 \"papanuel\"", -1);
-		dump();
-
-		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
-		dump();
-
-		compactar("PELICULAS");
-
-
-	//	leerConsola();
-
 
 		pthread_t threadConsola;
 		pthread_t threadServer;

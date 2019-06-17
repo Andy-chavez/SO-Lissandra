@@ -60,6 +60,13 @@ typedef struct {
 	t_list* temporales;
 } tablaTmp;
 
+typedef struct{
+	consistencia tipoConsistencia;
+	int cantParticiones;
+	int tiempoCompactacion;
+	char* nombreTabla;
+	pthread_mutex_t semaforoTabla;
+}metadataConSemaforo;
 
 //Funciones
 
@@ -91,6 +98,9 @@ void enviarYLogearMensajeError(int socket, char* mensaje);
 void enviarOMostrarYLogearInfo(int socket, char* mensaje);
 void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 void inicializarRegistroError();
+pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
+void funcionDrop(char* nombreTabla,int socket);
+void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 
 void inicializarRegistroError(){
 	registroError = malloc(sizeof(registro));
@@ -287,11 +297,6 @@ char* infoEnBloque(char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la
 	}
 
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);
-
-
-
-
-
 	free(rutaBloque);
 	return informacion;
 }
@@ -873,29 +878,50 @@ void funcionDrop(char* nombreTabla,int socket){
 		struct dirent *sd;
 		while((sd=readdir(dir))!=NULL){
 			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
-			puts(sd->d_name);
 			liberarBloquesDeTmpYPart(sd->d_name,ruta);
 		}
 		rmdir(ruta);
 		closedir(dir);
 		//ver tema de un semaforo aca pero de la tabla
+
 		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
 		free(ruta);
 		return;
 	}
 	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
 }
+pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
+		bool seEncuentraTabla(void* elemento){
+			metadata* unMetadata = elemento;
+			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+		}
+	pthread_mutex_lock(&mutexListaTabla);
+	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
+	pthread_mutex_unlock(&mutexListaTabla);
+	return metadataBuscado->semaforoTabla;
+}
+metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
+	metadataConSemaforo* nuevoMetadata;
+	nuevoMetadata->cantParticiones = unMetadata->cantParticiones;
+	nuevoMetadata->nombreTabla = unMetadata->nombreTabla;
+	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
+	nuevoMetadata->tipoConsistencia = unMetadata->tipoConsistencia;
+	return nuevoMetadata;
+}
 
 void agregarTablaALista(char* nombreTabla){
-	metadata* metadataBuscado = obtenerMetadata(nombreTabla);
+	metadataConSemaforo* metadataBuscado = crearMetadataConSemaforo(obtenerMetadata(nombreTabla));
 		bool seEncuentraTabla(void* elemento){
 			metadata* unMetadata = elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
 		}
 	pthread_mutex_lock(&mutexListaTabla);
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
+		pthread_mutex_init(&metadataBuscado->semaforoTabla,NULL); //inicias el semaforo de la nueva tabla
 		list_add(listaDeTablas,metadataBuscado);
-		//aca deberiamos abrir tambien un hilo de compactacion
+		pthread_t threadCompactacion;
+		pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
+		pthread_detach(&threadCompactacion);
 	}
 	pthread_mutex_unlock(&mutexListaTabla);
 }
