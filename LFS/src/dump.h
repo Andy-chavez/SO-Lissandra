@@ -77,7 +77,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 
 void dump(){
 
-	while(1){
+	/*while(1){
 		pthread_mutex_lock(&mutexTiempoDump);
 		usleep(tiempoDump*1000);
 		pthread_mutex_unlock(&mutexTiempoDump);
@@ -85,7 +85,7 @@ void dump(){
 		if(memtable->elements_count==0){
 			pthread_mutex_unlock(&mutexMemtable);
 			continue;
-		}
+		}*/
 
 		int tamanioTotalADumpear =0;
 		char* buffer;
@@ -140,4 +140,4 @@ void dump(){
 		pthread_mutex_unlock(&mutexMemtable);
 
 	}
-}
+//}

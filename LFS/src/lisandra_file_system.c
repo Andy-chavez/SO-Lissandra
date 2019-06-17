@@ -228,7 +228,7 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 
-		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		inicializarBitmap();
 		inicializarRegistroError();
