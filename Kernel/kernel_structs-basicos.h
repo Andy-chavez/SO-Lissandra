@@ -26,48 +26,36 @@
 typedef struct{
 	char* operacion;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
-	t_list* instruccion; //fila
-	//TODO agregar mas campos 1
+	t_list* instruccion;
 }pcb;
 typedef struct{
 	char* operacion;
 	int ejecutado; //0 si no se ejecuto, 1 si se ejecuto
-	//t_list* instruccion_siguiente;
-	//TODO agregar mas campos 2
 }instruccion;
-
 typedef struct{
 	consistencia unCriterio;
 	t_list* memorias;
 }criterio;
-
 typedef struct{
 	int socket;
 	int numero;
-	char* puerto; //necesario?
+	char* puerto;
 	char* ip;
 }memoria;
 
 typedef struct{
 	char* nombreDeTabla;
 	consistencia consistenciaDeTabla;
-}tabla; //ver si es necesario agregar algo mas
-
+}tabla;
 typedef struct {
 	t_config* config;
 	t_log* log;
 } configYLogs;
-//typedef struct{
-//	int socket;
-//	int numero;
-//	char* puerto; //necesario?
-//	char* ip;
-//}conexion;
+
 /******************************VARIABLES GLOBALES******************************************/
-t_list* cola_proc_nuevos;  //use esta en el caso del run
+t_list* cola_proc_nuevos;
 t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
-t_list* cola_proc_ejecutando;
 t_list* memorias;
 t_list* tablas;
 t_list* conexionesMemoria;
@@ -84,10 +72,9 @@ char* ipMemoria;
 char* puertoMemoria;
 configYLogs *kernel_configYLog;
 int multiprocesamiento;
-// CAMBIAN EN TIEMPO DE EXEC
+// -------------------- CAMBIAN EN TIEMPO DE EXEC ------------------------
 int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
-
 
 #endif /* KERNEL_STRUCTS_BASICOS_H_ */

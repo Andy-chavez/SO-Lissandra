@@ -21,11 +21,10 @@ void kernel_consola();
 int kernel_api(char*);
 void guardarTablacreada(char*);
 void eliminarTablaCreada(char* );
-/* TODO implementaciones
+/* TODO describe, metrics y journal, hash de criterio y eventual
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
- *
  */
 void kernel_roundRobin();
 int kernel_insert(char*);
@@ -200,19 +199,13 @@ int kernel_describe(char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
 	pthread_mutex_unlock(&mLog);
-	void* recibirBuffer = recibir(socket);;
-	metadata* met = deserializarMetadata(recibirBuffer);
+	metadata* met = deserializarMetadata(recibir(socket));
 	//TODO ACTUALIZAR ESTRUCTURAS y arreglar esto
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
 	pthread_mutex_unlock(&mLog);
-	free(recibirBuffer);
-	free(met->nombreTabla);
-	free(met);
-	//return 1;
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
+	liberarMetadata(met);
+	liberarOperacionLQL(opAux);
 	return 0;
 }
 int kernel_drop(char* operacion){

@@ -39,14 +39,12 @@ void kernel_crearListas(){
 	cola_proc_nuevos = list_create();
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
-	cola_proc_ejecutando = list_create(); //todo verificar esa lista exec
 	criterios[HASH].unCriterio = SH;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;
 	criterios[STRONG].memorias = list_create();
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
-	//memorias = list_create();
 	tablas = list_create();
 	conexionesMemoria = list_create();
 }
@@ -57,12 +55,12 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 	}
 	serializarYEnviarHandshake(socketClienteKernel,0);
 	//int recibido=  //todo devuelve pool de memorias
-	memoria* conex = malloc(sizeof(memoria));
-	conex->socket = socketClienteKernel;
-	conex->ip = ipMemoria;
-	conex->numero = *(int*) recibir(socketClienteKernel);
-	conex->puerto = puertoMemoria;
-	list_add(conexionesMemoria, conex);
+	memoria* memoriaDeConfig = malloc(sizeof(memoria));
+	memoriaDeConfig->socket = socketClienteKernel;
+	memoriaDeConfig->ip = ipMemoria;
+	memoriaDeConfig->numero = *(int*) recibir(socketClienteKernel);
+	memoriaDeConfig->puerto = puertoMemoria;
+	list_add(conexionesMemoria, memoriaDeConfig);
 	return 0;
 }
 void kernel_inicializar(){
@@ -77,7 +75,6 @@ void kernel_inicializar(){
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
-	kernel_inicializarMemoria();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
