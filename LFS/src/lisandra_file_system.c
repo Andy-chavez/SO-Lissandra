@@ -167,7 +167,6 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 
-		inicializarArchivoBitmap(); //este no iria en la entrega? nos lo dan?
 		inicializarBitmap();
 		inicializarRegistroError();
 

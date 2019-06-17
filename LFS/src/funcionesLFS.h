@@ -919,9 +919,9 @@ void agregarTablaALista(char* nombreTabla){
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
 		pthread_mutex_init(&metadataBuscado->semaforoTabla,NULL); //inicias el semaforo de la nueva tabla
 		list_add(listaDeTablas,metadataBuscado);
-		pthread_t threadCompactacion;
-		pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
-		pthread_detach(&threadCompactacion);
+		//pthread_t threadCompactacion;  ver donde poner la funcion compactar para poder usarla
+		//pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
+		//pthread_detach(&threadCompactacion);
 	}
 	pthread_mutex_unlock(&mutexListaTabla);
 }

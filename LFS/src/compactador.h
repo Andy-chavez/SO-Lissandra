@@ -339,30 +339,7 @@ void compactar(char* nombreTabla){
 		char** arrayDeBloques = config_get_array_value(archivoTmp,"BLOCKS");
 		int sizeParticion=config_get_int_value(archivoTmp,"SIZE");
 
-		int j = 0;
-
 		cargarInfoDeBloquesParaCompactacion(&bufferTemporales, arrayDeBloques, sizeParticion);
-
-		//hay que trabajar ahora con la listaRegistrosTemporales
-
-
-		/*
-		string_append(&rutaCompleta,rutaTabla);
-		string_append(&rutaCompleta,"/");
-		string_append(&rutaCompleta,nombreArchivo);
-		if(string_equals_ignore_case(nombreArchivo, "Metadata")){
-		*/
-
-		/*
-		DIR* dir=opendir(rutaTmpCompactar);
-				struct dirent *sd;
-				while((sd=readdir(dir))!=NULL){
-					if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
-				}
-
-				remove(sd->d_name);
-*/
-
 
 		remove(rutaTmpCompactar);
 		free(rutaTmpOriginal);
