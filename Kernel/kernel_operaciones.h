@@ -11,6 +11,9 @@
 #include "kernel_structs-basicos.h"
 
 /******************************DECLARACIONES******************************************/
+void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
+void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
+void agregarALista(t_list* lista, pcb* elemento, pthread_mutex_t semaphore);
 void kernel_almacenar_en_cola(char*,char*);
 void kernel_agregar_cola_proc_nuevos(char*);
 void kernel_run(char*);
@@ -34,6 +37,12 @@ int kernel_journal();
 int kernel_metrics();
 int kernel_add(char*);
 /******************************IMPLEMENTACIONES******************************************/
+//------ LISTAS ---------
+void agregarALista(t_list* lista, pcb* elemento, pthread_mutex_t semaphore){
+	pthread_mutex_lock(&semaphore);
+	list_add(lista,elemento);
+	pthread_mutex_unlock(&semaphore);
+}
 //------ TABLAS ---------
 void guardarTablaCreada(char* parametros){
 	char** opAux =string_n_split(parametros,3," ");
@@ -75,17 +84,6 @@ memoria* encontrarMemoria(int numero){
 	return memory;
 }
 memoria* encontrarMemoriaStrong(){
-//	bool memoriaRandom(memoria* mem) {
-//		return mem->numero == numero;
-//	}
-//
-//	return (memoria*) list_find(criterios[criterio].memorias, (void*)memoriaRandom);   de momento sale hardcodeo de la unica memoria que hay
-
-//	memoria* mem = malloc(sizeof(memoria));
-//	mem->ip = ipMemoria;
-//	mem->puerto = puertoMemoria;
-//	mem->numero = numPrueba;
-//	list_add(criterios[STRONG].memorias,mem);
 	return list_get(criterios[STRONG].memorias, 0);
 }
 //------ CRITERIOS ---------
@@ -122,6 +120,23 @@ bool falloOperacionLQL(void* buffer){
 	string_to_upper(recibido);
 	return string_contains(recibido, "ERROR");
 }
+void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
+	pthread_mutex_lock(&mLog);
+	log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+}
+void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
+	pthread_mutex_unlock(&mLog);
+}
+void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
+	pthread_mutex_unlock(&mLog);
+}
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
@@ -131,12 +146,8 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibir(socket))){
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-		pthread_mutex_unlock(&mLog);
-		free(recibido);
-		liberarOperacionLQL(opAux);
+	if(falloOperacionLQL(recibido)){
+		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
 	pthread_mutex_lock(&mLog);
@@ -154,12 +165,8 @@ int kernel_select(char* operacion){
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibir(socket))){
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-		pthread_mutex_unlock(&mLog);
-		free(recibido);
-		liberarOperacionLQL(opAux);
+	if(falloOperacionLQL(recibido)){
+		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
 	pthread_mutex_lock(&mLog);
@@ -175,12 +182,8 @@ int kernel_create(char* operacion){
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibir(socket))){
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-		pthread_mutex_unlock(&mLog);
-		free(recibido);
-		liberarOperacionLQL(opAux);
+	if(falloOperacionLQL(recibido)){
+		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
 	pthread_mutex_lock(&mLog);
@@ -199,7 +202,7 @@ int kernel_describe(char* operacion){
 	pthread_mutex_unlock(&mLog);
 	void* recibirBuffer = recibir(socket);;
 	metadata* met = deserializarMetadata(recibirBuffer);
-	//TODO ACTUALIZAR ESTRUCTURAS
+	//TODO ACTUALIZAR ESTRUCTURAS y arreglar esto
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
 	pthread_mutex_unlock(&mLog);
@@ -210,19 +213,15 @@ int kernel_describe(char* operacion){
 	free(opAux->operacion);
 	free(opAux->parametros);
 	free(opAux);
-	return 1;
+	return 0;
 }
 int kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibir(socket))){
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-		pthread_mutex_unlock(&mLog);
-		free(recibido);
-		liberarOperacionLQL(opAux);
+	if(falloOperacionLQL(recibido)){
+		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
 	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
@@ -236,10 +235,8 @@ int kernel_journal(){
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibir(socket))){
-		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-		free(recibido);
-		liberarOperacionLQL(opAux);
+	if(falloOperacionLQL(recibido)){
+		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
 	pthread_mutex_lock(&mLog);
@@ -265,7 +262,14 @@ int kernel_add(char* operacion){
 			//todo journal cada vez que se agregue una aca a TODAS las memorias de este criterio
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
-			list_add(criterios[STRONG].memorias, mem );
+			if(list_size(criterios[STRONG].memorias)==0)
+				list_add(criterios[STRONG].memorias, mem );
+			else{
+				pthread_mutex_lock(&mLog);
+				log_error(kernel_configYLog->log,"EXEC: %s.Ya se posee una memoria del tipo STRONG.", operacion);
+				pthread_mutex_unlock(&mLog);
+			}
+
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
@@ -285,7 +289,7 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 	return instruc->ejecutado==0;
 }
 // ---------------.: THREAD ROUND ROBIN :.---------------
-void kernel_roundRobin(){
+void kernel_roundRobin(int threadProcesador){
 	while(1){
 		sem_wait(&hayReady);
 		pcb* pcb_auxiliar;
@@ -296,13 +300,10 @@ void kernel_roundRobin(){
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(kernel_api(pcb_auxiliar->operacion)==-1){
-				pthread_mutex_lock(&mLog);
-				log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
-				pthread_mutex_unlock(&mLog);
+				loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			}
-			pthread_mutex_lock(&colaTerminados);
-			list_add(cola_proc_terminados,pcb_auxiliar);
-			pthread_mutex_unlock(&colaTerminados);
+			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
+			loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleepEjecucion*1000);
 			continue;
 		}
@@ -312,9 +313,7 @@ void kernel_roundRobin(){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(kernel_api(pcb_auxiliar->operacion)==-1){
-						pthread_mutex_lock(&mLog);
-						log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
-						pthread_mutex_unlock(&mLog);
+						loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -324,25 +323,20 @@ void kernel_roundRobin(){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(kernel_api(instruc->operacion)==0){
-					pthread_mutex_lock(&mLog);
-					log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
-					pthread_mutex_unlock(&mLog);
+				if(kernel_api(instruc->operacion)==-1){
+					loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
 				usleep(sleepEjecucion*1000);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
-				pthread_mutex_lock(&colaListos);
-				list_add(cola_proc_listos, pcb_auxiliar);
-				pthread_mutex_unlock(&colaListos);
+				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
 			}
 			else{
-				pthread_mutex_lock(&colaTerminados);
-				list_add(cola_proc_terminados, pcb_auxiliar);
-				pthread_mutex_unlock(&colaTerminados);
+				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
+				loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleepEjecucion*1000);
 				continue;
 			}
@@ -364,7 +358,7 @@ void kernel_almacenar_en_new(char*operacion){
 }
 
 void kernel_consola(){
-	printf("Proceso Kernel:	Ingrese la operacion que desea ejecutar y siga su ejecución mediante el archivo KERNEL.log\n");
+	printf("Proceso Kernel:\n	Ingrese la operacion que desea ejecutar y siga su ejecución mediante el archivo KERNEL.log\n");
 	char* linea= NULL;
 	while(1){
 		linea = readline("");
@@ -377,9 +371,7 @@ void kernel_crearPCB(char* operacion){
 	pcb_auxiliar->operacion = operacion;
 	pcb_auxiliar->ejecutado = 0;
 	pcb_auxiliar->instruccion = NULL;
-	pthread_mutex_lock(&colaNuevos);
-	list_add(cola_proc_listos,pcb_auxiliar);
-	pthread_mutex_unlock(&colaNuevos);
+	agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 	sem_post(&hayReady);
 }
 void kernel_pasar_a_ready(){
@@ -439,9 +431,7 @@ void kernel_run(char* operacion){
 		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
 	}
-	pthread_mutex_lock(&colaNuevos);
-	list_add(cola_proc_listos,pcb_auxiliar);
-	pthread_mutex_unlock(&colaNuevos);
+	agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 	free(*(opYArg+1));
 	free(*(opYArg));
 	free(opYArg);
