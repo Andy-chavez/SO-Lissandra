@@ -413,7 +413,6 @@ char* string_trim_quotation(char* string) {
 void* serializarTablaGossip(t_list* tablaGossip, int* tamanio) {
 	serializarPaqueteDeAlgo((void*) tablaGossip, tamanio, serializarSeed, TABLAGOSSIP);
 }
-
 void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
 	serializarPaqueteDeAlgo((void*) operacionesLQL, tamanio, serializarOperacionLQL, PAQUETEOPERACIONES);
 }
@@ -500,6 +499,7 @@ operacionLQL* splitear_operacion(char* operacion){
 
 	return operacionAux;
 }
+
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	int i = 0;
 	while(*(parametrosSpliteados + i)) {
@@ -508,6 +508,7 @@ void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	}
 	free(parametrosSpliteados);
 }
+
 registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* nombreTabla) {
 	registroConNombreTabla* registroParaEnviar = malloc(sizeof(registroConNombreTabla));
 

@@ -174,4 +174,25 @@ void* liberarSeed(seed* unaSeed);
 
 void liberarParametrosSpliteados(char** parametrosSpliteados);
 
+void recibirYDeserializarPaqueteDeAlgoRealizando(int socket, void(*accion)(void*), void*(funcionQueDeserializa)(void*, int*), void*(funcionQueLibera)(void*));
+
+metadata* _deserializarMetadataSinFree(void* bufferMetadata, int *tamanio);
+
+operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioTotal);
+
+seed* deserializarSeed(void* buffer, int* tamanioSeed);
+
+void* serializarSeed(seed* unaSeed, int* tamanioBuffer);
+
+void* serializarPaqueteDeAlgo(void* listaDeAlgo, int* tamanio, void*(funcionQueSerializa)(void*, int*), operacionProtocolo protocolo);
+
+void serializarYEnviarAlgo(int socket, void* algo, void*(funcionQueSerializa)(void*, int*));
+
+void recibirYDeserializarTablaDeGossipRealizando(int socket, void(*accion)(seed*));
+
+void* serializarTablaGossip(t_list* tablaGossip, int* tamanio);
+
+void serializarYEnviarTablaGossip(int socket, t_list* tablaGossip);
+
+
 #endif /* SERIALIZACION_H_ */

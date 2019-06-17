@@ -9,15 +9,12 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <commonsPropias/conexiones.h>
 #include <commons/config.h>
 #include <pthread.h>
 #include <string.h>
-
 #include "ker_operaciones.h"
 
-/*
- * EJEMPLOS:
+/* EJEMPLOS:
  * INSERT TABLA1 515 malesal
  * SELECT TABLA1 515
  * DESCRIBE TABLA1
@@ -26,7 +23,6 @@
  * METRICS
  * JOURNAL
  * ADD MEMORY 5 TO EC
- *
  */
 
 int main(int argc, char *argv[]){

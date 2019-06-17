@@ -1,7 +1,6 @@
 #ifndef KER_OPERACIONES_H_
 #define KER_OPERACIONES_H_
-#include <commonsPropias/conexiones.h>
-#include <commonsPropias/serializacion.h>
+
 #include "ker_configuraciones.h"
 #include "ker_structs.h"
 

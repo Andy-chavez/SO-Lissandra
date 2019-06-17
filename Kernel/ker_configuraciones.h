@@ -1,9 +1,6 @@
 #ifndef KER_CONFIGURACIONES_H_
 #define KER_CONFIGURACIONES_H_
-#include <commons/config.h>
-#include <commons/string.h>
-#include <commonsPropias/conexiones.h>
-#include <commonsPropias/serializacion.h>
+
 #include <sys/types.h>
 #include <sys/inotify.h>
 #include "ker_auxiliares.h"
