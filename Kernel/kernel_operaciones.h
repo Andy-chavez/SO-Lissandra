@@ -294,7 +294,14 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_lock(&colaListos);
 		pcb_auxiliar = (pcb*) list_remove(cola_proc_listos,0);
 		pthread_mutex_unlock(&colaListos);
-
+		int sleep;
+		pthread_mutex_lock(&sleepExec);
+		sleep = sleepEjecucion*1000;
+		pthread_mutex_unlock(&sleepExec);
+		int q;
+		pthread_mutex_lock(&quantum);
+		q = quantumMax;
+		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(kernel_api(pcb_auxiliar->operacion)==-1){
@@ -302,12 +309,13 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 			loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
-			usleep(sleepEjecucion*1000);
+			usleep(sleep);
 			continue;
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
 			int ERROR= 0;
-			for(int quantum=0;quantum<quantumMax;quantum++){
+
+			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(kernel_api(pcb_auxiliar->operacion)==-1){
@@ -326,7 +334,7 @@ void kernel_roundRobin(int threadProcesador){
 					ERROR = -1;
 					break;
 				}
-				usleep(sleepEjecucion*1000);
+				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
@@ -335,7 +343,7 @@ void kernel_roundRobin(int threadProcesador){
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 				loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
-				usleep(sleepEjecucion*1000);
+				usleep(sleep);
 				continue;
 			}
 

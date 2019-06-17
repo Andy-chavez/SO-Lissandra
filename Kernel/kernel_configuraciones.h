@@ -30,7 +30,10 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	pthread_mutex_init(&mLog, NULL);
-	pthread_mutex_init(&mutexMemorias,NULL);
+	pthread_mutex_init(&mMemorias,NULL);
+	pthread_mutex_init(&quantum, NULL);
+	pthread_mutex_init(&sleepExec,NULL);
+	pthread_mutex_init(&metadataRefresh,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&modificables,0,0);
@@ -53,7 +56,7 @@ void guardarDatos(seed* unaSeed){ //todo ver conexiones
 	memAux->numero = unaSeed->numero;
 	memAux->puerto = itoa(unaSeed->puerto);
 	memAux->ip = itoa(unaSeed->ip);
-	agregarALista(memorias,memAux,mutexMemorias);
+	agregarALista(memorias,memAux,mMemorias);
 }
 int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
@@ -93,7 +96,10 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
 	pthread_mutex_destroy(&mLog);
-	pthread_mutex_destroy(&mutexMemorias);
+	pthread_mutex_destroy(&mMemorias);
+	pthread_mutex_destroy(&quantum);
+	pthread_mutex_destroy(&sleepExec);
+	pthread_mutex_destroy(&metadataRefresh);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
@@ -158,12 +164,16 @@ void* cambiosConfig(){
  				pthread_mutex_lock(&mLog);
 				log_info(kernel_configYLog->log,"Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 				pthread_mutex_unlock(&mLog);
- 				sem_wait(&modificables);
- 				quantumMax = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
- 				metadataRefresh = config_get_int_value(configConNuevosDatos, "METADATA_REFRESH");
- 				sleepEjecucion = config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION");
-				sem_post(&modificables);
 
+				pthread_mutex_lock(&quantum);
+ 				quantumMax = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
+ 				pthread_mutex_unlock(&quantum);
+				pthread_mutex_lock(&sleepExec);
+ 				sleepEjecucion = config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION");
+ 				pthread_mutex_unlock(&sleepExec);
+				pthread_mutex_lock(&metadataRefresh);
+ 				metadataRefresh = config_get_int_value(configConNuevosDatos, "METADATA_REFRESH");
+ 				pthread_mutex_unlock(&metadataRefresh);
 			}
  			config_destroy(configConNuevosDatos);
 			desplazamiento += sizeof (struct inotify_event) + event->len;
