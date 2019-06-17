@@ -41,14 +41,16 @@ void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion){
 
 	char* infoAGuardar = string_new();
 
-	string_append(&infoAGuardar, "SIZE=");
+//	string_append(&infoAGuardar, "SIZE=");
 	//aca no se bien que va al principio, por ahora le dejo 0 pero creo que cuando empezas con 1 bloque es el block size pero en string
 	//aca no va 0
-	string_append(&infoAGuardar, "0");
-	string_append(&infoAGuardar, "\n");
-	string_append(&infoAGuardar, "BLOCKS=[");
+	//	string_append(&infoAGuardar, "0");
+	//string_append(&infoAGuardar, "\n");
+	//string_append(&infoAGuardar, "BLOCKS=[");
+
 	//como hago pa que no se guarde la ultima coma jaja
 
+	/*
 	for (int i=0; i<sizeof(arrayDeBloques) - 2; i++){
 		int k = (sizeof(arrayDeBloques) - 2);
 		if(i == (sizeof(arrayDeBloques) -2)){
@@ -59,9 +61,34 @@ void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion){
 		}
 	}
 	string_append(&infoAGuardar, "]");
+*/
 
+
+				int cantidadDeBloques = sizeof(arrayDeBloques) - 2;
+
+				string_append(&infoAGuardar, "SIZE=");
+				string_append(&infoAGuardar, "0");
+//				string_append(&infoAGuardar, string_itoa(sizeParticion * sizeof(arrayDeBloques)));
+				string_append(&infoAGuardar, "\n");
+				string_append(&infoAGuardar, "BLOCKS=[");
+				int i=0;
+
+				while(cantidadDeBloques>0){
+				string_append(&infoAGuardar, *(arrayDeBloques + i));
+				cantidadDeBloques--;
+				i++;
+				if(cantidadDeBloques>0) string_append(&infoAGuardar,",");
+				}
+				string_append(&infoAGuardar, "]");
+/*
+				while(cantidadDeBloques>0){
+						char* bloqueLibre = devolverBloqueLibre();
+						string_append(&info,bloqueLibre);
+						cantidadDeBloques--;
+						if(cantidadDeBloques>0) string_append(&info,","); //si es el ultimo no quiero que me ponga una ,
+					}
+*/
 remove(rutaParticion);
-mkdir(rutaParticion, 0777);
 guardarInfoEnArchivo(rutaParticion, infoAGuardar);
 free(infoAGuardar);
 }
@@ -91,21 +118,9 @@ void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizePartic
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, &bufferTemporales);
 
 		//ver si funca esto, dejo asi comentado porque hay que ver el tema del drop si hay algo que se use para borrar archivos
-		/*
-		char* infoAGuardar = string_new();
-			string_append(&infoAGuardar, "SIZE=");
-			string_append(&infoAGuardar, string_itoa(sizeParticion * sizeof(arrayDeBloques)));
-			string_append(&infoAGuardar, "\n");
-			string_append(&infoAGuardar, "BLOCKS=[");
-			while(*(arrayDeBloques + i) != NULL){
-			string_append(&infoAGuardar, string_itoa(*(arrayDeBloques + i)));
-			string(&infoAGuardar, ",");
-			i++;
-			}
-			string_append(&infoAGuardar, "]");
-			guardarInfoEnArchivo(rutaParticion, infoAGuardar);
-			free(infoAGuardar);
-*/
+
+	//	guardarInfoEnArchivo(rutaParticion, infoAGuardar);
+
 
 //		liberarDoblePuntero(separarRegistro);
 	}
@@ -253,7 +268,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			}
 			//meter una lista de registros temporales en un buffer
 			cargarListaEnBuffer(listaRegistrosTemporalesDeParticionActual, &bufferTemporales);
-			ingresarNuevaInfo(rutaTabla, arrayDeBloques, sizeParticion, bufferTemporales);
+			ingresarNuevaInfo(rutaParticion, arrayDeBloques, sizeParticion, bufferTemporales);
 			//break porque no puede haber una particion que tenga data si la anterior no tenia data
 			//puede ser q sea continue
 			continue;
@@ -330,10 +345,14 @@ void compactar(char* nombreTabla){
 
 		//hay que trabajar ahora con la listaRegistrosTemporales
 
-		free(rutaTmpOriginal);
-		free(rutaTmpCompactar);
 
-		//preguntar a janfris
+		/*
+		string_append(&rutaCompleta,rutaTabla);
+		string_append(&rutaCompleta,"/");
+		string_append(&rutaCompleta,nombreArchivo);
+		if(string_equals_ignore_case(nombreArchivo, "Metadata")){
+		*/
+
 		/*
 		DIR* dir=opendir(rutaTmpCompactar);
 				struct dirent *sd;
@@ -345,7 +364,9 @@ void compactar(char* nombreTabla){
 */
 
 
-	//	remove(rutaTmpCompactar);
+		remove(rutaTmpCompactar);
+		free(rutaTmpOriginal);
+		free(rutaTmpCompactar);
 		config_destroy(archivoTmp);
 	}
 
