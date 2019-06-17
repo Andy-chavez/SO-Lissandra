@@ -159,8 +159,12 @@ marco* algoritmoLRU() {
 	paginaEnTabla* paginaACambiar = NULL;
 
 	void compararTimestamp(paginaEnTabla* pagina){
-		if(pagina->flag == SI && (pagina->timestamp < paginaACambiar->timestamp || paginaACambiar == NULL)){
-			paginaACambiar = pagina;
+		if(pagina->flag == NO) {
+			if(paginaACambiar == NULL) {
+				paginaACambiar = pagina;
+			} else if(pagina->timestamp < paginaACambiar->timestamp){
+				paginaACambiar = pagina;
+			}
 		}
 	}
 
@@ -189,8 +193,13 @@ marco* encontrarEspacio(int socketKernel) {
 		if(!(marcoLibre = algoritmoLRU())) {
 			enviarOMostrarYLogearInfo(-1, "el algoritmo LRU no pudo liberar memoria. empezando proceso de journal");
 			char lleno = "FULL";
-			enviar(socketKernel, (void*) lleno , strlen(lleno) + 1);
+				if(socketKernel == -1){
+					enviarYLogearMensajeError(socketKernel, "ERROR: No se puede realizar el Insert, espere el timed journal ");
+					return NULL;
+				}
 
+			enviar(socketKernel, (void*) lleno , strlen(lleno) + 1);
+			return NULL;
 		}
 	}
 
@@ -400,7 +409,12 @@ void dropearSegmento(segmento* unSegmento) {
 		free(unaPagina);
 	}
 
+	void* igualNombreSegmento(segmento* otroSegmento){
+		return unSegmento->nombreTabla == otroSegmento->nombreTabla;
+	}
+
 	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
+	list_remove_by_condition(MEMORIA_PRINCIPAL->tablaSegmentos,igualNombreSegmento);
 	free(unSegmento->nombreTabla);
 	free(unSegmento);
 }
@@ -673,8 +687,8 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 		dropearSegmento(unSegmento);
 	}
 
-	char* mensaje = (char*) pedirALFS(operacionDrop);
-
+	//char* mensaje = (char*) pedirALFS(operacionDrop);
+	char* mensaje = string_duplicate("VAMAAAA"); // WEA RE LEAGIAENGOEANHR
 	if(!mensaje) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DROP");
 	}
@@ -812,3 +826,15 @@ void* timedGossip() {
 		usleep(retardoGossip);
 	}
 }
+
+void* timedJournal(){
+
+	while(1){
+		sem_wait(&MUTEX_RETARDO_JOURNAL);
+		int retardoJournal = RETARDO_JOURNAL * 1000;
+		sem_post(&MUTEX_RETARDO_JOURNAL);
+		journalLQL(-1);
+		usleep(retardoJournal);
+	}
+}
+

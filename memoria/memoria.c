@@ -69,9 +69,11 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
+		dropLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un JOURNAL");
+		journalLQL(socketKernel);
 		}
 	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
@@ -236,8 +238,7 @@ void* cambiosConfig() {
 }
 
 int main() {
-	printf("%d %d\n", sizeof(time_t), sizeof(uint16_t));
-	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping; // threadTimedJournal,
+	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
@@ -254,13 +255,13 @@ int main() {
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
-	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
+	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
 
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadCambiosConfig, NULL);
-	//pthread_detach(threadTimedJournal);
+	pthread_detach(threadTimedJournal);
 	pthread_join(threadTimedGossiping, NULL);
 
 	liberarMemoria();
