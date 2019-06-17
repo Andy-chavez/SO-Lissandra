@@ -500,8 +500,14 @@ operacionLQL* splitear_operacion(char* operacion){
 
 	return operacionAux;
 }
-
-
+void liberarParametrosSpliteados(char** parametrosSpliteados) {
+	int i = 0;
+	while(*(parametrosSpliteados + i)) {
+		free(*(parametrosSpliteados + i));
+		i++;
+	}
+	free(parametrosSpliteados);
+}
 registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* nombreTabla) {
 	registroConNombreTabla* registroParaEnviar = malloc(sizeof(registroConNombreTabla));
 

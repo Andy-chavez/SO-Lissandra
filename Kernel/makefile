@@ -1,6 +1,6 @@
 OBJS	:= kernel.o
 SOURCE	:= kernel.c
-HEADER	:= kernel_configuraciones.h kernel_operaciones.h kernel_structs-basicos.h
+HEADER	:= ker_configuraciones.h ker_operaciones.h ker_structs.h ker_auxiliares.h
 OUT	:= elKernel.o
 CC	 := gcc
 FLAGS	 := -g -c -Wall
