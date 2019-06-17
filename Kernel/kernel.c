@@ -32,17 +32,20 @@ int main(int argc, char *argv[]){
 
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
-	pthread_t threadRoundRobin;
 
 	kernel_inicializar(); //TODO agregar if, si no conecta exit
 
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
-	pthread_create(&threadRoundRobin, NULL,(void*) kernel_roundRobin, NULL);
+	for(int i = 0; i<multiprocesamiento;i++){
+		pthread_t i;
+		pthread_create(&i, NULL,(void*) kernel_roundRobin, NULL);
+	}
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
-	pthread_join(threadRoundRobin,NULL);
-
+	for(int i = 0; i<multiprocesamiento;i++){
+		pthread_join(i,NULL);
+	}
 	kernel_finalizar();
 	return EXIT_SUCCESS;
 }

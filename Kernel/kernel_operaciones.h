@@ -127,15 +127,21 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socket = socketMemoriaSolicitada(SC);
 	serializarYEnviarOperacionLQL(socket, opAux);
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
+	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibir(socket))){
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		pthread_mutex_unlock(&mLog);
 		free(recibido);
 		liberarOperacionLQL(opAux);
 		return -1;
 	}
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
 	return 0;
@@ -144,15 +150,21 @@ int kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socket = socketMemoriaSolicitada(SC);
 	serializarYEnviarOperacionLQL(socket, opAux);
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
+	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibir(socket))){
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		pthread_mutex_unlock(&mLog);
 		free(recibido);
 		liberarOperacionLQL(opAux);
 		return -1;
 	}
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
 	return 0;
@@ -164,12 +176,16 @@ int kernel_create(char* operacion){
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibir(socket))){
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		pthread_mutex_unlock(&mLog);
 		free(recibido);
 		liberarOperacionLQL(opAux);
 		return -1;
 	}
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
 	return 0;
@@ -178,11 +194,15 @@ int kernel_describe(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
+	pthread_mutex_unlock(&mLog);
 	void* recibirBuffer = recibir(socket);;
 	metadata* met = deserializarMetadata(recibirBuffer);
 	//TODO ACTUALIZAR ESTRUCTURAS
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
+	pthread_mutex_unlock(&mLog);
 	free(recibirBuffer);
 	free(met->nombreTabla);
 	free(met);
@@ -198,7 +218,9 @@ int kernel_drop(char* operacion){
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibir(socket))){
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		pthread_mutex_unlock(&mLog);
 		free(recibido);
 		liberarOperacionLQL(opAux);
 		return -1;
@@ -220,7 +242,9 @@ int kernel_journal(){
 		liberarOperacionLQL(opAux);
 		return -1;
 	}
+	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
 	return 0;
@@ -249,7 +273,9 @@ int kernel_add(char* operacion){
 		return 0;
 	}
 	else{
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log,"EXEC: %s.Memmoria no conectada.", operacion);
+		pthread_mutex_unlock(&mLog);
 		return -1;
 	}
 	liberarParametrosSpliteados(opAux);
@@ -268,22 +294,27 @@ void kernel_roundRobin(){
 		pthread_mutex_unlock(&colaListos);
 
 		if(pcb_auxiliar->instruccion == NULL){
-				pcb_auxiliar->ejecutado=1;
-				if(kernel_api(pcb_auxiliar->operacion)==-1)
-					log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
-				pthread_mutex_lock(&colaTerminados);
-				list_add(cola_proc_terminados,pcb_auxiliar);
-				pthread_mutex_unlock(&colaTerminados);
-				usleep(sleepEjecucion*1000);
-				continue;
+			pcb_auxiliar->ejecutado=1;
+			if(kernel_api(pcb_auxiliar->operacion)==-1){
+				pthread_mutex_lock(&mLog);
+				log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
+				pthread_mutex_unlock(&mLog);
 			}
+			pthread_mutex_lock(&colaTerminados);
+			list_add(cola_proc_terminados,pcb_auxiliar);
+			pthread_mutex_unlock(&colaTerminados);
+			usleep(sleepEjecucion*1000);
+			continue;
+		}
 		else if(pcb_auxiliar->instruccion !=NULL){
 			int ERROR= 0;
 			for(int quantum=0;quantum<quantumMax;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					if(kernel_api(pcb_auxiliar->operacion)==0){
+					if(kernel_api(pcb_auxiliar->operacion)==-1){
+						pthread_mutex_lock(&mLog);
 						log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
+						pthread_mutex_unlock(&mLog);
 						ERROR = -1;
 						break;
 					}
@@ -294,7 +325,9 @@ void kernel_roundRobin(){
 				}
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==0){
+					pthread_mutex_lock(&mLog);
 					log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
+					pthread_mutex_unlock(&mLog);
 					ERROR = -1;
 					break;
 				}
@@ -368,7 +401,9 @@ void kernel_pasar_a_ready(){
 			kernel_crearPCB(operacion);
 		}
 		else{
+			pthread_mutex_lock(&mLog);
 			log_error(kernel_configYLog->log,"NEW: %s", operacion);
+			pthread_mutex_unlock(&mLog);
 		}
 	}
 }
@@ -378,7 +413,9 @@ void kernel_run(char* operacion){
 	string_to_lower(*(opYArg+1));
 	FILE *archivoALeer;
 	if ((archivoALeer= fopen((*(opYArg+1)), "r")) == NULL){
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log,"EXEC: %s %s. (Consejo: verifique existencia del archivo)", *opYArg, *(opYArg+1) ); //operacion);
+		pthread_mutex_unlock(&mLog);
 		free(*(opYArg+1));
 		free(*(opYArg));
 		free(opYArg);
@@ -440,7 +477,9 @@ int kernel_api(char* operacionAParsear)
 		return kernel_metrics();
 	}
 	else {
+		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
+		pthread_mutex_unlock(&mLog);
 		free(operacionAParsear);
 		return 0;
 	}
