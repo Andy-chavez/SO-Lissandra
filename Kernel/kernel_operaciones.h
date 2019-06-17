@@ -30,10 +30,9 @@ int kernel_metrics();
 int kernel_add(char*);
 /******************************IMPLEMENTACIONES******************************************/
 //------ ERRORES ---------
-bool falloOperacionLQL(void* buffer){
-	char* recibido = (char*) buffer;
+bool recibidoContiene(char* recibido, char* contiene){
 	string_to_upper(recibido);
-	return string_contains(recibido, "ERROR");
+	return string_contains(recibido, contiene);
 }
 //------ TABLAS ---------
 void guardarTablaCreada(char* parametros){
@@ -123,10 +122,13 @@ int kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a l
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibido)){
+	if(recibidoContiene(recibido, "ERROR")){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		liberarParametrosSpliteados(parametros);
 		return -1;
+	}
+	else if(recibidoContiene(recibido, "FULL")){
+		enviarJournal(socket);
 	}
 	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
 	liberarParametrosSpliteados(parametros);
@@ -142,7 +144,7 @@ int kernel_select(char* operacion){
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibido)){
+	if(recibidoContiene(recibido, "ERROR")){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		liberarParametrosSpliteados(parametros);
 		return -1;
@@ -159,7 +161,7 @@ int kernel_create(char* operacion){
 	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibido)){
+	if(recibidoContiene(recibido, "ERROR")){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		liberarParametrosSpliteados(parametros);
 		return -1;
@@ -191,7 +193,7 @@ int kernel_drop(char* operacion){
 	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibido)){
+	if(recibidoContiene(recibido, "ERROR")){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
@@ -204,7 +206,7 @@ int kernel_journal(){
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibido)){
+	if(recibidoContiene(recibido, "ERROR")){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
@@ -222,7 +224,7 @@ int enviarJournal(int socket){
 	log_info(kernel_configYLog->log, "ENVIADO: JOURNAL");
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(falloOperacionLQL(recibido)){
+	if(recibidoContiene(recibido, "ERROR")){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
@@ -240,19 +242,25 @@ void journal_hash(){
 void journal_eventual(){
 
 }
-int kernel_add(char* operacion){
+int realizarConexion(memoria* mem){
+	return crearSocketCliente(mem->ip,mem->puerto);
+}
+int kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_equals_ignore_case(*(opAux+4),"HASH")){
+			mem->socket = realizarConexion(mem);
 			list_add(criterios[HASH].memorias, mem );
 			kernel_journal();
 			//todo journal cada vez que se agregue una aca a TODAS las memorias de este criterio
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
-			if(list_size(criterios[STRONG].memorias)==0)
+			if(list_size(criterios[STRONG].memorias)==0){
+				mem->socket = realizarConexion(mem);
 				list_add(criterios[STRONG].memorias, mem );
+			}
 			else{
 				pthread_mutex_lock(&mLog);
 				log_error(kernel_configYLog->log,"EXEC: %s.Ya se posee una memoria del tipo STRONG.", operacion);
@@ -261,6 +269,7 @@ int kernel_add(char* operacion){
 
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
+			mem->socket = realizarConexion(mem);
 			list_add(criterios[EVENTUAL].memorias, mem );
 		}
 		return 0;

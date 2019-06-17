@@ -50,7 +50,7 @@ void kernel_crearListas(){
 }
 void guardarDatos(seed* unaSeed){ //todo ver conexiones
 	memoria* memAux = malloc(sizeof(memoria));
-	memAux->numero = itoa(unaSeed->numero);
+	memAux->numero = unaSeed->numero;
 	memAux->puerto = itoa(unaSeed->puerto);
 	memAux->ip = itoa(unaSeed->ip);
 	agregarALista(memorias,memAux,mutexMemorias);
@@ -61,13 +61,7 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 		return -1;
 	}
 	serializarYEnviarHandshake(socketClienteKernel,0);
-	memoria* memoriaDeConfig = malloc(sizeof(memoria));
-	memoriaDeConfig->socket = socketClienteKernel;
-	memoriaDeConfig->ip = ipMemoria;
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
-	memoriaDeConfig->numero = *(int*) recibir(socketClienteKernel); //todo cambiar eso
-	memoriaDeConfig->puerto = puertoMemoria;
-	list_add(conexionesMemoria, memoriaDeConfig);
 	return 0;
 }
 void kernel_inicializarVariables(){
