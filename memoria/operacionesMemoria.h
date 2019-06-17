@@ -93,7 +93,7 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
 }
 
-void* liberarSegmento(segmento* unSegmento) {
+void* liberarSegmentos(segmento* unSegmento) {
 	void* liberarPaginas(paginaEnTabla* unRegistro) {
 		free(unRegistro);
 	}
@@ -112,7 +112,7 @@ void liberarConfigYLogs() {
 }
 void liberarMemoria() {
 	free(MEMORIA_PRINCIPAL->base);
-	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
+	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmentos);
 	free(MEMORIA_PRINCIPAL);
 }
 
@@ -124,10 +124,6 @@ void vaciarMemoria() {
 	list_iterate(TABLA_MARCOS, marcarMarcoComoDisponible);
 	size_t tamanioMemoria = MEMORIA_PRINCIPAL->limite - MEMORIA_PRINCIPAL->base;
 	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria); // para que se vea lindo despues de hacer el journal tambien
-
-	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
-
-	MEMORIA_PRINCIPAL->tablaSegmentos = list_create();
 }
 
 void liberarTablaMarcos() {
@@ -187,7 +183,7 @@ marco* encontrarEspacio() {
 		enviarOMostrarYLogearInfo(-1, "No se encontro espacio libre en la tabla de marcos. Empezando algoritmo LRU");
 		if(!(marcoLibre = algoritmoLRU())) {
 			enviarOMostrarYLogearInfo(-1, "el algoritmo LRU no pudo liberar memoria. empezando proceso de journal");
-			//TODO informar a Kernel para que fuerze un JournalLQL()
+			//informar a Kernel para que fuerze un JournalLQL()
 		};
 	}
 
@@ -246,58 +242,6 @@ int guardarEnMemoria(registroConNombreTabla* unRegistro) {
 }
 
 
-
-registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
-	registro* registroARetornar = malloc(sizeof(registro));
-	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
-
-	memcpy(&(registroARetornar->timestamp),(time_t*) marcoEnMemoria->lugarEnMemoria, sizeof(time_t));
-	int desplazamiento = sizeof(time_t);
-
-	memcpy(&(registroARetornar->key), (uint16_t*) (marcoEnMemoria->lugarEnMemoria + desplazamiento), sizeof(uint16_t));
-	desplazamiento += sizeof(uint16_t);
-
-	registroARetornar->value = malloc(marcoEnMemoria->tamanioValue);
-	memcpy(registroARetornar->value, (marcoEnMemoria->lugarEnMemoria + desplazamiento), marcoEnMemoria->tamanioValue);
-
-	return registroARetornar;
-}
-
-void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
-	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, MEMORIA_PRINCIPAL->tamanioMaximoValue);
-
-	marco* marcoACambiarValue = list_get(TABLA_MARCOS, registroACambiar->marco);
-
-	guardarEnMarco(marcoACambiarValue, bufferParaCambio);
-
-	liberarbufferDePagina(bufferParaCambio);
-}
-
-// ------------------------------------------------------------------------ //
-// 3) OPERACIONES CON LISSANDRA FILE SYSTEM //
-
-void* pedirALFS(operacionLQL *operacion) {
-	sem_wait(&MUTEX_SOCKET_LFS);
-	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
-	void* buffer = recibir(SOCKET_LFS);
-	sem_post(&MUTEX_SOCKET_LFS);
-	return buffer;
-}
-
-registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
-	void* bufferRegistroConTabla = pedirALFS(operacion);
-	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
-
-	if(atoi(paginaEncontradaEnLFS->nombreTabla)) {
-		return NULL;
-	}
-
-	return paginaEncontradaEnLFS;
-}
-
-// ------------------------------------------------------------------------ //
-// 4) OPERACIONES SOBRE LISTAS, SEGMENTOS Y PAGINAS //
-
 paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 	int marco = guardarEnMemoria(unRegistro);
@@ -354,6 +298,57 @@ void* agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int so
 	enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 }
 
+registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
+	registro* registroARetornar = malloc(sizeof(registro));
+	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
+
+	memcpy(&(registroARetornar->timestamp),(time_t*) marcoEnMemoria->lugarEnMemoria, sizeof(time_t));
+	int desplazamiento = sizeof(time_t);
+
+	memcpy(&(registroARetornar->key), (uint16_t*) (marcoEnMemoria->lugarEnMemoria + desplazamiento), sizeof(uint16_t));
+	desplazamiento += sizeof(uint16_t);
+
+	registroARetornar->value = malloc(marcoEnMemoria->tamanioValue);
+	memcpy(registroARetornar->value, (marcoEnMemoria->lugarEnMemoria + desplazamiento), marcoEnMemoria->tamanioValue);
+
+	return registroARetornar;
+}
+
+void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
+	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+
+	marco* marcoACambiarValue = list_get(TABLA_MARCOS, registroACambiar->marco);
+
+	guardarEnMarco(marcoACambiarValue, bufferParaCambio);
+
+	liberarbufferDePagina(bufferParaCambio);
+}
+
+// ------------------------------------------------------------------------ //
+// 3) OPERACIONES CON LISSANDRA FILE SYSTEM //
+
+void* pedirALFS(operacionLQL *operacion) {
+	sem_wait(&MUTEX_SOCKET_LFS);
+	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
+	void* buffer = recibir(SOCKET_LFS);
+	sem_post(&MUTEX_SOCKET_LFS);
+	return buffer;
+}
+
+registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
+	void* bufferRegistroConTabla = pedirALFS(operacion);
+	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
+
+	if(atoi(paginaEncontradaEnLFS->nombreTabla)) {
+		return NULL;
+	}
+
+	return paginaEncontradaEnLFS;
+}
+
+// ------------------------------------------------------------------------ //
+// 4) OPERACIONES SOBRE LISTAS, TABLAS Y PAGINAS //
+
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
 	int i = 0;
 	while(*(parametrosSpliteados + i)) {
@@ -384,19 +379,6 @@ registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 
 	free(key);
 	return nuevoRegistro;
-}
-
-void dropearSegmento(segmento* unSegmento) {
-	void liberarMarcoYPagina(paginaEnTabla* unaPagina) {
-		marco* marcoDePagina = list_get(TABLA_MARCOS, unaPagina->marco);
-		marcoDePagina->estaEnUso = 0;
-
-		free(unaPagina);
-	}
-
-	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
-	free(unSegmento->nombreTabla);
-	free(unSegmento);
 }
 
 void liberarRegistro(registro* unRegistro) {
@@ -631,7 +613,7 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
 	}
 
-	else {
+	else{
 	enviarOMostrarYLogearInfo(socketKernel, mensaje);
 
 	free(mensaje);
@@ -656,22 +638,7 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
-	segmento* unSegmento;
 
-	if(unSegmento = encontrarSegmentoPorNombre(operacionDrop->parametros)) {
-		dropearSegmento(unSegmento);
-	}
-
-	char* mensaje = (char*) pedirALFS(operacionDrop);
-
-	if(!mensaje) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DROP");
-	}
-	else {
-		enviarOMostrarYLogearInfo(socketKernel, mensaje);
-
-		free(mensaje);
-	}
 }
 // ------------------------------------------------------------------------ //
 // 7) TIMED OPERATIONS //
