@@ -32,7 +32,11 @@ int main(int argc, char *argv[]){
 
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
-
+	if(argc==0){
+		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.");
+		return EXIT_FAILURE;
+	}
+	pathConfig = (char*) argv[1];
 	if(kernel_inicializarMemoria()){
 		kernel_inicializar();
 		pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);

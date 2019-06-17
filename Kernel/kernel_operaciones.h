@@ -21,7 +21,7 @@ void kernel_consola();
 int kernel_api(char*);
 void guardarTablacreada(char*);
 void eliminarTablaCreada(char* );
-/* TODO describe, metrics y journal, hash de criterio y eventual
+/* TODO describe, metrics y journal(a cada una de las memorias asociadas a los criterios), hash de criterio y eventual
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
@@ -86,8 +86,38 @@ memoria* encontrarMemoriaStrong(){
 	return list_get(criterios[STRONG].memorias, 0);
 }
 //------ CRITERIOS ---------
+int enviarJournal(int socket){
+	operacionLQL* opAux=splitear_operacion("JOURNAL");
+	serializarYEnviarOperacionLQL(socket, opAux);
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, "ENVIADO: JOURNAL");
+	pthread_mutex_unlock(&mLog);
+	char* recibido = (char*) recibir(socket);
+	if(falloOperacionLQL(recibido)){
+		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
+		return -1;
+	}
+	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+	return 0;
+}
+void journal_strong(){
+	enviarJournal(socketMemoriaSolicitada(SC));
+}
+void journal_hash(){
 
+}
+void journal_eventual(){
 
+}
+consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
+	bool encontrarTabla(tabla t){
+		return t->nombreDeTabla == nombreTablaBuscada;
+	}
+	tabla retorno = list_find(tablas,(void*)encontrarTabla);
+	return retorno->consistenciaDeTabla;
+}
 //------ CONEXION ---------
 int encontrarSocketDeMemoria(int numero){
 	bool encontrarSocket(memoria* unaConex){
@@ -126,6 +156,13 @@ void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	free(recibido);
 	liberarOperacionLQL(opAux);
 }
+void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+}
 void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
@@ -137,9 +174,11 @@ void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_unlock(&mLog);
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
-int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
+int kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
-	int socket = socketMemoriaSolicitada(SC);
+	char** parametros = string_n_split(operacion,2," ");
+	consistencia consistenciaSolicitada = encontrarConsistenciaDe(*(parametros));
+	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
@@ -147,18 +186,18 @@ int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memo
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibido)){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
+		liberarParametrosSpliteados(parametros);
 		return -1;
 	}
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
+	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	liberarParametrosSpliteados(parametros);
 	return 0;
 }
 int kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	int socket = socketMemoriaSolicitada(SC);
+	char** parametros = string_n_split(operacion,2," ");
+	consistencia consistenciaSolicitada = encontrarConsistenciaDe(*(parametros));
+	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
@@ -166,35 +205,34 @@ int kernel_select(char* operacion){
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibido)){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
+		liberarParametrosSpliteados(parametros);
 		return -1;
 	}
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
+	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	liberarParametrosSpliteados(parametros);
 	return 0;
 }
 int kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
-	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	char** parametros = string_n_split(operacion,2," ");
+	consistencia consistenciaSolicitada = encontrarConsistenciaDe(*(parametros));
+	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibido)){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
+		liberarParametrosSpliteados(parametros);
 		return -1;
 	}
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
+	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	liberarParametrosSpliteados(parametros);
 	return 0;
 }
 int kernel_describe(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
+	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
@@ -210,16 +248,15 @@ int kernel_describe(char* operacion){
 }
 int kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
+	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
 	serializarYEnviarOperacionLQL(socket, opAux);
 	char* recibido = (char*) recibir(socket);
 	if(falloOperacionLQL(recibido)){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	free(recibido);
-	liberarOperacionLQL(opAux);
+	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
 	return 0;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
@@ -232,11 +269,7 @@ int kernel_journal(){
 		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 		return -1;
 	}
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
+	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
 	return 0;
 }
 int kernel_metrics(){
