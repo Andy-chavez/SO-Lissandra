@@ -69,7 +69,6 @@ metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la rut
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
 char* infoEnBloque(char* numeroBloque,int sizeTabla);
-int largoBloque(char* numeroDeBloque); //este quizas no vaya
 bool estaLaKey(int key,void* elemento);
 bool esIgualAlNombre(char* nombreTabla,void * elemento);
 void* devolverMayor(registro* registro1, registro* registro2);
@@ -192,7 +191,6 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, tablaMem* tabla){
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
 			list_add(tabla->listaRegistros, unRegistro);
-
 			pthread_mutex_lock(&mutexLogger);
 			log_info(logger, "Se añadio registro");
 			pthread_mutex_unlock(&mutexLogger);
@@ -306,7 +304,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 	int cantParticiones;
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
-	metadata* unaMetadata;//= malloc(sizeof(metadata)); //ver si es necesario malloc, no me acuerdo porque lo pusimos
+	metadata* unaMetadata= malloc(sizeof(metadata)); //ver si es necesario malloc, no me acuerdo porque lo pusimos
 
 
 	char* ruta = string_new();
@@ -334,18 +332,6 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 }
 
-int largoBloque(char* numeroBloque){
-	char* rutaBloque = string_new();
-	string_append(&rutaBloque,puntoMontaje);
-	string_append(&rutaBloque,"Bloques/");
-	string_append(&rutaBloque,numeroBloque);
-	string_append(&rutaBloque,".bin");
-	struct stat sb;
-	int archivo = open(rutaBloque,O_RDWR);
-	fstat(archivo,&sb);
-	return sb.st_size+1;
-}
-
 void liberarDoblePuntero(char** doblePuntero){
 	int i;
 	for (i=0; *(doblePuntero+i)!= NULL; i++){
@@ -367,8 +353,6 @@ void cargarInfoDeBloques(char*** buffer, char**arrayDeBloques, int sizeParticion
 void cargarInfoDeTmp(char** buffer, char* nombreTabla){
 		char* ruta = string_new();
 		t_config* part;
-		char* bufferAux = string_new();
-		bufferAux = buffer;
 		int numeroTmp = obtenerCantTemporales(nombreTabla);
 
 		for (int i = 0; i< numeroTmp; i++){
@@ -554,9 +538,12 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		if(socket!=-1){
 			if(!registroBuscado) {
 				serializarYEnviarRegistro(socket, registroError);
+				return;
 			}
 			else {
 				serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
+				log_info(loggerConsola,"El value del registro buscado es",registroBuscado->value);
+				return;
 			}
 		}
 	}
@@ -577,17 +564,13 @@ void funcionInsert(char* argumentos,int socket) {
 	int timestamp;
 
 	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return;
-	pthread_mutex_lock(&mutexLogger);
-	log_info(logger, "Directorio de tabla valido");
-	pthread_mutex_unlock(&mutexLogger);
+	enviarOMostrarYLogearInfo(-1,"Directorio de tabla valido");
 
 	if (valorTimestamp == NULL) {
 		timestamp = (unsigned long)time(NULL);
 	}else{
 		timestamp = atoi(valorTimestamp);
 	}
-
-//	obtener(nombreTabla);
 
 	registro* registroDePrueba = malloc(sizeof(registro));
 				registroDePrueba -> key = key;
@@ -632,7 +615,6 @@ char* devolverBloqueLibre(){
 		pthread_mutex_lock(&mutexBitarray);
 		bool bit = bitarray_test_bit(bitarray, i);
 		pthread_mutex_unlock(&mutexBitarray);
-
 		if(bit == 0){
 			encontroBloque = 1;
 			bloqueEncontrado = i;
@@ -744,7 +726,9 @@ void funcionCreate(char* argumentos,int socket) {
 	int cantidadParticiones = atoi(numeroParticiones);
 	crearParticiones(directorioTabla, cantidadParticiones);
 	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
+
 	//compactar(); cada vez que se crea una tabla habria que crear un hilo compactacion
+	//agregar a la lista de tablas
 	free(directorioTabla);
 
 }
@@ -852,25 +836,28 @@ int existeArchivo(char * filename){
 //		}
 //}
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
+	char* rutaCompleta = string_new();
+	string_append(&rutaCompleta,rutaTabla);
+	string_append(&rutaCompleta,"/");
+	string_append(&rutaCompleta,nombreArchivo);
 	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
-		remove(nombreArchivo);
+		remove(rutaCompleta);
 		return;
 	}
-	char* ruta = string_new();
 
-	t_config* archivo= config_create(ruta);
+	t_config* archivo= config_create(rutaCompleta);
 	char **bloques = config_get_array_value(archivo,"BLOCKS");
 	int pos =0;
 	while(*(bloques+pos)!=NULL){
 		pthread_mutex_lock(&mutexBitarray);
-		bitarray_clean_bit(bitarray,string_itoa(*(bloques+pos)));
+		bitarray_clean_bit(bitarray,atoi(*(bloques+pos)));
 		pthread_mutex_unlock(&mutexBitarray);
+		pos++;
 	}
-
 	liberarDoblePuntero(bloques);
 	config_destroy(archivo);
-	free(ruta);
-	remove(nombreArchivo);
+	remove(rutaCompleta);
+	free(rutaCompleta);
 
 }
 
@@ -882,15 +869,19 @@ void funcionDrop(char* nombreTabla,int socket){
 		string_append(&ruta,"Tables/");
 		string_append(&ruta,nombreTabla);
 		DIR* dir=opendir(ruta);
+		enviarOMostrarYLogearInfo(-1,"Liberando Bloques de los tmp y las particiones");
 		struct dirent *sd;
 		while((sd=readdir(dir))!=NULL){
 			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
 			puts(sd->d_name);
 			liberarBloquesDeTmpYPart(sd->d_name,ruta);
 		}
+		rmdir(ruta);
+		closedir(dir);
 		//ver tema de un semaforo aca pero de la tabla
-
+		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
 		free(ruta);
+		return;
 	}
 	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
 }
@@ -904,9 +895,9 @@ void agregarTablaALista(char* nombreTabla){
 	pthread_mutex_lock(&mutexListaTabla);
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
 		list_add(listaDeTablas,metadataBuscado);
-		pthread_mutex_unlock(&mutexListaTabla);
 		//aca deberiamos abrir tambien un hilo de compactacion
 	}
+	pthread_mutex_unlock(&mutexListaTabla);
 }
 
 void funcionDescribe(char* argumentos,int socket) {
