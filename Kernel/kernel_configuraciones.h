@@ -48,7 +48,7 @@ void kernel_crearListas(){
 	tablas = list_create();
 	conexionesMemoria = list_create();
 }
-void guardarDatos(seed* unaSeed){
+void guardarDatos(seed* unaSeed){ //todo ver conexiones
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = itoa(unaSeed->numero);
 	memAux->puerto = itoa(unaSeed->puerto);
@@ -76,8 +76,8 @@ void kernel_inicializarVariables(){
 	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
-	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
 	multiprocesamiento =config_get_int_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
+	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
 	metadataRefresh = config_get_int_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
 }
