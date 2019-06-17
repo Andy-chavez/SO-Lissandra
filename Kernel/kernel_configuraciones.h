@@ -1,10 +1,3 @@
-/*
- * configuraciones.h
- *
- *  Created on: 26 may. 2019
- *      Author: utnso
- */
-
 #ifndef KERNEL_CONFIGURACIONES_H_
 #define KERNEL_CONFIGURACIONES_H_
 #include <commons/config.h>
@@ -28,6 +21,8 @@ void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
 void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
 void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
 void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
+void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
+
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 //-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
@@ -35,6 +30,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	pthread_mutex_init(&mLog, NULL);
+	pthread_mutex_init(&mutexMemorias,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&modificables,0,0);
@@ -52,6 +48,13 @@ void kernel_crearListas(){
 	tablas = list_create();
 	conexionesMemoria = list_create();
 }
+void guardarDatos(seed* unaSeed){
+	memoria* memAux = malloc(sizeof(memoria));
+	memAux->numero = itoa(unaSeed->numero);
+	memAux->puerto = itoa(unaSeed->puerto);
+	memAux->ip = itoa(unaSeed->ip);
+	agregarALista(memorias,memAux,mutexMemorias);
+}
 int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	if(socketClienteKernel==-1){
@@ -61,7 +64,8 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 	memoria* memoriaDeConfig = malloc(sizeof(memoria));
 	memoriaDeConfig->socket = socketClienteKernel;
 	memoriaDeConfig->ip = ipMemoria;
-	memoriaDeConfig->numero = *(int*) recibir(socketClienteKernel);
+	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
+	memoriaDeConfig->numero = *(int*) recibir(socketClienteKernel); //todo cambiar eso
 	memoriaDeConfig->puerto = puertoMemoria;
 	list_add(conexionesMemoria, memoriaDeConfig);
 	return 0;
@@ -95,6 +99,7 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
 	pthread_mutex_destroy(&mLog);
+	pthread_mutex_destroy(&mutexMemorias);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
@@ -166,7 +171,6 @@ void* cambiosConfig(){
 				sem_post(&modificables);
 
 			}
-
  			config_destroy(configConNuevosDatos);
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
@@ -197,4 +201,11 @@ void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
 	log_info(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
 }
+//------ LISTAS ---------
+void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore){
+	pthread_mutex_lock(&semaphore);
+	list_add(lista,elemento);
+	pthread_mutex_unlock(&semaphore);
+}
+
 #endif /* KERNEL_CONFIGURACIONES_H_ */

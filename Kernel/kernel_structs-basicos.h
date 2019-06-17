@@ -1,10 +1,3 @@
-/*
- * structs-basicos.h
- *
- *  Created on: 25 abr. 2019
- *      Author: utnso
- */
-
 #ifndef KERNEL_STRUCTS_BASICOS_H_
 #define KERNEL_STRUCTS_BASICOS_H_
 #include <commons/log.h>
@@ -42,7 +35,6 @@ typedef struct{
 	char* puerto;
 	char* ip;
 }memoria;
-
 typedef struct{
 	char* nombreDeTabla;
 	consistencia consistenciaDeTabla;
@@ -64,6 +56,7 @@ sem_t hayNew;
 sem_t hayReady;
 sem_t modificables;
 pthread_mutex_t colaNuevos;
+pthread_mutex_t mutexMemorias;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
 pthread_mutex_t mLog;

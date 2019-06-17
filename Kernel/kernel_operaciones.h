@@ -1,10 +1,3 @@
-/*
- * kernel_operaciones.h
- *
- *  Created on: 16 may. 2019
- *      Author: utnso
- */
-
 #ifndef KERNEL_OPERACIONES_H_
 #define KERNEL_OPERACIONES_H_
 #include "kernel_configuraciones.h"
@@ -36,12 +29,6 @@ int kernel_journal();
 int kernel_metrics();
 int kernel_add(char*);
 /******************************IMPLEMENTACIONES******************************************/
-//------ LISTAS ---------
-void agregarALista(t_list* lista, pcb* elemento, pthread_mutex_t semaphore){
-	pthread_mutex_lock(&semaphore);
-	list_add(lista,elemento);
-	pthread_mutex_unlock(&semaphore);
-}
 //------ ERRORES ---------
 bool falloOperacionLQL(void* buffer){
 	char* recibido = (char*) buffer;
