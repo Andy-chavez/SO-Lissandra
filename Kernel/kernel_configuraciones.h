@@ -21,7 +21,7 @@
 void kernel_inicializarSemaforos();
 void kernel_crearListas();
 void liberarConfigYLogs();
-void kernel_inicializar();
+void kernel_inicializarVariables();
 void kernel_finalizar();
 int kernel_inicializarMemoria();
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
@@ -54,7 +54,6 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 		return -1;
 	}
 	serializarYEnviarHandshake(socketClienteKernel,0);
-	//int recibido=  //todo devuelve pool de memorias
 	memoria* memoriaDeConfig = malloc(sizeof(memoria));
 	memoriaDeConfig->socket = socketClienteKernel;
 	memoriaDeConfig->ip = ipMemoria;
@@ -63,7 +62,7 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 	list_add(conexionesMemoria, memoriaDeConfig);
 	return 0;
 }
-void kernel_inicializar(){
+void kernel_inicializarVariables(){
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
 	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
@@ -73,6 +72,8 @@ void kernel_inicializar(){
 	multiprocesamiento =config_get_int_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
 	metadataRefresh = config_get_int_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
+}
+void kernel_inicializarEstructuras(){
 	kernel_crearListas();
 	kernel_inicializarSemaforos();
 }

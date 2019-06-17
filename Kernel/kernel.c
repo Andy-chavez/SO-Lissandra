@@ -32,25 +32,26 @@ int main(int argc, char *argv[]){
 
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
-	if(argc==0){
-		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.");
+	if(argc==1){
+		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.\n");
 		return EXIT_FAILURE;
 	}
 	pathConfig = (char*) argv[1];
-	if(kernel_inicializarMemoria()){
-		kernel_inicializar();
-		pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
-		pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
-		for(int i = 0; i<multiprocesamiento;i++){
-			pthread_t i;
-			pthread_create(&i, NULL,(void*) kernel_roundRobin, (void*)i);
-		}
-		pthread_join(threadConsola, NULL);
-		pthread_join(threadNew_Ready,NULL);
-		for(int i = 0; i<multiprocesamiento;i++){
-			pthread_join(i,NULL);
-		}
-		kernel_finalizar();
+	kernel_inicializarVariables();
+	if(kernel_inicializarMemoria()==-1)
+		return EXIT_FAILURE;
+	kernel_inicializarEstructuras();
+	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
+	for(int i = 0; i<multiprocesamiento;i++){
+		pthread_t i;
+		pthread_create(&i, NULL,(void*) kernel_roundRobin, (void*)i);
 	}
+	pthread_join(threadConsola, NULL);
+	pthread_join(threadNew_Ready,NULL);
+	for(int i = 0; i<multiprocesamiento;i++){
+		pthread_join(i,NULL);
+	}
+	kernel_finalizar();
 	return EXIT_SUCCESS;
 }
