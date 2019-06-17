@@ -120,7 +120,7 @@ void kernel_finalizar(){
 	destruirSemaforos();
 }
 //----------------- CAMBIOS EN EJECUCION -----------------------------
-void* cambiosConfig() {
+/*void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
 	char* path = pathConfig;
@@ -164,7 +164,7 @@ void* cambiosConfig() {
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
 	}
-}
+}*/
 //----------------- LOGS -----------------------------
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	pthread_mutex_lock(&mLog);

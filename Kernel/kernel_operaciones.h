@@ -9,6 +9,8 @@
 #define KERNEL_OPERACIONES_H_
 #include "kernel_configuraciones.h"
 #include "kernel_structs-basicos.h"
+#include <commonsPropias/conexiones.h>
+#include <commonsPropias/serializacion.h>
 
 /******************************DECLARACIONES******************************************/
 void agregarALista(t_list* lista, pcb* elemento, pthread_mutex_t semaphore);
