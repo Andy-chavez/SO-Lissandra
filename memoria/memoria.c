@@ -17,7 +17,7 @@
 
 // Defines para el inotify del config
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
-#define BUF_LEN_CONFIG (1 * EVENT_SIZE_CONFIG)
+#define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG) // Lo dejo asi de grande porque sino segfaultea
 
 int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
@@ -33,6 +33,10 @@ int APIProtocolo(void* buffer, int socket) {
 		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
 		cerrarConexion(socket);
 		return 0;
+	case TABLAGOSSIP:
+		enviarOMostrarYLogearInfo(-1, "llego una memoria. guardando en tabla de gossip y enviando lo que tengo...");
+		intercambiarTablasGossip(socket);
+		return 1;
 	}
 	free(buffer);
 }
@@ -87,9 +91,11 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
+	/*
 	recibir(socketKernel);
 	int numeroMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
 	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
+	*/
 	int hayMensaje = 1;
 
 	while(hayMensaje) {
@@ -227,7 +233,8 @@ void* cambiosConfig() {
 }
 
 int main() {
-	pthread_t threadServer, threadConsola, threadCambiosConfig; // threadTimedJournal, threadTimedGossiping;
+	printf("%d %d\n", sizeof(time_t), sizeof(uint16_t));
+	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping; // threadTimedJournal,
 	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
@@ -245,13 +252,13 @@ int main() {
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
-	//pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
+	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
 
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadCambiosConfig, NULL);
 	//pthread_detach(threadTimedJournal);
-	//pthread_detach(threadTimedGossiping);
+	pthread_join(threadTimedGossiping, NULL);
 
 	liberarMemoria();
 	liberarConfigYLogs();

@@ -69,6 +69,7 @@ typedef struct {
 typedef struct {
 	char* ip;
 	char* puerto;
+	int numero;
 } seed;
 
 /*
