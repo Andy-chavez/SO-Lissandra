@@ -26,9 +26,17 @@ typedef enum {
 
 typedef struct {
 	int numeroPagina;
-	void *unRegistro;
+	int marco;
+	time_t timestamp;
 	flagModificado flag;
 } paginaEnTabla;
+
+typedef struct {
+	int marco;
+	int estaEnUso;
+	int tamanioValue;
+	void* lugarEnMemoria;
+} marco;
 
 typedef struct {
 	char *nombreTabla;
@@ -40,7 +48,6 @@ typedef struct {
 	void *base;
 	void *limite;
 	int tamanioMaximoValue;
-	int *seeds;
 } memoria;
 
 typedef struct {
@@ -52,19 +59,34 @@ typedef struct {
 	int tamanio;
 } datosInicializacion;
 
-
 int SOCKET_LFS;
 
 int TAMANIO_UN_REGISTRO_EN_MEMORIA;
+int RETARDO_GOSSIP;
+int RETARDO_JOURNAL;
+int RETARDO_MEMORIA;
 
 sem_t MUTEX_LOG;
+sem_t MUTEX_LOG_CONSOLA;
+
 sem_t MUTEX_OPERACION;
+
 sem_t BINARIO_SOCKET_KERNEL;
 sem_t MUTEX_SOCKET_LFS;
 
+sem_t MUTEX_RETARDO_MEMORIA;
+sem_t MUTEX_RETARDO_GOSSIP;
+sem_t MUTEX_RETARDO_JOURNAL;
+
+sem_t MUTEX_TABLA_GOSSIP;
+
 memoria* MEMORIA_PRINCIPAL;
+t_list* TABLA_MARCOS;
+t_list* TABLA_GOSSIP;
 
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
 t_log* LOGGER_CONSOLA;
+
+
 
 #endif

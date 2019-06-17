@@ -19,6 +19,11 @@
 #include "conexiones.h"
 
 typedef struct {
+	void* buffer;
+	int tamanio;
+} bufferConTamanio;
+
+typedef struct {
 	time_t timestamp;
 	u_int16_t key;
 	char* value;
@@ -39,11 +44,13 @@ typedef enum {
 
 typedef enum {
 	OPERACIONLQL,
-	PAQUETEREGISTROS,
+	PAQUETEOPERACIONES,
 	UNREGISTRO,
 	METADATA,
+	PAQUETEMETADATAS,
 	HANDSHAKE,
-	DESCONEXION
+	DESCONEXION,
+	TABLAGOSSIP
 } operacionProtocolo;
 
 typedef struct {
@@ -58,6 +65,11 @@ typedef struct {
 	int tiempoCompactacion;
 	char* nombreTabla;
 } metadata;
+
+typedef struct {
+	char* ip;
+	char* puerto;
+} seed;
 
 /*
  * Para saber que es lo que me estan mandando, utilizar
@@ -102,7 +114,7 @@ operacionLQL* deserializarOperacionLQL(void* bufferOperacion);
  * nombreTabla: La tabla a la cual pertenece este Registro!!!
  * Devuelve un buffer con ese registro serializado.
  */
-void* serializarRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffer);
+void* serializarUnRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffer);
 /*
  * Usar antes de serializar, pasandole un string para poder agilizar el armado de la operacion LQL
  * Devuelve el struct operacionLQL completo a partir de un string
@@ -132,5 +144,31 @@ int deserializarHandshake(void* bufferHandshake);
 
 // si bien no tiene nada que ver, nos va a servir a todos
 char* string_trim_quotation(char* string);
+
+void* liberarOperacionLQL(operacionLQL* operacion);
+
+void serializarYEnviarHandshake(int socket, int tamanioValue);
+
+void serializarYEnviarMetadata(int socket, metadata* unaMetadata);
+
+registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* nombreTabla);
+
+void liberarRegistroConNombreTabla(registroConNombreTabla* registro);
+
+void* liberarMetadata(metadata* unaMetadata);
+
+void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio);
+
+void serializarYEnviarPaqueteOperacionesLQL(int socket, t_list* operacionesLQL);
+
+void recibirYDeserializarPaqueteDeOperacionesLQLRealizando(int socket, void(*accion)(operacionLQL*));
+
+void* serializarPaqueteDeMetadatas(t_list* metadatas, int* tamanio);
+
+void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas);
+
+void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*));
+
+void* liberarSeed(seed* unaSeed);
 
 #endif /* SERIALIZACION_H_ */

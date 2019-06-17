@@ -12,7 +12,12 @@
 #include <commonsPropias/serializacion.h>
 #include "operacionesMemoria.h"
 #include "structsYVariablesGlobales.h"
-#include <unistd.h>
+#include <sys/types.h>
+#include <sys/inotify.h>
+
+// Defines para el inotify del config
+#define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
+#define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG) // Lo dejo asi de grande porque sino segfaultea
 
 int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
@@ -28,6 +33,10 @@ int APIProtocolo(void* buffer, int socket) {
 		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
 		cerrarConexion(socket);
 		return 0;
+	case TABLAGOSSIP:
+		enviarOMostrarYLogearInfo(-1, "llego una memoria. guardando en tabla de gossip y enviando lo que tengo...");
+		intercambiarTablasGossip(socket);
+		return 1;
 	}
 	free(buffer);
 }
@@ -69,7 +78,12 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
 	liberarOperacionLQL(operacionAParsear);
-	usleep((config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM"))*1000);
+
+	sem_wait(&MUTEX_RETARDO_MEMORIA);
+	int retardoMemoria = RETARDO_MEMORIA * 1000;
+	sem_post(&MUTEX_RETARDO_MEMORIA);
+
+	usleep(retardoMemoria);
 }
 
 //------------------------------------------------------------------------
@@ -77,9 +91,11 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 void* trabajarConConexion(void* socket) {
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
+	/*
 	recibir(socketKernel);
 	int numeroMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
 	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
+	*/
 	int hayMensaje = 1;
 
 	while(hayMensaje) {
@@ -105,7 +121,6 @@ datosInicializacion* realizarHandshake() {
 
 	datosInicializacion* datosImportantes = malloc(sizeof(datosInicializacion));
 	datosImportantes->tamanio = deserializarHandshake(bufferHandshake);
-	printf("%d\n", datosImportantes->tamanio);
 	return datosImportantes;
 	/*datosInicializacion* datosImportantes = malloc(sizeof(datosInicializacion));
 	datosImportantes->tamanio = 2048;
@@ -168,10 +183,59 @@ void *servidorMemoria() {
 
 }
 
+void* cambiosConfig() {
+	char buffer[BUF_LEN_CONFIG];
+	int fdConfig = inotify_init();
+	char* path = "memoria.config";
+
+	if(fdConfig < 0) {
+		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
+	}
+
+	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+
+	while(1) {
+		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
+
+		if(size<0) {
+			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
+		}
+
+		t_config* configConNuevosDatos = config_create(path);
+
+		if(!configConNuevosDatos) {
+			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
+		}
+
+		int desplazamiento = 0;
+
+		while(desplazamiento < size) {
+			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
+
+			if (event->mask & IN_MODIFY) {
+				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
+
+				sem_wait(&MUTEX_RETARDO_GOSSIP);
+				RETARDO_GOSSIP = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
+				sem_post(&MUTEX_RETARDO_GOSSIP);
+				sem_wait(&MUTEX_RETARDO_JOURNAL);
+				RETARDO_JOURNAL = config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL");
+				sem_post(&MUTEX_RETARDO_JOURNAL);
+				sem_wait(&MUTEX_RETARDO_MEMORIA);
+				RETARDO_MEMORIA = config_get_int_value(configConNuevosDatos, "RETARDO_MEM");
+				sem_post(&MUTEX_RETARDO_MEMORIA);
+			}
+
+			config_destroy(configConNuevosDatos);
+			desplazamiento += sizeof (struct inotify_event) + event->len;
+		}
+	}
+}
+
 int main() {
-	pthread_t threadServer, threadConsola; // threadTimedJournal, threadTimedGossiping;
-	inicializarArchivos();
-	inicializarSemaforos();
+	printf("%d %d\n", sizeof(time_t), sizeof(uint16_t));
+	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping; // threadTimedJournal,
+	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {
@@ -181,20 +245,24 @@ int main() {
 	};
 
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion, ARCHIVOS_DE_CONFIG_Y_LOG);
+	inicializarTablaMarcos();
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
+	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
-	//pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
+	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
 
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
+	pthread_join(threadCambiosConfig, NULL);
 	//pthread_detach(threadTimedJournal);
-	//pthread_detach(threadTimedGossiping);
+	pthread_join(threadTimedGossiping, NULL);
 
-	liberarMemoria(MEMORIA_PRINCIPAL);
+	liberarMemoria();
 	liberarConfigYLogs();
+	liberarTablaMarcos();
 	return 0;
 
 }
