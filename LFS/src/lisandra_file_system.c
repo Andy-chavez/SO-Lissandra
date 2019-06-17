@@ -21,6 +21,11 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include "compactador.h"
+#include <sys/inotify.h>
+
+//para el inotify
+#define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
+#define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG)
 
 
 
@@ -49,7 +54,9 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 		printf("no entendi xD");
 	}
 	liberarOperacionLQL(operacionAParsear);
+	pthread_mutex_lock(&mutexRetardo);
 	usleep(retardo*1000);
+	pthread_mutex_unlock(&mutexRetardo);
 }
 
 void realizarHandshake(int socket){
@@ -65,8 +72,11 @@ void realizarHandshake(int socket){
 
 int APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
+		void operacionLQLSola(operacionLQL* unaOperacionLQL){
+			parserGeneral(unaOperacionLQL,socket);
+		}
 
-	switch(operacion) {
+	switch(operacion){
 	case OPERACIONLQL:
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Recibi una operacion");
@@ -75,6 +85,12 @@ int APIProtocolo(void* buffer, int socket) {
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
+	case PAQUETEOPERACIONES:
+		pthread_mutex_lock(&mutexLogger);
+		log_info(logger, "Recibi un paquete de operaciones");
+		pthread_mutex_unlock(&mutexLogger);
+		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
+		return 1;
 	case DESCONEXION:
 		pthread_mutex_lock(&mutexLogger);
 		log_error(logger, "Se cierra la conexion");
@@ -153,6 +169,51 @@ void leerConsola() {
 	    free (linea);  // free memory allocated by getline
 }
 
+void* cambiosConfig() {
+	char buffer[BUF_LEN_CONFIG];
+	int fdConfig = inotify_init();
+	char* path = "lisandra.config";
+
+	if(fdConfig < 0) {
+		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
+	}
+
+	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+
+	while(1) {
+		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
+
+		if(size<0) {
+			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
+		}
+
+		t_config* configConNuevosDatos = config_create(path);
+
+		if(!configConNuevosDatos) {
+			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
+		}
+
+		int desplazamiento = 0;
+
+		while(desplazamiento < size) {
+			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
+
+			if (event->mask & IN_MODIFY) {
+				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
+
+				pthread_mutex_lock(&mutexTiempoDump);
+				tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
+				pthread_mutex_unlock(&mutexTiempoDump);
+				pthread_mutex_lock(&mutexRetardo);
+				retardo = config_get_int_value(archivoDeConfig,"RETARDO");
+				pthread_mutex_unlock(&mutexRetardo);
+			}
+
+			config_destroy(configConNuevosDatos);
+			desplazamiento += sizeof (struct inotify_event) + event->len;
+		}
+	}
+}
 
 
 int main(int argc, char* argv[]) {
@@ -167,16 +228,20 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+
 		inicializarBitmap();
 		inicializarRegistroError();
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
 		pthread_t threadDump;
+		pthread_t threadCambiosConfig;
 
 		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
 		pthread_join(threadServer,NULL);
 		pthread_join(threadConsola,NULL);
@@ -199,10 +264,6 @@ int main(int argc, char* argv[]) {
 	    pthread_mutex_destroy(&mutexLog);
 	    liberarConfigYLogs(archivosDeConfigYLog);*/
 
-		//pthread_t threadServer ; //habria que ver tambien thread dumping.
-		//pthread_create(&threadServer, NULL, servidorLisandra, NULL);S
-		//pthread_join(threadServer,NULL);
-		//servidorLisandra(archivosDeConfigYLog);
 
 		liberarConfigYLogs();
 		return EXIT_SUCCESS;

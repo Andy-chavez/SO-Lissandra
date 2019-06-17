@@ -22,6 +22,9 @@ pthread_mutex_t mutexDump;
 pthread_mutex_t mutexOperacion;
 pthread_mutex_t mutexListaTabla;
 pthread_mutex_t mutexBitarray;
+pthread_mutex_t mutexTiempoDump;
+pthread_mutex_t mutexRetardo;
+
 t_log* logger;
 t_log* loggerConsola;
 
@@ -51,7 +54,8 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexListaTabla,NULL);
 		pthread_mutex_init(&mutexDump,NULL);
 		pthread_mutex_init(&mutexBitarray,NULL);
-//		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
+		pthread_mutex_init(&mutexTiempoDump,NULL);
+		pthread_mutex_init(&mutexRetardo,NULL);
 
 }
 

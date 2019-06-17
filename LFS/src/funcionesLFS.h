@@ -712,9 +712,7 @@ void funcionCreate(char* argumentos,int socket) {
 	char* numeroParticiones = *(argSeparados + 2);
 	char* tiempoCompactacion = *(argSeparados + 3);
 
-	//hay que liberarlo
 	char* directorioTabla = string_new();
-	//falta ver que no exista una tabla del mismo nombre
 	if (!verificarExistenciaDirectorioTabla(nombreTabla)){
 
 		string_append(&directorioTabla, puntoMontaje);
@@ -723,17 +721,18 @@ void funcionCreate(char* argumentos,int socket) {
 
 		mkdir(directorioTabla, 0777);
 
+		crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
+		int cantidadParticiones = atoi(numeroParticiones);
+		crearParticiones(directorioTabla, cantidadParticiones);
+		enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
+		agregarTablaALista(nombreTabla);
+
 	}else{
-		puts("ya existe");
+		enviarOMostrarYLogearInfo(socket,"Error ya existe la tabla en FS");
+		return;
 	}
+	liberarDoblePuntero(argSeparados);
 
-	crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
-	int cantidadParticiones = atoi(numeroParticiones);
-	crearParticiones(directorioTabla, cantidadParticiones);
-	enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
-
-	//compactar(); cada vez que se crea una tabla habria que crear un hilo compactacion
-	//agregar a la lista de tablas
 	free(directorioTabla);
 
 }
@@ -919,6 +918,7 @@ void agregarTablaALista(char* nombreTabla){
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
 		pthread_mutex_init(&metadataBuscado->semaforoTabla,NULL); //inicias el semaforo de la nueva tabla
 		list_add(listaDeTablas,metadataBuscado);
+
 		//pthread_t threadCompactacion;  ver donde poner la funcion compactar para poder usarla
 		//pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
 		//pthread_detach(&threadCompactacion);
@@ -928,7 +928,8 @@ void agregarTablaALista(char* nombreTabla){
 
 void funcionDescribe(char* argumentos,int socket) {
 	void loggearYMostarTabla(metadata* unMetadata){
-		log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
+
+		log_info(logger,"La tabla: %s, tiene %d particiones, consistencia= %d "
 				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
 				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
 	}
