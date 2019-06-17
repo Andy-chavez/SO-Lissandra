@@ -64,7 +64,7 @@ void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion){
 */
 
 
-				int cantidadDeBloques = sizeof(arrayDeBloques) - 2;
+				int cantidadDeBloques = calcularLargoArrayDeBloques(arrayDeBloques);
 
 				string_append(&infoAGuardar, "SIZE=");
 				string_append(&infoAGuardar, "0");
@@ -93,20 +93,27 @@ guardarInfoEnArchivo(rutaParticion, infoAGuardar);
 free(infoAGuardar);
 }
 
-void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizeParticion, char* bufferTemporales){
-	int tamanioDelBuffer = strlen(bufferTemporales);
+int calcularLargoArrayDeBloques(char** arrayDeBloques){
+	int cantidad=0;
+	while(*(arrayDeBloques+cantidad)!=NULL){
+		cantidad++;
+	}
+	return cantidad;
+}
+void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizeParticion, char** bufferTemporales){
+	int tamanioDelBuffer = strlen(*(bufferTemporales));
 	int cantBloquesNecesarios =  ceil((float) (tamanioDelBuffer/ (float) tamanioBloques));
 	int i;
 	//si solo se necesita un bloque se guarda en el unico bloque que se le asigno a la particion al cargar la tabla
 	if (cantBloquesNecesarios == 1){
-		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, &bufferTemporales);
+		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, *bufferTemporales);
 	//Si no, hay que darle mas bloques libres y cargarlos al array
 
 	}else{
 
 	//i = 1 , porque hay uno que ya esta asignado en la posicion 0 del array
 		//i = size of del array de bloques en ese momento !!!!!!
-		for(i = (sizeof(arrayDeBloques)/sizeof(int)); i<cantBloquesNecesarios; i++){
+		for(i = calcularLargoArrayDeBloques(arrayDeBloques); i<cantBloquesNecesarios; i++){
 			//se deberia considerar mallokear el array
 			*(arrayDeBloques + i) = devolverBloqueLibre();
 		}
@@ -115,7 +122,7 @@ void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizePartic
 
 		actualizarBloquesEnArchivo(arrayDeBloques, rutaParticion);
 
-		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, &bufferTemporales);
+		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, *bufferTemporales);
 
 		//ver si funca esto, dejo asi comentado porque hay que ver el tema del drop si hay algo que se use para borrar archivos
 
@@ -268,7 +275,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			}
 			//meter una lista de registros temporales en un buffer
 			cargarListaEnBuffer(listaRegistrosTemporalesDeParticionActual, &bufferTemporales);
-			ingresarNuevaInfo(rutaParticion, arrayDeBloques, sizeParticion, bufferTemporales);
+			ingresarNuevaInfo(rutaParticion, arrayDeBloques, sizeParticion, &bufferTemporales);
 			//break porque no puede haber una particion que tenga data si la anterior no tenia data
 			//puede ser q sea continue
 			continue;
