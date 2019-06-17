@@ -171,4 +171,6 @@ void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(
 
 void* liberarSeed(seed* unaSeed);
 
+void liberarParametrosSpliteados(char** parametrosSpliteados);
+
 #endif /* SERIALIZACION_H_ */

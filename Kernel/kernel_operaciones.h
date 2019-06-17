@@ -20,10 +20,8 @@ void guardarTablacreada(char*);
 void eliminarTablaCreada(char* );
 /* TODO implementaciones
  * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
- * run -> ya esta hecho
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
- * add -> agregar memoria a un criterio @MEMORIA tengo que avisarles?
  *
  */
 void kernel_roundRobin();
@@ -35,12 +33,6 @@ int kernel_drop(char*);
 int kernel_journal();
 int kernel_metrics();
 int kernel_add(char*);
-//Corroborar sintaxis
-//1.select
-//2.insert
-//3.create
-//4.describe tabla
-
 /******************************IMPLEMENTACIONES******************************************/
 //------ TABLAS ---------
 void guardarTablaCreada(char* parametros){
@@ -124,80 +116,73 @@ int socketMemoriaSolicitada(consistencia criterio){
 
 	return encontrarSocketDeMemoria(mem->numero);
 }
+//------ ERRORES ---------
+bool falloOperacionLQL(void* buffer){
+	char* recibido = (char*) buffer;
+	string_to_upper(recibido);
+	return string_contains(recibido, "ERROR");
+}
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 int kernel_insert(char* operacion){ //ya funciona, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
-	if(sintaxisCorrecta('3',opAux->parametros)==0){
-		//abortarProceso(char*operacion);
-		return 0;
-	}
-//	memoria* mem =encontrarMemoriaStrong();
-//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-	//if(socketClienteKernel){ //TODO AGREGAR IF CON STRING_CONTAINS ERROR:
-		int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
-		serializarYEnviarOperacionLQL(socket, opAux);
-		log_info(kernel_configYLog->log, "Enviado %s", operacion);
-		char * recibido= (char*) recibir(socket);
-		log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
-		//log_info(kernel_configYLog->log, "%s\n", recibido);
-		//cerrarConexion(socket);
+	int socket = socketMemoriaSolicitada(SC);
+	serializarYEnviarOperacionLQL(socket, opAux);
+	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
+	char* recibido = (char*) recibir(socket);
+	if(falloOperacionLQL(recibir(socket))){
+		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
 		free(recibido);
-		return 1;
-	//}
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
+		liberarOperacionLQL(opAux);
+		return -1;
+	}
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	free(recibido);
+	liberarOperacionLQL(opAux);
 	return 0;
 }
 int kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	//	memoria* mem =encontrarMemoriaStrong();
-	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-		//if(socketClienteKernel){
-			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
-			serializarYEnviarOperacionLQL(socket, opAux);
-			log_info(kernel_configYLog->log, "Enviado %s", operacion);
-			char * recibido= (char*) recibir(socket);
-			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
-			//cerrarConexion(socket);
-			free(recibido);
-			return 1;
-		//}
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
+	int socket = socketMemoriaSolicitada(SC);
+	serializarYEnviarOperacionLQL(socket, opAux);
+	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
+	char* recibido = (char*) recibir(socket);
+	if(falloOperacionLQL(recibir(socket))){
+		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		free(recibido);
+		liberarOperacionLQL(opAux);
+		return -1;
+	}
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	free(recibido);
+	liberarOperacionLQL(opAux);
 	return 0;
 }
 int kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
-	//	memoria* mem =encontrarMemoriaStrong();
-	//	int socketClienteKernel = crearSocketCliente(mem->ip,mem->puerto);
-		//if(socketClienteKernel){
-			int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
-			serializarYEnviarOperacionLQL(socket, opAux);
-			log_info(kernel_configYLog->log, "Enviado %s", operacion);
-			char * recibido= (char*) recibir(socket);
-			log_info(kernel_configYLog->log, "valor recibido: %s", recibido);
-			//cerrarConexion(socket);
-			free(recibido);
-			return 1;
-		//}
-	free(opAux->operacion);
-	free(opAux->parametros);
-	free(opAux);
+	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	serializarYEnviarOperacionLQL(socket, opAux);
+	char* recibido = (char*) recibir(socket);
+	if(falloOperacionLQL(recibir(socket))){
+		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		free(recibido);
+		liberarOperacionLQL(opAux);
+		return -1;
+	}
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	free(recibido);
+	liberarOperacionLQL(opAux);
 	return 0;
 }
 int kernel_describe(char* operacion){
-	//printf("Almost done describe\n");
 	operacionLQL* opAux=splitear_operacion(operacion);
 	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
 	serializarYEnviarOperacionLQL(socket, opAux);
-	log_info(kernel_configYLog->log, "Enviado %s", operacion);
+	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
 	void* recibirBuffer = recibir(socket);;
 	metadata* met = deserializarMetadata(recibirBuffer);
 	//TODO ACTUALIZAR ESTRUCTURAS
-	log_info(kernel_configYLog->log, "valor recibido: %s %d", met->nombreTabla, met->tipoConsistencia);
+	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
 	free(recibirBuffer);
 	free(met->nombreTabla);
 	free(met);
@@ -208,57 +193,52 @@ int kernel_describe(char* operacion){
 	return 1;
 }
 int kernel_drop(char* operacion){
-	printf("Not yet -> drop\n");
-	return 1;
-//	operacionLQL* opAux=splitear_operacion(operacion);
-//	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-//	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-//	printf("\n\nEnviado\n\n");
-//	char * recibido= (char*) recibir(socketClienteKernel);
-//	printf("\n\nValor recibido:%s\n\n",recibido);
-//	cerrarConexion(socketClienteKernel);
-//	free(recibido);
-//	free(opAux->operacion);
-//	free(opAux->parametros);
-//	free(opAux);
-//	return 1;
+	operacionLQL* opAux=splitear_operacion(operacion);
+	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	serializarYEnviarOperacionLQL(socket, opAux);
+	char* recibido = (char*) recibir(socket);
+	if(falloOperacionLQL(recibir(socket))){
+		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		free(recibido);
+		liberarOperacionLQL(opAux);
+		return -1;
+	}
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+	return 0;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 int kernel_journal(){
-	printf("Not yet -> journal\n");
-	return 1;
-//	operacionLQL* opAux=splitear_operacion("JOURNAL");
-//	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-//	serializarYEnviarOperacionLQL(socketClienteKernel, opAux);
-//	printf("\n\nEnviado\n\n");
-//	char * recibido= (char*) recibir(socketClienteKernel); //todo cambiar recibido
-//	printf("\n\nValor recibido:%s\n\n",recibido);
-//	cerrarConexion(socketClienteKernel);
-//	free(recibido);
-//	free(opAux->operacion);
-//	free(opAux->parametros);
-//	free(opAux);
+	operacionLQL* opAux=splitear_operacion("JOURNAL");
+	int socket = socketMemoriaSolicitada(SC); //todo verificar lo de la tabla
+	serializarYEnviarOperacionLQL(socket, opAux);
+	char* recibido = (char*) recibir(socket);
+	if(falloOperacionLQL(recibir(socket))){
+		log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+		free(recibido);
+		liberarOperacionLQL(opAux);
+		return -1;
+	}
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+	return 0;
 }
 int kernel_metrics(){
 	printf("Not yet -> metrics\n");
-	return 1;
+	return 0;
 }
 
-void liberarParametrosSpliteados(char** parametrosSpliteados) {
-	int i = 0;
-	while(*(parametrosSpliteados + i)) {
-		free(*(parametrosSpliteados + i));
-		i++;
-	}
-	free(parametrosSpliteados);
-}
 int kernel_add(char* operacion){
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_equals_ignore_case(*(opAux+4),"HASH")){
-			list_add(criterios[HASH].memorias, mem ); //todo journal cada vez que se agregue una aca
+			list_add(criterios[HASH].memorias, mem );
+			kernel_journal();
+			//todo journal cada vez que se agregue una aca a TODAS las memorias de este criterio
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
 			list_add(criterios[STRONG].memorias, mem );
@@ -266,11 +246,11 @@ int kernel_add(char* operacion){
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
 		}
-		return 1;
+		return 0;
 	}
 	else{
-		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s debido a la falta de conexion de dicha memoria\n", operacion);
-		return 0;
+		log_error(kernel_configYLog->log,"EXEC: %s.Memmoria no conectada.", operacion);
+		return -1;
 	}
 	liberarParametrosSpliteados(opAux);
 }
@@ -289,8 +269,8 @@ void kernel_roundRobin(){
 
 		if(pcb_auxiliar->instruccion == NULL){
 				pcb_auxiliar->ejecutado=1;
-				if(kernel_api(pcb_auxiliar->operacion)==0)
-					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
+				if(kernel_api(pcb_auxiliar->operacion)==-1)
+					log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
 				pthread_mutex_lock(&colaTerminados);
 				list_add(cola_proc_terminados,pcb_auxiliar);
 				pthread_mutex_unlock(&colaTerminados);
@@ -303,7 +283,7 @@ void kernel_roundRobin(){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(kernel_api(pcb_auxiliar->operacion)==0){
-						log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
+						log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -314,7 +294,7 @@ void kernel_roundRobin(){
 				}
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==0){
-					log_error(kernel_configYLog->log,"No se pudo ejecutar %s\n", pcb_auxiliar->operacion);
+					log_error(kernel_configYLog->log,"EXEC: %s", pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
@@ -346,12 +326,12 @@ void kernel_almacenar_en_new(char*operacion){
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayNew);
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "Se agregó a la cola de new al proceso: %s", operacion);
+	log_info(kernel_configYLog->log, "NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 }
 
 void kernel_consola(){
-	printf("Por favor ingrese <OPERACION> seguido de los argumentos\n\n");
+	printf("Proceso Kernel:	Ingrese la operacion que desea ejecutar y siga su ejecución mediante el archivo KERNEL.log\n");
 	char* linea= NULL;
 	while(1){
 		linea = readline("");
@@ -381,13 +361,14 @@ void kernel_pasar_a_ready(){
 		if (string_contains( operacion, "RUN")) {
 			kernel_run(operacion);
 		}
-		else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") || string_contains(operacion, "CREATE") ||
-			string_contains(operacion, "DESCRIBE") || string_contains(operacion, "DROP") ||
-			 string_contains(operacion, "JOURNAL") || string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")){ //splitear y comparar
+		else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") ||
+				string_contains(operacion, "CREATE") || string_contains(operacion, "DESCRIBE") ||
+				string_contains(operacion, "DROP") ||  string_contains(operacion, "JOURNAL") ||
+				string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")){
 			kernel_crearPCB(operacion);
 		}
 		else{
-			log_error(kernel_configYLog->log,"Sintaxis incorrecta: %s\n", operacion);
+			log_error(kernel_configYLog->log,"NEW: %s", operacion);
 		}
 	}
 }
@@ -397,7 +378,7 @@ void kernel_run(char* operacion){
 	string_to_lower(*(opYArg+1));
 	FILE *archivoALeer;
 	if ((archivoALeer= fopen((*(opYArg+1)), "r")) == NULL){
-		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s %s, verifique existencia del archivo\n", *opYArg, *(opYArg+1) ); //operacion);
+		log_error(kernel_configYLog->log,"EXEC: %s %s. (Consejo: verifique existencia del archivo)", *opYArg, *(opYArg+1) ); //operacion);
 		free(*(opYArg+1));
 		free(*(opYArg));
 		free(opYArg);
@@ -459,7 +440,8 @@ int kernel_api(char* operacionAParsear)
 		return kernel_metrics();
 	}
 	else {
-		log_error(kernel_configYLog->log,"No se pudo ejecutar comando: %s, verifique existencia del archivo\n", operacionAParsear ); //operacion);
+		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
+		free(operacionAParsear);
 		return 0;
 	}
 }
