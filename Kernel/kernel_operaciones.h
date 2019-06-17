@@ -11,8 +11,6 @@
 #include "kernel_structs-basicos.h"
 
 /******************************DECLARACIONES******************************************/
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, pcb* elemento, pthread_mutex_t semaphore);
 void kernel_almacenar_en_cola(char*,char*);
 void kernel_agregar_cola_proc_nuevos(char*);
@@ -47,30 +45,6 @@ bool falloOperacionLQL(void* buffer){
 	char* recibido = (char*) buffer;
 	string_to_upper(recibido);
 	return string_contains(recibido, "ERROR");
-}
-void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
-	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
-}
-void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
-	pthread_mutex_unlock(&mLog);
-	free(recibido);
-	liberarOperacionLQL(opAux);
-}
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
-	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
-	pthread_mutex_unlock(&mLog);
-}
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
-	pthread_mutex_unlock(&mLog);
 }
 //------ TABLAS ---------
 void guardarTablaCreada(char* parametros){

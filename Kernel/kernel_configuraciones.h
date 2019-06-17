@@ -24,6 +24,10 @@ void liberarConfigYLogs();
 void kernel_inicializarVariables();
 void kernel_finalizar();
 int kernel_inicializarMemoria();
+void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
+void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
+void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
+void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 //-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
@@ -115,7 +119,8 @@ void kernel_finalizar(){
 	liberarListas();
 	destruirSemaforos();
 }
-/*void* cambiosConfig() {
+//----------------- CAMBIOS EN EJECUCION -----------------------------
+void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
 	char* path = pathConfig;
@@ -159,5 +164,30 @@ void kernel_finalizar(){
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
 	}
-} todo preguntarle a maxi*/
+}
+//----------------- LOGS -----------------------------
+void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
+	pthread_mutex_lock(&mLog);
+	log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+}
+void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	pthread_mutex_unlock(&mLog);
+	free(recibido);
+	liberarOperacionLQL(opAux);
+}
+void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
+	pthread_mutex_unlock(&mLog);
+}
+void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
+	pthread_mutex_unlock(&mLog);
+}
 #endif /* KERNEL_CONFIGURACIONES_H_ */
