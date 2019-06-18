@@ -339,6 +339,10 @@ void compactar(char* nombreTabla){
 		string_append(&rutaTmpCompactar,".tmpc");
 		//con esto despues se puede verificar que no se pueda hacer esto
 		int cambiarNombre = rename(rutaTmpOriginal, rutaTmpCompactar);
+		if(cambiarNombre){
+			enviarYLogearMensajeError(-1,"No se pudo renombrar el archivo tmp");
+			continue;
+		}
 		archivoTmp = config_create(rutaTmpCompactar);
 
 		//leer bloques

@@ -107,34 +107,29 @@ void dump(){
 		}
 
 		void dumpearTabla(tablaMem* unaTabla){
-		//puts("hola");
 		buffer = string_new();
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
 			tamanioTotalADumpear = strlen(buffer);
-			pthread_mutex_lock(&mutexLogger);
-			log_info(logger,"Creando tmp");
-			pthread_mutex_unlock(&mutexLogger);
+			enviarOMostrarYLogearInfo(-1,"Creando tmp");
 
 			int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
 			char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
-			pthread_mutex_lock(&mutexLogger);
-			log_info(logger,"Se creo el tmp en la ruta: %s",rutaTmp);
-			pthread_mutex_unlock(&mutexLogger);
+			pthread_mutex_lock(&mutexLoggerConsola);
+			log_info(loggerConsola,"Se creo el tmp en la ruta: %s",rutaTmp);
+			pthread_mutex_unlock(&mutexLoggerConsola);
 
 
 			t_config* temporal =config_create(rutaTmp);
 			char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
 
 			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
+			liberarDoblePuntero(bloquesAsignados);
 			free(buffer);
 			config_destroy(temporal);
-
-
 		}
 		list_iterate(memtable,(void*)dumpearTabla);
 		liberarMemtable();
-		//memtable = list_create();
 
 		pthread_mutex_unlock(&mutexMemtable);
 

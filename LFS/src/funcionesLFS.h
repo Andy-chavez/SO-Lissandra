@@ -752,7 +752,7 @@ return tamanioTotal;
 void liberarTabla(tablaMem* tabla) {
 
 	void liberarRegistros(registro* unRegistro) {
-//		free(unRegistro->value);
+		free(unRegistro->value);
 		free(unRegistro);
 
 	}
@@ -893,13 +893,28 @@ void agregarTablaALista(char* nombreTabla){
 	}
 	pthread_mutex_unlock(&mutexListaDeTablas);
 }
+void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){
+	metadata* metadataSinSemaforo;
+	metadataSinSemaforo->cantParticiones = metadataATransformar->cantParticiones;
+	metadataSinSemaforo->nombreTabla = metadataATransformar->nombreTabla;
+	metadataSinSemaforo->tiempoCompactacion = metadataATransformar->tiempoCompactacion;
+	metadataSinSemaforo->tipoConsistencia = metadataATransformar->tipoConsistencia;
+	return metadataSinSemaforo;
+}
+
+void serializarMetadataConSemaforo(int socket){
+	pthread_mutex_lock(&mutexListaDeTablas);
+	serializarYEnviarPaqueteMetadatas(socket,list_map(listaDeTablas,tranformarMetadataSinSemaforo));
+	pthread_mutex_unlock(&mutexListaDeTablas);
+}
 
 void funcionDescribe(char* argumentos,int socket) {
 	void loggearYMostarTabla(metadata* unMetadata){
-
-		log_info(logger,"La tabla: %s, tiene %d particiones, consistencia= %d "
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
 				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
 				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
+		pthread_mutex_unlock(&mutexLoggerConsola);
 	}
 	metadata* metadataBuscado = NULL;
 	DIR* dir;
@@ -926,7 +941,7 @@ void funcionDescribe(char* argumentos,int socket) {
 			pthread_mutex_unlock(&mutexListaDeTablas);
 		}
 		else{
-			//aca deberiamos ver de mandar la lista a memoria
+			serializarMetadataConSemaforo(socket);
 		}
 		closedir(dir);
 		free(rutaDirectorioTablas );

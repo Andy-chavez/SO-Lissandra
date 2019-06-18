@@ -89,11 +89,13 @@ void inicializarBloques(){
 
 	for(int i=0;i<cantDeBloques;i++){
 		char* ruta= string_new();
+		char* numeroDeBloque =string_itoa(i);
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Bloques/");
-		string_append(&ruta,string_itoa(i));
+		string_append(&ruta,numeroDeBloque);
 		string_append(&ruta,".bin");
 		FILE *bloque = fopen(ruta,"w");
+		free(numeroDeBloque);
 		free(ruta);
 		fclose(bloque);
 

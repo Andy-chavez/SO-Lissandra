@@ -140,9 +140,7 @@ void* servidorLisandra(){
 			enviarYLogearMensajeError(socketMemoria,"No se pudo crear socket para memoria");
 			continue;
 		}
-		pthread_join(threadMemoria,NULL);
-
-		cerrarConexion(socketMemoria);
+		pthread_detach(threadMemoria);
 	}
 
 	cerrarConexion(socketServidorLisandra);
