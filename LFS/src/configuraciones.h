@@ -18,9 +18,10 @@
 
 pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
-pthread_mutex_t mutexDump;
+pthread_mutex_t mutexLoggerConsola;
+//pthread_mutex_t mutexDump;
 pthread_mutex_t mutexOperacion;
-pthread_mutex_t mutexListaTabla;
+pthread_mutex_t mutexListaDeTablas;
 pthread_mutex_t mutexBitarray;
 pthread_mutex_t mutexTiempoDump;
 pthread_mutex_t mutexRetardo;
@@ -50,13 +51,26 @@ t_bitarray* bitarray;
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
+		pthread_mutex_init(&mutexLoggerConsola, NULL);
 		pthread_mutex_init(&mutexOperacion,NULL);
-		pthread_mutex_init(&mutexListaTabla,NULL);
-		pthread_mutex_init(&mutexDump,NULL);
+		pthread_mutex_init(&mutexListaDeTablas,NULL);
+//		pthread_mutex_init(&mutexDump,NULL);
 		pthread_mutex_init(&mutexBitarray,NULL);
 		pthread_mutex_init(&mutexTiempoDump,NULL);
 		pthread_mutex_init(&mutexRetardo,NULL);
 
+}
+
+void liberarSemaforos(){
+	pthread_mutex_destroy(&mutexMemtable);
+	pthread_mutex_destroy(&mutexLogger);
+	pthread_mutex_destroy(&mutexLoggerConsola);
+	pthread_mutex_destroy(&mutexOperacion);
+	pthread_mutex_destroy(&mutexListaDeTablas);
+
+	pthread_mutex_destroy(&mutexBitarray);
+	pthread_mutex_destroy(&mutexTiempoDump);
+	pthread_mutex_destroy(&mutexRetardo);
 }
 
 void leerConfig(char* ruta){
@@ -67,19 +81,18 @@ void leerConfig(char* ruta){
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
 	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
 	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
-
 }
 
 void inicializarBloques(){
-	struct stat sb;
-
 	for(int i=0;i<cantDeBloques;i++){
 		char* ruta= string_new();
+		char* numeroDeBloque =string_itoa(i);
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Bloques/");
-		string_append(&ruta,string_itoa(i));
+		string_append(&ruta,numeroDeBloque);
 		string_append(&ruta,".bin");
 		FILE *bloque = fopen(ruta,"w");
+		free(numeroDeBloque);
 		free(ruta);
 		fclose(bloque);
 
@@ -133,6 +146,7 @@ void leerMetadataFS (){
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+	config_destroy(archivoMetadata);
 	free(rutaMetadata);
 }
 void inicializarListas(){
