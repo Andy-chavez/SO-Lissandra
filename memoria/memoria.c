@@ -47,17 +47,11 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
-		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) {
-			insertLQL(operacionAParsear, socketKernel);
-		}
-		else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
-		}
+		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
-		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) selectLQL(operacionAParsear, socketKernel);
-		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
+		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
@@ -74,7 +68,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un JOURNAL");
 		journalLQL(socketKernel);
-		}
+	}
 	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
@@ -150,6 +144,11 @@ void* manejarConsola() {
 		char* comando = NULL;
 		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
 		comando = readline(">");
+		if(!esOperacionEjecutable(comando)) {
+			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
+			free(comando);
+			continue;
+		}
 		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
 		APIMemoria(splitear_operacion(comando), -1);
 		sem_post(&MUTEX_OPERACION);
