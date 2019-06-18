@@ -164,6 +164,9 @@ void cargarListaEnBuffer(t_list* listaDeRegistros, char** buffer){
 
 //hay que implementarlo con hilos
 //pasar el buffer con & , y recibir como un char*
+bool perteneceAParticion(int suParticion,int particionActual){
+	return (suParticion == particionActual);
+}
 void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
 
 	//esto estaba en la de obtener metadata pero no se si se puede ser delegativo con esto
@@ -188,7 +191,8 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		char* bufferTemporales = string_new();
 
 		bool tieneLaKey(registro* unRegistro){
-			return (calcularParticion(unRegistro->key, cantParticiones) == i);
+			int suParticion = calcularParticion(unRegistro->key,cantParticiones);
+			return perteneceAParticion(suParticion,i);
 		}
 
 		void guardarEnBuffer(registro* unRegistro){
@@ -212,7 +216,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		string_append(&rutaParticion, numeroDeParticion);
 		string_append(&rutaParticion,".bin");
 		t_config* tabla = config_create(rutaParticion);
-		struct stat sb;
 
 		char** arrayDeBloques = config_get_array_value(tabla,"BLOCKS");
 

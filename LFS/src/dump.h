@@ -70,7 +70,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 		string_append(&rutaBloque,*(bloquesAsignados+i)); //este es el numero de bloque donde escribo
 		string_append(&rutaBloque,".bin");
 		FILE* fd = fopen(rutaBloque,"w");
-		fwrite(buffer+desplazamiento,1,tamanioBloques-1,fd);
+		fwrite(buffer+desplazamiento,1,tamanioBloques,fd);
 		desplazamiento+= tamanioBloques;
 		restante-=tamanioBloques;
 		fclose(fd);

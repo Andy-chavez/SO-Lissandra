@@ -169,7 +169,7 @@ int calcularParticion(int key,int cantidadParticiones){
 bool estaLaKey(int key,void* elemento){
 	registro* unRegistro = (registro*) elemento;
 //guarda basura en el value
-		return (unRegistro->key == key);
+	return (unRegistro->key == key);
 
 }
 

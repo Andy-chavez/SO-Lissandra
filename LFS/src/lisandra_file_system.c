@@ -50,6 +50,14 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
 				funcionDrop(operacionAParsear->parametros,socket);
 			}
+			else if(string_equals_ignore_case(operacionAParsear->operacion, "DUMP")) {
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DUMP");
+				dump();
+			}
+			else if(string_equals_ignore_case(operacionAParsear->operacion, "COMPACTAR")) {
+							enviarOMostrarYLogearInfo(-1,"Se recibio un COMPACTAR");
+							compactar(operacionAParsear->parametros);
+			}
 	else {
 		printf("no entendi xD");
 	}
@@ -232,48 +240,49 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 		inicializarRegistroError();
 
-		funcionCreate("PELICULAS SC 5 10000", -1);
 
+//		funcionCreate("PELICULAS SC 5 10000", -1);
+//
+//
+//
+//				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
+//				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
+//				funcionInsert("PELICULAS 1110 \"Harry Potter\"", -1);
+//				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
+//				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
+//				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
+//				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
+//				funcionInsert("PELICULAS 3671 \"Avatar\"", -1);
 
-
-				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
-				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
-				funcionInsert("PELICULAS 1110 \"Harry Potter\"", -1);
-				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
-				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
-				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
-				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatar\"", -1);
-
-		dump();
-		compactar("PELICULAS");
+		//dump();
+		//compactar("PELICULAS");
 
 		//hasta aca working
 		//ver lo de borrar los tmp y arrancar de cero.....
 
-		funcionInsert("PELICULAS 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS 1110 \"Harry2\"", -1);
-		dump();
+		//funcionInsert("PELICULAS 10 \"Story2\"", -1);
+		//funcionInsert("PELICULAS 10 \"Story3\"", -1);
+		//funcionInsert("PELICULAS 1110 \"Harry2\"", -1);
+		//dump();
 
 
-		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
-		dump();
+		//funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
+		//dump();
 
-		compactar("PELICULAS");
+		//compactar("PELICULAS");
 
-//		pthread_t threadConsola;
+		pthread_t threadConsola;
 //		pthread_t threadServer;
 //		pthread_t threadDump;
 //		pthread_t threadCambiosConfig;
 //
-//		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
+		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 //		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 //		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 //		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 //
 //		pthread_join(threadServer,NULL);
-//		pthread_join(threadConsola,NULL);
+		pthread_join(threadConsola,NULL);
 //		pthread_join(threadDump,NULL);
 
 	//	compactar("PELICULAS");
