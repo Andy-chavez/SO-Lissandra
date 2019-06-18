@@ -240,7 +240,6 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 		inicializarRegistroError();
 
-
 //		funcionCreate("PELICULAS SC 5 10000", -1);
 //
 //
