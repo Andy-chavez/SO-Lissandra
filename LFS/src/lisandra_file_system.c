@@ -71,10 +71,10 @@ void realizarHandshake(int socket){
 }
 
 int APIProtocolo(void* buffer, int socket) {
-	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 		void operacionLQLSola(operacionLQL* unaOperacionLQL){
 			parserGeneral(unaOperacionLQL,socket);
 		}
+	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion){
 	case OPERACIONLQL:
@@ -98,6 +98,7 @@ int APIProtocolo(void* buffer, int socket) {
 		cerrarConexion(socket);
 		return 0;
 	}
+	return 0;
 	free(buffer);
 }
 
@@ -132,7 +133,6 @@ void* servidorLisandra(){
 			continue;
 		}
 
-		//char* mensajeRecibido = recibir(socketMemoria);
 		realizarHandshake(socketMemoria);
 
 		pthread_t threadMemoria;
@@ -151,7 +151,7 @@ void* servidorLisandra(){
 
 void leerConsola() {
 		int socket = -1;
-		char *linea = NULL;  // forces getline to allocate with malloc
+		char *linea = NULL;
 
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
@@ -161,12 +161,11 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
 
-	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
-	    //guardiola con el describe all porque puede tirar basura
+	    while ((linea = readline(""))){
 	    	parserGeneral(splitear_operacion(linea),socket);
 	    }
 
-	    free (linea);  // free memory allocated by getline
+	    free (linea);
 }
 
 void* cambiosConfig() {
@@ -227,12 +226,11 @@ int main(int argc, char* argv[]) {
 
 		inicializarBloques();
 		inicializarSemaforos();
-		//inicializarArchivoBitmap(); //sacar esto despues
+		inicializarArchivoBitmap(); //sacar esto despues
 		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		inicializarBitmap();
 		inicializarRegistroError();
-		printearBitmap();
 
 		funcionCreate("PELICULAS SC 5 10000", -1);
 
@@ -280,20 +278,9 @@ int main(int argc, char* argv[]) {
 
 	//	compactar("PELICULAS");
 
-
-	//	registro* registroParaMemoria = funcionSelect("TABLA1 56");
-
-		//funcionInsert("TABLA1 56 alo");
-
 		//ver de liberar la memtable al final
-		/*obtenerMetadata("tablaA");
-		int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
-		pthread_mutex_init(&mutexLog,NULL);
-		pthread_t threadLeerConsola;
-	    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
-	    pthread_join(threadLeerConsola,NULL);
-	    pthread_mutex_destroy(&mutexLog);
-	    liberarConfigYLogs(archivosDeConfigYLog);*/
+
+	    //liberarConfigYLogs(archivosDeConfigYLog);
 
 
 		//liberarConfigYLogs();

@@ -18,9 +18,10 @@
 
 pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
-pthread_mutex_t mutexDump;
+pthread_mutex_t mutexLoggerConsola;
+//pthread_mutex_t mutexDump;
 pthread_mutex_t mutexOperacion;
-pthread_mutex_t mutexListaTabla;
+pthread_mutex_t mutexListaDeTablas;
 pthread_mutex_t mutexBitarray;
 pthread_mutex_t mutexTiempoDump;
 pthread_mutex_t mutexRetardo;
@@ -50,13 +51,26 @@ t_bitarray* bitarray;
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
+		pthread_mutex_init(&mutexLoggerConsola, NULL);
 		pthread_mutex_init(&mutexOperacion,NULL);
-		pthread_mutex_init(&mutexListaTabla,NULL);
-		pthread_mutex_init(&mutexDump,NULL);
+		pthread_mutex_init(&mutexListaDeTablas,NULL);
+//		pthread_mutex_init(&mutexDump,NULL);
 		pthread_mutex_init(&mutexBitarray,NULL);
 		pthread_mutex_init(&mutexTiempoDump,NULL);
 		pthread_mutex_init(&mutexRetardo,NULL);
 
+}
+
+void liberarSemaforos(){
+	pthread_mutex_destroy(&mutexMemtable);
+	pthread_mutex_destroy(&mutexLogger);
+	pthread_mutex_destroy(&mutexLoggerConsola);
+	pthread_mutex_destroy(&mutexOperacion);
+	pthread_mutex_destroy(&mutexListaDeTablas);
+
+	pthread_mutex_destroy(&mutexBitarray);
+	pthread_mutex_destroy(&mutexTiempoDump);
+	pthread_mutex_destroy(&mutexRetardo);
 }
 
 void leerConfig(char* ruta){
