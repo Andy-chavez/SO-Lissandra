@@ -224,12 +224,12 @@ int main(int argc, char* argv[]) {
 		leerMetadataFS();
 		inicializarListas();
 		inicializarLog("lisandraConsola.log");
-
+		log_info(logger, "Sopa de macaco");
 		inicializarBloques();
 		inicializarSemaforos();
 
 		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
-
+		//inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
 
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
 
 				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
 				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
-				funcionInsert("PELICULAS 1110 \"Harry Potter\"", -1);
+				funcionInsert("PELICULAS 1110 \"harryPuter\"", -1);
 				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
 				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
 				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);

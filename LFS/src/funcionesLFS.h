@@ -560,7 +560,7 @@ void funcionInsert(char* argumentos,int socket) {
 	//verificar que no se exceda el tamaño del value, tamanioValue (var. global
 	char** argSeparados = string_n_split(argumentos,3,"\"");
 	char* nombreYKey = *(argSeparados + 0);
-	char** separarNombreYKey = string_n_split(nombreYKey, 2, " ");
+	char** separarNombreYKey = string_split(nombreYKey, " ");
 	char* nombreTabla = *(separarNombreYKey + 0);
 	int key = atoi(*(separarNombreYKey + 1));
 	char* value = *(argSeparados + 1);
@@ -583,7 +583,7 @@ void funcionInsert(char* argumentos,int socket) {
 				registroDePrueba -> timestamp = timestamp;
 
 	guardarRegistro(registroDePrueba, nombreTabla);
-	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
+//	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
 
   liberarDoblePuntero(argSeparados);
 
