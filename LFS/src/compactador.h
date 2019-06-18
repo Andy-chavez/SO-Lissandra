@@ -90,8 +90,9 @@ void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizePartic
 	}else{
 
 		actualizarBloquesEnArchivo(arrayDeBloques, rutaParticion,cantBloquesNecesarios,tamanioDelBuffer); //aca se crea la nueva particion
-
-		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, *bufferTemporales);
+		t_config* particion = config_create(rutaParticion);
+		char** arrayDeBloquesFinal = config_get_array_value(particion, "BLOCKS");
+		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, *bufferTemporales);
 
 		//ver si funca esto, dejo asi comentado porque hay que ver el tema del drop si hay algo que se use para borrar archivos
 
@@ -99,6 +100,8 @@ void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizePartic
 
 
 //		liberarDoblePuntero(separarRegistro);
+	config_destroy(particion);
+	liberarDoblePuntero(arrayDeBloquesFinal);
 	}
 
 }
@@ -164,6 +167,9 @@ void cargarListaEnBuffer(t_list* listaDeRegistros, char** buffer){
 
 //hay que implementarlo con hilos
 //pasar el buffer con & , y recibir como un char*
+bool perteneceAParticion(int suParticion,int particionActual){
+	return (suParticion == particionActual);
+}
 void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
 
 	//esto estaba en la de obtener metadata pero no se si se puede ser delegativo con esto
@@ -188,29 +194,10 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		char* bufferTemporales = string_new();
 
 		bool tieneLaKey(registro* unRegistro){
-			return (calcularParticion(unRegistro->key, cantParticiones) == i);
+			int suParticion = calcularParticion(unRegistro->key,cantParticiones);
+			return perteneceAParticion(suParticion,i);
 		}
 
-		//no se si se puede hacer delegacion de una funcion de orden superior
-		//se cargan los registros de cada particion
-		/*
-		void cargarRegistro(registro* unRegistro){
-
-				char* time = string_itoa(unRegistro->timestamp);
-				char* key = string_itoa(unRegistro->key);
-
-				string_append(&bufferParticion,time);
-				string_append(&bufferParticion,";");
-				string_append(&bufferParticion,key);
-				string_append(&bufferParticion,";");
-				string_append(&bufferParticion,unRegistro->value);
-				string_append(&bufferParticion,"\n");
-
-				free(time);
-				free(key);
-
-			}
-*/
 		void guardarEnBuffer(registro* unRegistro){
 			char* time = string_itoa(unRegistro->timestamp);
 			char* key = string_itoa(unRegistro->key);
@@ -232,7 +219,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		string_append(&rutaParticion, numeroDeParticion);
 		string_append(&rutaParticion,".bin");
 		t_config* tabla = config_create(rutaParticion);
-		struct stat sb;
 
 		char** arrayDeBloques = config_get_array_value(tabla,"BLOCKS");
 
@@ -240,19 +226,39 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferBloques, arrayDeBloques, sizeParticion)){
 			if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
-				puts("ACA SE VA TODO A LA VERRRRRRRRRRRRRRGAAAAAA");
+							list_destroy(listaRegistrosTemporales);
+							config_destroy(tabla);
+							free(numeroDeParticion);
+							free(rutaParticion);
+							free(bufferBloques);
+							free(bufferParticion);
+							free(bufferFinal);
+							free(bufferTemporales);
+							liberarDoblePuntero(arrayDeBloques);
+
+				continue;
 			}
 			//meter una lista de registros temporales en un buffer
 			cargarListaEnBuffer(listaRegistrosTemporalesDeParticionActual, &bufferTemporales);
 			ingresarNuevaInfo(rutaParticion, arrayDeBloques, sizeParticion, &bufferTemporales);
 			//break porque no puede haber una particion que tenga data si la anterior no tenia data
 			//puede ser q sea continue
+			list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
+			config_destroy(tabla);
+			free(numeroDeParticion);
+			free(rutaParticion);
+			free(bufferBloques);
+			free(bufferParticion);
+			free(bufferFinal);
+			free(bufferTemporales);
+			liberarDoblePuntero(arrayDeBloques);
+
 			continue;
 		}else{
 
 			char** separarRegistro = separarRegistrosDeBuffer(bufferBloques, listaRegistrosOriginalesDeParticionActual);
-			t_list* estoNoFuncaNiAPalo = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
-			list_iterate(estoNoFuncaNiAPalo, (void *)guardarEnBuffer);
+			t_list* listaRegistrosFinal = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
+			list_iterate(listaRegistrosFinal, (void *)guardarEnBuffer);
 
 			ingresarNuevaInfo(rutaParticion, arrayDeBloques, sizeParticion, &bufferFinal);
 
@@ -263,6 +269,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		//crearArchivoConRegistrosACompactar(rutaTabla);
 			liberarDoblePuntero(arrayDeBloques);
 			liberarDoblePuntero(separarRegistro);
+			list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
 		}
 	list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
 	config_destroy(tabla);
@@ -272,6 +279,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 	free(bufferParticion);
 	free(bufferFinal);
 	free(bufferTemporales);
+	liberarDoblePuntero(arrayDeBloques);
 	}
 
 	config_destroy(configMetadata);

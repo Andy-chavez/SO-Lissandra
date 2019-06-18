@@ -169,7 +169,7 @@ int calcularParticion(int key,int cantidadParticiones){
 bool estaLaKey(int key,void* elemento){
 	registro* unRegistro = (registro*) elemento;
 //guarda basura en el value
-		return (unRegistro->key == key);
+	return (unRegistro->key == key);
 
 }
 
@@ -287,7 +287,8 @@ char* infoEnBloque(char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la
 
 	fstat(archivo,&sb);
 	if (sb.st_size == 0){
-				return NULL;
+		free(rutaBloque);
+		return NULL;
 	}
 
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);
@@ -336,7 +337,7 @@ void liberarDoblePuntero(char** doblePuntero){
 	for (i=0; *(doblePuntero+i)!= NULL; i++){
 			free(*(doblePuntero+i));
 		}
-	free(*(doblePuntero+i));
+	free(doblePuntero);
 
 }
 
@@ -423,7 +424,6 @@ char** separarRegistrosDeBuffer(char* buffer, t_list* listaRegistros){
 				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
 				liberarDoblePuntero(aCargar);
 			}
-
 		return separarRegistro;
 }
 
@@ -564,7 +564,11 @@ void funcionInsert(char* argumentos,int socket) {
 	char* valorTimestamp = *(argSeparados + 2);
 	int timestamp;
 
-	if (!verificarExistenciaDirectorioTabla(nombreTabla)) return;
+	if (!verificarExistenciaDirectorioTabla(nombreTabla)){
+		liberarDoblePuntero(separarNombreYKey);
+		liberarDoblePuntero(argSeparados);
+		return;
+	}
 	enviarOMostrarYLogearInfo(-1,"Directorio de tabla valido");
 
 	if (valorTimestamp == NULL) {
@@ -581,7 +585,8 @@ void funcionInsert(char* argumentos,int socket) {
 	guardarRegistro(registroDePrueba, nombreTabla);
 //	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
 
-  liberarDoblePuntero(argSeparados);
+	liberarDoblePuntero(separarNombreYKey);
+	liberarDoblePuntero(argSeparados);
 
 }
 
@@ -692,7 +697,7 @@ void crearParticiones(char* ruta, int numeroParticiones) {
 		free(infoAGuardar);
 		free(rutaDeLaParticion);
 		free(numeroParticion);
-
+		free(bloqueLibre);
 	}
 
 }
@@ -726,6 +731,8 @@ void funcionCreate(char* argumentos,int socket) {
 
 	}else{
 		enviarOMostrarYLogearInfo(socket,"Error ya existe la tabla en FS");
+		liberarDoblePuntero(argSeparados);
+		free(directorioTabla);
 		return;
 	}
 	liberarDoblePuntero(argSeparados);
@@ -792,9 +799,9 @@ int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL N
 		string_append(&ruta,numeroTmp);
 		string_append(&ruta,".tmp");
 		existe = existeArchivo(ruta);
-		if(existe==0) break;
 		free(numeroTmp);
 		free(ruta);
+		if(existe==0) break;
 		cantTemporal++;
 	}while(existe!=0);
 	return cantTemporal;

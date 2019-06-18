@@ -19,8 +19,9 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	string_append(&rutaTmp,".tmp");
 
 	char* info = string_new();
+	char* tamanio = string_itoa(size);
 	string_append(&info,"SIZE=");
-	string_append(&info,string_itoa(size));
+	string_append(&info,tamanio);
 	string_append(&info,"\n");
 	string_append(&info,"BLOCKS=[");
 
@@ -34,6 +35,7 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	}
 	string_append(&info,"]");
 	guardarInfoEnArchivo(rutaTmp,info);
+	free(tamanio);
 	free(numeroTmp);
 	free(info);
 	return rutaTmp;
@@ -58,6 +60,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 			FILE* fd = fopen(rutaBloque,"w");
 			fwrite(buffer+desplazamiento,1,restante,fd);
 			fclose(fd);
+			free(rutaBloque);
 			break;
 		}
 
@@ -73,7 +76,6 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 		fclose(fd);
 		free(rutaBloque);
 	}
-	liberarDoblePuntero(bloquesAsignados);
 }
 
 void dump(){
@@ -125,10 +127,11 @@ void dump(){
 			t_config* temporal =config_create(rutaTmp);
 			char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
 			config_destroy(temporal);
-			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
-			liberarDoblePuntero(bloquesAsignados);
-			free(buffer);
+			free(rutaTmp);
 
+			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
+			free(buffer);
+			liberarDoblePuntero(bloquesAsignados);
 		}
 		list_iterate(memtable,(void*)dumpearTabla);
 		liberarMemtable();
