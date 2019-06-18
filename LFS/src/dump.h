@@ -32,7 +32,7 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 		if(cantidadDeBloques>0) string_append(&info,","); //si es el ultimo no quiero que me ponga una ,
 	}
 	string_append(&info,"]");
-	guardarInfoEnArchivo(rutaTmp, info);
+	guardarInfoEnArchivo(rutaTmp,info);
 
 	free(info);
 	return rutaTmp;
@@ -111,7 +111,6 @@ void dump(){
 		//puts("hola");
 		buffer = string_new();
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
-		puts(buffer);
 
 			tamanioTotalADumpear = strlen(buffer);
 			pthread_mutex_lock(&mutexLogger);

@@ -604,6 +604,7 @@ void printearBitmap(){
 void guardarInfoEnArchivo(char* ruta, char* info){
 	FILE *fp = fopen(ruta, "w");
 	if (fp != NULL){
+		//fwrite(info , 1 , sizeof(info) , fp );
 		fputs(info, fp);
 		fclose(fp);
 	}
