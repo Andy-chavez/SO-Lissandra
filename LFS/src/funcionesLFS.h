@@ -594,7 +594,7 @@ void funcionInsert(char* argumentos,int socket) {
 void printearBitmap(){
 
 	int j;
-	for(j=0; j<cantDeBloques; j++){
+	for(j=0; j<30; j++){
 		bool bit = bitarray_test_bit(bitarray, j);
 		printf("%i \n", bit);
 	}

@@ -227,11 +227,12 @@ int main(int argc, char* argv[]) {
 
 		inicializarBloques();
 		inicializarSemaforos();
-		inicializarArchivoBitmap(); //sacar esto despues
+		//inicializarArchivoBitmap(); //sacar esto despues
 		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		inicializarBitmap();
 		inicializarRegistroError();
+		printearBitmap();
 
 		funcionCreate("PELICULAS SC 5 10000", -1);
 

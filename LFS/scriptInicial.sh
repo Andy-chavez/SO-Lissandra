@@ -1,4 +1,10 @@
 #!/bin/bash
+cd ..
+cd commonsPropias/
+sudo make uninstall
+sudo make install
+cd ..
+cd LFS/
 mkdir Metadata
 cd Metadata/
 read -p "Ingresa BLOCK_SIZE del Metadata.bin " x
@@ -13,3 +19,7 @@ done
 cd ..
 mkdir Tables
 mkdir Bloques
+cd src/
+make clean
+make all
+./elLFS.o
