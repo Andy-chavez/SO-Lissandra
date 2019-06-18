@@ -81,12 +81,9 @@ void leerConfig(char* ruta){
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
 	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
 	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
-
 }
 
 void inicializarBloques(){
-	struct stat sb;
-
 	for(int i=0;i<cantDeBloques;i++){
 		char* ruta= string_new();
 		char* numeroDeBloque =string_itoa(i);
@@ -149,6 +146,7 @@ void leerMetadataFS (){
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+	config_destroy(archivoMetadata);
 	free(rutaMetadata);
 }
 void inicializarListas(){

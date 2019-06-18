@@ -37,57 +37,33 @@ void crearArchivoConRegistrosACompactar(char*ruta){
 	free(rutaRegistros);
 }
 
-void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion){
-
+void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion,int cantidadTotalNecesaria,int size){
+//aca entras cuando ya necesitas mas bloques de los que ya tenes
 	char* infoAGuardar = string_new();
 
-//	string_append(&infoAGuardar, "SIZE=");
-	//aca no se bien que va al principio, por ahora le dejo 0 pero creo que cuando empezas con 1 bloque es el block size pero en string
-	//aca no va 0
-	//	string_append(&infoAGuardar, "0");
-	//string_append(&infoAGuardar, "\n");
-	//string_append(&infoAGuardar, "BLOCKS=[");
 
-	//como hago pa que no se guarde la ultima coma jaja
-
-	/*
-	for (int i=0; i<sizeof(arrayDeBloques) - 2; i++){
-		int k = (sizeof(arrayDeBloques) - 2);
-		if(i == (sizeof(arrayDeBloques) -2)){
-			continue;
-		}else{
-			string_append(&infoAGuardar, *(arrayDeBloques+i));
-			string_append(&infoAGuardar, ",");
-		}
-	}
-	string_append(&infoAGuardar, "]");
-*/
-
-
-				int cantidadDeBloques = calcularLargoArrayDeBloques(arrayDeBloques);
-
+				int largoArrayDeBloques = calcularLargoArrayDeBloques(arrayDeBloques);
+				char* tamanioTotal = string_itoa(size);
 				string_append(&infoAGuardar, "SIZE=");
-				string_append(&infoAGuardar, "0");
-//				string_append(&infoAGuardar, string_itoa(sizeParticion * sizeof(arrayDeBloques)));
+
+				string_append(&infoAGuardar,tamanioTotal);
 				string_append(&infoAGuardar, "\n");
 				string_append(&infoAGuardar, "BLOCKS=[");
-				int i=0;
-
-				while(cantidadDeBloques>0){
-				string_append(&infoAGuardar, *(arrayDeBloques + i));
-				cantidadDeBloques--;
-				i++;
-				if(cantidadDeBloques>0) string_append(&infoAGuardar,",");
+				free(tamanioTotal);
+				for(int i=0;i<largoArrayDeBloques;i++){
+					string_append(&infoAGuardar, *(arrayDeBloques + i));
+					cantidadTotalNecesaria--;
+					string_append(&infoAGuardar,",");
+			}
+				for(int j=0;j<cantidadTotalNecesaria;j++){
+						char* bloqueLibre = devolverBloqueLibre();
+						string_append(&infoAGuardar,bloqueLibre);
+						cantidadTotalNecesaria--;
+						free(bloqueLibre);
+						if(cantidadTotalNecesaria>0) string_append(&infoAGuardar,","); //si es el ultimo no quiero que me ponga una ,
 				}
 				string_append(&infoAGuardar, "]");
-/*
-				while(cantidadDeBloques>0){
-						char* bloqueLibre = devolverBloqueLibre();
-						string_append(&info,bloqueLibre);
-						cantidadDeBloques--;
-						if(cantidadDeBloques>0) string_append(&info,","); //si es el ultimo no quiero que me ponga una ,
-					}
-*/
+
 remove(rutaParticion);
 guardarInfoEnArchivo(rutaParticion, infoAGuardar);
 free(infoAGuardar);
@@ -100,27 +76,20 @@ int calcularLargoArrayDeBloques(char** arrayDeBloques){
 	}
 	return cantidad;
 }
+
 void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, int sizeParticion, char** bufferTemporales){
 	int tamanioDelBuffer = strlen(*(bufferTemporales));
 	int cantBloquesNecesarios =  ceil((float) (tamanioDelBuffer/ (float) tamanioBloques));
 	int i;
+	int largoDeArrayDeBloques =calcularLargoArrayDeBloques(arrayDeBloques);
 	//si solo se necesita un bloque se guarda en el unico bloque que se le asigno a la particion al cargar la tabla
-	if (cantBloquesNecesarios == 1){
+	if (cantBloquesNecesarios == largoDeArrayDeBloques){
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, *bufferTemporales);
 	//Si no, hay que darle mas bloques libres y cargarlos al array
 
 	}else{
 
-	//i = 1 , porque hay uno que ya esta asignado en la posicion 0 del array
-		//i = size of del array de bloques en ese momento !!!!!!
-		for(i = calcularLargoArrayDeBloques(arrayDeBloques); i<cantBloquesNecesarios; i++){
-			//se deberia considerar mallokear el array
-			*(arrayDeBloques + i) = devolverBloqueLibre();
-		}
-		//Si no rompe al no reconocer la ultima posicion como NULL
-		*(arrayDeBloques + i) = NULL;
-
-		actualizarBloquesEnArchivo(arrayDeBloques, rutaParticion);
+		actualizarBloquesEnArchivo(arrayDeBloques, rutaParticion,cantBloquesNecesarios,tamanioDelBuffer); //aca se crea la nueva particion
 
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, *bufferTemporales);
 
@@ -257,10 +226,10 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			}
 
 		t_list* listaRegistrosTemporalesDeParticionActual = list_filter(listaRegistrosTemporales, tieneLaKey);
-
+		char* numeroDeParticion =string_itoa(i);
 		string_append(&rutaParticion, rutaTabla);
 		string_append(&rutaParticion,"part"); //vamos a usar la convension PartN.bin
-		string_append(&rutaParticion, string_itoa(i));
+		string_append(&rutaParticion, numeroDeParticion);
 		string_append(&rutaParticion,".bin");
 		t_config* tabla = config_create(rutaParticion);
 		struct stat sb;
@@ -292,9 +261,12 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			//eliminar archivos originales
 			//nueva info.....
 		//crearArchivoConRegistrosACompactar(rutaTabla);
+			liberarDoblePuntero(arrayDeBloques);
 			liberarDoblePuntero(separarRegistro);
 		}
+	list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
 	config_destroy(tabla);
+	free(numeroDeParticion);
 	free(rutaParticion);
 	free(bufferBloques);
 	free(bufferParticion);
@@ -302,9 +274,9 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 	free(bufferTemporales);
 	}
 
-
+	config_destroy(configMetadata);
 	free(rutaMetadata);
-
+	list_destroy_and_destroy_elements(listaRegistrosOriginalesDeParticionActual,(void*)liberarRegistros);
 }
 
 void compactar(char* nombreTabla){
@@ -330,12 +302,13 @@ void compactar(char* nombreTabla){
 
 		char* rutaTmpOriginal = string_new();
 		char* rutaTmpCompactar= string_new();
-
+		char* numeroDeTmp = string_itoa(i);
 		string_append(&rutaTmpOriginal, rutaTabla);
-		string_append(&rutaTmpOriginal, string_itoa(i));
+		string_append(&rutaTmpOriginal, numeroDeTmp);
+
 		string_append(&rutaTmpOriginal,".tmp");
 		string_append(&rutaTmpCompactar, rutaTabla);
-		string_append(&rutaTmpCompactar, string_itoa(i));
+		string_append(&rutaTmpCompactar, numeroDeTmp);
 		string_append(&rutaTmpCompactar,".tmpc");
 		//con esto despues se puede verificar que no se pueda hacer esto
 		int cambiarNombre = rename(rutaTmpOriginal, rutaTmpCompactar);
@@ -355,12 +328,15 @@ void compactar(char* nombreTabla){
 		remove(rutaTmpCompactar);
 		free(rutaTmpOriginal);
 		free(rutaTmpCompactar);
+		free(numeroDeTmp);
 		config_destroy(archivoTmp);
+		liberarDoblePuntero(arrayDeBloques);
 	}
 
 	char** separarRegistro = separarRegistrosDeBuffer(bufferTemporales, listaRegistrosTemporales);
 	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporales);
 
+	list_destroy_and_destroy_elements(listaRegistrosTemporales,(void*)liberarRegistros);
 	free(rutaTabla);
 	free(bufferTemporales);
 

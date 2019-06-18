@@ -350,17 +350,17 @@ void cargarInfoDeBloques(char*** buffer, char**arrayDeBloques, int sizeParticion
 }
 
 void cargarInfoDeTmp(char** buffer, char* nombreTabla){
-		char* ruta = string_new();
 		t_config* part;
 		int numeroTmp = obtenerCantTemporales(nombreTabla);
 
 		for (int i = 0; i< numeroTmp; i++){
-
+			char* ruta = string_new();
+			char* numeroTmp =string_itoa(i);
 			string_append(&ruta,puntoMontaje);
 			string_append(&ruta,"Tables/");
 			string_append(&ruta,nombreTabla);
 			string_append(&ruta,"/"); //vamos a usar la convension partN.bin
-			string_append(&ruta,string_itoa(i));
+			string_append(&ruta,numeroTmp);
 			string_append(&ruta,".tmp");
 			part = config_create(ruta);
 			char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
@@ -369,6 +369,7 @@ void cargarInfoDeTmp(char** buffer, char* nombreTabla){
 
 			cargarInfoDeBloques(&buffer, arrayDeBloques, sizeParticion);
 
+			free(numeroTmp);
 			free(ruta);
 			liberarDoblePuntero(arrayDeBloques);
 			config_destroy(part);
@@ -530,6 +531,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		free (ruta);
 		list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistro);
 		free(buffer);
+		free(particion);
 
 		//ver si la funcion tiene que devolver el registro
 		//printf("Registro seleccionado: %s \n",registroBuscado->value);
@@ -603,6 +605,11 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 		fputs(info, fp);
 		fclose(fp);
 	}
+}
+void marcarBloqueComoLibre(int posicion){
+	pthread_mutex_lock(&mutexBitarray);
+	bitarray_clean_bit(bitarray, posicion);
+	pthread_mutex_unlock(&mutexBitarray);
 }
 
 char* devolverBloqueLibre(){
@@ -749,14 +756,11 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-void liberarTabla(tablaMem* tabla) {
-
-	void liberarRegistros(registro* unRegistro) {
+void liberarRegistros(registro* unRegistro) {
 		free(unRegistro->value);
 		free(unRegistro);
-
-	}
-
+}
+void liberarTabla(tablaMem* tabla) {
 	free(tabla->nombre);
 	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);
 	free(tabla);
@@ -780,14 +784,16 @@ int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL N
 	do{
 
 		char* ruta = string_new();
+		char* numeroTmp =string_itoa(cantTemporal);
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Tables/");
 		string_append(&ruta,nombreTabla);
 		string_append(&ruta,"/");
-		string_append(&ruta,string_itoa(cantTemporal));
+		string_append(&ruta,numeroTmp);
 		string_append(&ruta,".tmp");
 		existe = existeArchivo(ruta);
 		if(existe==0) break;
+		free(numeroTmp);
 		free(ruta);
 		cantTemporal++;
 	}while(existe!=0);

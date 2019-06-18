@@ -222,6 +222,8 @@ int main(int argc, char* argv[]) {
 		inicializarListas();
 		inicializarLog("lisandraConsola.log");
 
+		log_info(loggerConsola,"Inicializando FS");
+
 		inicializarBloques();
 		inicializarSemaforos();
 		inicializarArchivoBitmap(); //sacar esto despues

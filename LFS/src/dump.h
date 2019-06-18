@@ -9,13 +9,13 @@
 char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 
 	char* rutaTmp = string_new();
-	int numeroTmp = obtenerCantTemporales(nombreTabla);
+	char* numeroTmp = string_itoa(obtenerCantTemporales(nombreTabla));
 
 	string_append(&rutaTmp, puntoMontaje);
 	string_append(&rutaTmp, "Tables/");
 	string_append(&rutaTmp, nombreTabla);
 	string_append(&rutaTmp, "/");
-	string_append(&rutaTmp, string_itoa(numeroTmp));
+	string_append(&rutaTmp, numeroTmp);
 	string_append(&rutaTmp,".tmp");
 
 	char* info = string_new();
@@ -29,11 +29,12 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 		char* bloqueLibre = devolverBloqueLibre();
 		string_append(&info,bloqueLibre);
 		cantidadDeBloques--;
+		free(bloqueLibre);
 		if(cantidadDeBloques>0) string_append(&info,","); //si es el ultimo no quiero que me ponga una ,
 	}
 	string_append(&info,"]");
 	guardarInfoEnArchivo(rutaTmp,info);
-
+	free(numeroTmp);
 	free(info);
 	return rutaTmp;
 }
