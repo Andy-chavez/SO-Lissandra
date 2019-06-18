@@ -219,6 +219,7 @@ void* cambiosConfig() {
 int main(int argc, char* argv[]) {
 
 
+
 		//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
 		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
@@ -232,6 +233,18 @@ int main(int argc, char* argv[]) {
 		//inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
+
+		t_config* archivoTmp = config_create("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/Tables/PELICULAS/part0.bin");
+
+		char** arrayDeBloques = config_get_array_value(archivoTmp,"BLOCKS");
+
+		int tamanioArray = calcularLargoArrayDeBloques(arrayDeBloques);
+
+		string_append(arrayDeBloques, "5");
+
+
+		liberarDoblePuntero(arrayDeBloques);
+
 
 		funcionCreate("PELICULAS SC 5 10000", -1);
 
