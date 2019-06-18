@@ -227,7 +227,7 @@ int main(int argc, char* argv[]) {
 
 		inicializarBloques();
 		inicializarSemaforos();
-
+		inicializarArchivoBitmap(); //sacar esto despues
 		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		inicializarBitmap();
@@ -263,19 +263,19 @@ int main(int argc, char* argv[]) {
 
 		compactar("PELICULAS");
 
-		pthread_t threadConsola;
-		pthread_t threadServer;
-		pthread_t threadDump;
-		pthread_t threadCambiosConfig;
-
-		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
-		pthread_create(&threadDump, NULL,(void*) dump, NULL);
-		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
-
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
+//		pthread_t threadConsola;
+//		pthread_t threadServer;
+//		pthread_t threadDump;
+//		pthread_t threadCambiosConfig;
+//
+//		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
+//		pthread_create(&threadDump, NULL,(void*) dump, NULL);
+//		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+//		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
+//
+//		pthread_join(threadServer,NULL);
+//		pthread_join(threadConsola,NULL);
+//		pthread_join(threadDump,NULL);
 
 	//	compactar("PELICULAS");
 
@@ -295,7 +295,7 @@ int main(int argc, char* argv[]) {
 	    liberarConfigYLogs(archivosDeConfigYLog);*/
 
 
-		liberarConfigYLogs();
+		//liberarConfigYLogs();
 		return EXIT_SUCCESS;
 }
 
