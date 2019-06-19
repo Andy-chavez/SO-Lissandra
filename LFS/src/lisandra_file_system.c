@@ -241,9 +241,9 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 		inicializarRegistroError();
 
-		leerConsola();
+	//	leerConsola();
 
-	/*
+
 		funcionCreate("PELICULAS SC 5 10000", -1);
 				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
 				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
@@ -252,11 +252,11 @@ int main(int argc, char* argv[]) {
 				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
 				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
 				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatarrrrr\"", -1);
+				funcionInsert("PELICULAS 3671 \"Avatar\"", -1);
 
 		dump();
 		compactar("PELICULAS");
-*/
+
 		//hasta aca working
 		//ver lo de borrar los tmp y arrancar de cero.....
 /*

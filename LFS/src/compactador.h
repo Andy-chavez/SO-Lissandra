@@ -18,6 +18,7 @@ bool cargarInfoDeBloquesParaCompactacion(char** buffer, char**arrayDeBloques, in
 			}else{
 				char* informacion = infoEnBloque(*(arrayDeBloques+i),sizeParticion);
 				string_append(buffer, informacion);
+				free(informacion);
 			i++;
 			}
 		}
@@ -174,6 +175,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 	//esto estaba en la de obtener metadata pero no se si se puede ser delegativo con esto
 	t_list* listaRegistrosOriginalesDeParticionActual = list_create();
+
 	//liberar la lista
 
 	char* rutaMetadata = string_new();
@@ -187,11 +189,16 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 	for (int i = 0; i< cantParticiones; i++){
 
+	//	t_list* listaDeRegistrosTemporales = list_create();
+	//	listaDeRegistrosTemporales = listaRegistrosTemporales;
+
 		char* bufferBloques = string_new();
 		char* rutaParticion = string_new();
 		char* bufferParticion = string_new();
 		char* bufferFinal = string_new();
 		char* bufferTemporales = string_new();
+
+
 
 		bool tieneLaKey(registro* unRegistro){
 			int suParticion = calcularParticion(unRegistro->key,cantParticiones);
@@ -218,6 +225,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		string_append(&rutaParticion,"part"); //vamos a usar la convension PartN.bin
 		string_append(&rutaParticion, numeroDeParticion);
 		string_append(&rutaParticion,".bin");
+		//aca en la segunda..
 		t_config* tabla = config_create(rutaParticion);
 
 		char** arrayDeBloques = config_get_array_value(tabla,"BLOCKS");
@@ -226,7 +234,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferBloques, arrayDeBloques, sizeParticion)){
 			if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
-							list_destroy(listaRegistrosTemporales);
+
 							config_destroy(tabla);
 							free(numeroDeParticion);
 							free(rutaParticion);
@@ -269,7 +277,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		//crearArchivoConRegistrosACompactar(rutaTabla);
 			liberarDoblePuntero(arrayDeBloques);
 			liberarDoblePuntero(separarRegistro);
-			list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
+		list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
 		}
 	list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
 	config_destroy(tabla);
@@ -289,7 +297,14 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 void compactar(char* nombreTabla){
 
+	//aca habria que poner un while 1
 	int i;
+	int numeroTmp = obtenerCantTemporales(nombreTabla);
+	/*
+	if(numeroTmp == 0){
+		continue;
+	}
+	*/
 	char* bufferTemporales = string_new();
 	char* rutaTabla = string_new();
 
@@ -297,13 +312,10 @@ void compactar(char* nombreTabla){
 	t_list* listaRegistrosTemporales = list_create();
 	//liberar la lista
 
-	int numeroTmp = obtenerCantTemporales(nombreTabla);
-
 	string_append(&rutaTabla, puntoMontaje);
 	string_append(&rutaTabla, "Tables/");
 	string_append(&rutaTabla, nombreTabla);
 	string_append(&rutaTabla, "/");
-
 
 	for (i = 0; i< numeroTmp; i++){
 
@@ -326,15 +338,16 @@ void compactar(char* nombreTabla){
 
 		t_config* archivoTmp = config_create(rutaTmpCompactar);
 
-
-
 		if(cambiarNombre){
 			enviarYLogearMensajeError(-1,"No se pudo renombrar el archivo tmp");
+			free(rutaTmpOriginal);
+			free(rutaTmpCompactar);
+			free(numeroDeTmp);
+			config_destroy(archivoTmp);
 			continue;
 		}
 
 		//leer bloques
-
 		char** arrayDeBloques = config_get_array_value(archivoTmp,"BLOCKS");
 		int sizeParticion=config_get_int_value(archivoTmp,"SIZE");
 		config_destroy(archivoTmp);
