@@ -234,10 +234,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferBloques, arrayDeBloques, sizeParticion)){
 			if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
-<<<<<<< HEAD
-
-=======
->>>>>>> b9bb7cfeab6f183b1aa65ea6e7d2c0260f88cd1e
 							config_destroy(tabla);
 							free(numeroDeParticion);
 							free(rutaParticion);
@@ -277,16 +273,9 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 			//eliminar archivos originales
 			//nueva info.....
-<<<<<<< HEAD
-		//crearArchivoConRegistrosACompactar(rutaTabla);
-			liberarDoblePuntero(arrayDeBloques);
-			liberarDoblePuntero(separarRegistro);
-		list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
-=======
 			//crearArchivoConRegistrosACompactar(rutaTabla);
 			//liberarDoblePuntero(arrayDeBloques);
 			list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
->>>>>>> b9bb7cfeab6f183b1aa65ea6e7d2c0260f88cd1e
 		}
 	list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
 	config_destroy(tabla);

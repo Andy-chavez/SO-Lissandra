@@ -240,14 +240,9 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 		inicializarRegistroError();
 
-<<<<<<< HEAD
 	//	leerConsola();
 
 
-=======
-
-
->>>>>>> b9bb7cfeab6f183b1aa65ea6e7d2c0260f88cd1e
 		funcionCreate("PELICULAS SC 5 10000", -1);
 				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
 				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
