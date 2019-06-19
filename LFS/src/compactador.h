@@ -265,8 +265,8 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 			//eliminar archivos originales
 			//nueva info.....
-		//crearArchivoConRegistrosACompactar(rutaTabla);
-			liberarDoblePuntero(arrayDeBloques);
+			//crearArchivoConRegistrosACompactar(rutaTabla);
+			//liberarDoblePuntero(arrayDeBloques);
 			list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
 		}
 	list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
