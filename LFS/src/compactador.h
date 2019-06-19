@@ -91,6 +91,7 @@ void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, char* buffer){
 		t_config* particion = config_create(rutaParticion);
 		config_set_value(particion, "SIZE", size);
 		config_destroy(particion);
+
 		//Si no, hay que darle mas bloques libres y cargarlos al array
 
 	}else{
@@ -276,19 +277,20 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 					return (registroTemporal->key == unRegistro->key);
 				}
 
-				if(!list_find(listaRegistrosTemporales, seEncuentraKey)){
+
+				list_remove_and_destroy_by_condition(listaRegistrosTemporales, seEncuentraKey, liberarRegistros);
+			/*	if(list_remove_by_condition(listaRegistrosTemporales, seEncuentraKey)){
 					liberarRegistros(unRegistro);
 				}
+			*/
 			}
 
 			t_list* listaRegistrosOriginalesDeParticionActual = list_create();
 			separarRegistrosYCargarALista(bufferParticion, listaRegistrosOriginalesDeParticionActual);
 	//		t_list* listaRegistrosFinal = list_create();
 
-
 			agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
 			list_iterate(listaRegistrosOriginalesDeParticionActual, (void *)guardarEnBuffer);
-
 
 			/*
 			t_list* listaRegistrosFinal = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
@@ -342,6 +344,8 @@ void compactar(char* nombreTabla){
 
 		char* rutaTmpOriginal = string_new();
 		char* rutaTmpCompactar= string_new();
+		char* nombreDelTmpc = string_new();
+
 		char* numeroDeTmp = string_itoa(i);
 		string_append(&rutaTmpOriginal, rutaTabla);
 		string_append(&rutaTmpOriginal, numeroDeTmp);
@@ -350,6 +354,9 @@ void compactar(char* nombreTabla){
 		string_append(&rutaTmpCompactar, rutaTabla);
 		string_append(&rutaTmpCompactar, numeroDeTmp);
 		string_append(&rutaTmpCompactar,".tmpc");
+
+		string_append(&nombreDelTmpc, numeroDeTmp);
+		string_append(&nombreDelTmpc,".tmpc");
 
 
 		//con esto despues se puede verificar que no se pueda hacer esto
@@ -363,6 +370,7 @@ void compactar(char* nombreTabla){
 			free(rutaTmpOriginal);
 			free(rutaTmpCompactar);
 			free(numeroDeTmp);
+			free(nombreDelTmpc);
 			config_destroy(archivoTmp);
 			continue;
 		}
@@ -373,10 +381,14 @@ void compactar(char* nombreTabla){
 
 		cargarInfoDeBloquesParaCompactacion(&bufferTemporales, arrayDeBloques);
 
+		liberarBloquesDeTmpYPart(nombreDelTmpc, rutaTabla);
+
+
 		remove(rutaTmpCompactar);
 		free(rutaTmpOriginal);
 		free(rutaTmpCompactar);
 		free(numeroDeTmp);
+		free(nombreDelTmpc);
 
 		liberarDoblePuntero(arrayDeBloques);
 	}

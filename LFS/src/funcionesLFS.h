@@ -760,7 +760,7 @@ return tamanioTotal;
 }
 
 void liberarRegistros(registro* unRegistro) {
-	//	free(unRegistro->value);
+		free(unRegistro->value);
 		free(unRegistro);
 }
 void liberarTabla(tablaMem* tabla) {

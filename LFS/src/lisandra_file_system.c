@@ -240,11 +240,12 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 		inicializarRegistroError();
 
-	//	leerConsola();
+	//leerConsola();
 
 
 		funcionCreate("PELICULAS SC 5 10000", -1);
-				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
+
+		funcionInsert("PELICULAS 10 \"Toy story\"", -1);
 				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
 				funcionInsert("PELICULAS 1110 \"harryPuter\"", -1);
 				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
@@ -253,21 +254,40 @@ int main(int argc, char* argv[]) {
 				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
 				funcionInsert("PELICULAS 3671 \"Avatarrrrrrr\"", -1);
 
+
+
+		funcionCreate("PELICULAS2 SC 5 10000", -1);
+						funcionInsert("PELICULAS2 10 \"Toy story\"", -1);
+						funcionInsert("PELICULAS2 163 \"Nemo\"", -1);
+						funcionInsert("PELICULAS2 1110 \"harryPuter\"", -1);
+						funcionInsert("PELICULAS2 13535 \"Titanic\"", -1);
+						funcionInsert("PELICULAS2 922 \"RATATOULI\"", -1);
+						funcionInsert("PELICULAS2 4829 \"Aladdin\"", -1);
+						funcionInsert("PELICULAS2 2516 \"Godzilla\"", -1);
+						funcionInsert("PELICULAS2 3671 \"Avatarrrrrrr\"", -1);
+
 		dump();
 		compactar("PELICULAS");
+		compactar("PELICULAS2");
 
-		//hasta aca working
-		//ver lo de borrar los tmp y arrancar de cero.....
 
 		funcionInsert("PELICULAS 10 \"Story2\"", -1);
 		funcionInsert("PELICULAS 10 \"Story3\"", -1);
 		funcionInsert("PELICULAS 1110 \"Harryyy2\"", -1);
+
+		funcionInsert("PELICULAS2 10 \"Story2\"", -1);
+		funcionInsert("PELICULAS2 10 \"Story3\"", -1);
+		funcionInsert("PELICULAS2 1110 \"Harryyy2\"", -1);
+
 		dump();
 
 		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
+		funcionInsert("PELICULAS2 2516 \"MORCILLA\"", -1);
+
 		dump();
 
 		compactar("PELICULAS");
+		compactar("PELICULAS2");
 /*
 		pthread_t threadConsola;
 //		pthread_t threadServer;
