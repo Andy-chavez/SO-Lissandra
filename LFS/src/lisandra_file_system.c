@@ -251,7 +251,7 @@ int main(int argc, char* argv[]) {
 				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
 				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
 				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatar\"", -1);
+				funcionInsert("PELICULAS 3671 \"Avatarrrrrrr\"", -1);
 
 		dump();
 		compactar("PELICULAS");
@@ -261,7 +261,7 @@ int main(int argc, char* argv[]) {
 
 		funcionInsert("PELICULAS 10 \"Story2\"", -1);
 		funcionInsert("PELICULAS 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS 1110 \"Harry2\"", -1);
+		funcionInsert("PELICULAS 1110 \"Harryyy2\"", -1);
 		dump();
 
 		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);

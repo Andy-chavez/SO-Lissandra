@@ -67,7 +67,7 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla);
 metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
 void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
-char* infoEnBloque(char* numeroBloque,int sizeTabla);
+char* infoEnBloque(char* numeroBloque);
 bool estaLaKey(int key,void* elemento);
 bool esIgualAlNombre(char* nombreTabla,void * elemento);
 void* devolverMayor(registro* registro1, registro* registro2);
@@ -126,7 +126,7 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
 }
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
-	registro* guardarRegistro; //= malloc (sizeof(registro));
+	registro* guardarRegistro= malloc (sizeof(registro));
 	guardarRegistro->timestamp = atoi(unTimestamp);
 	guardarRegistro->key = atoi(unaKey);
 	guardarRegistro->value = string_duplicate(unValue);
@@ -275,7 +275,7 @@ return registroDeMayorTimestamp;
 
 }
 
-char* infoEnBloque(char* numeroBloque,int sizeTabla){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
+char* infoEnBloque(char* numeroBloque){ //pasarle el tamanio de la particion, o ver que onda (rutaTabla)
 	//ver que agarre toda la info de los bloques correspondientes a esa tabla
 	struct stat sb;
 
@@ -342,10 +342,10 @@ void liberarDoblePuntero(char** doblePuntero){
 
 }
 
-void cargarInfoDeBloques(char*** buffer, char**arrayDeBloques, int sizeParticion){
+void cargarInfoDeBloques(char*** buffer, char**arrayDeBloques){
 	int i = 0;
 		while(*(arrayDeBloques+i)!= NULL){
-							char* informacion = infoEnBloque(*(arrayDeBloques+i),sizeParticion);
+							char* informacion = infoEnBloque(*(arrayDeBloques+i));
 							string_append(*buffer, informacion);
 							i++;
 						}
@@ -366,10 +366,9 @@ void cargarInfoDeTmp(char** buffer, char* nombreTabla){
 			string_append(&ruta,".tmp");
 			part = config_create(ruta);
 			char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
-			int sizeParticion=config_get_int_value(part,"SIZE");
 
 
-			cargarInfoDeBloques(&buffer, arrayDeBloques, sizeParticion);
+			cargarInfoDeBloques(&buffer, arrayDeBloques);
 
 			free(numeroTmp);
 			free(ruta);
@@ -385,7 +384,7 @@ void cargarInfoDeBloque(char** arrayDeBloques, int sizeParticion, t_list* listaR
 	int i = 0;
 
 	while(*(arrayDeBloques+i)!= NULL){
-			char* informacion = infoEnBloque(*(arrayDeBloques+i),sizeParticion);
+			char* informacion = infoEnBloque(*(arrayDeBloques+i));
 			string_append(&buffer, informacion);
 			i++;
 		}
