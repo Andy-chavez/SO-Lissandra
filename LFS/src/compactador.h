@@ -226,7 +226,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferBloques, arrayDeBloques, sizeParticion)){
 			if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
-							list_destroy(listaRegistrosTemporales);
 							config_destroy(tabla);
 							free(numeroDeParticion);
 							free(rutaParticion);
@@ -256,7 +255,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			continue;
 		}else{
 
-			char** separarRegistro = separarRegistrosDeBuffer(bufferBloques, listaRegistrosOriginalesDeParticionActual);
+			separarRegistrosYCargarALista(bufferBloques, listaRegistrosOriginalesDeParticionActual);
 			t_list* listaRegistrosFinal = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
 			list_iterate(listaRegistrosFinal, (void *)guardarEnBuffer);
 
@@ -268,7 +267,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			//nueva info.....
 		//crearArchivoConRegistrosACompactar(rutaTabla);
 			liberarDoblePuntero(arrayDeBloques);
-			liberarDoblePuntero(separarRegistro);
 			list_destroy_and_destroy_elements(listaRegistrosFinal,(void*)liberarRegistros);
 		}
 	list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
@@ -330,6 +328,10 @@ void compactar(char* nombreTabla){
 
 		if(cambiarNombre){
 			enviarYLogearMensajeError(-1,"No se pudo renombrar el archivo tmp");
+			free(rutaTmpOriginal);
+			free(rutaTmpCompactar);
+			free(numeroDeTmp);
+			config_destroy(archivoTmp);
 			continue;
 		}
 
@@ -349,7 +351,7 @@ void compactar(char* nombreTabla){
 		liberarDoblePuntero(arrayDeBloques);
 	}
 
-	char** separarRegistro = separarRegistrosDeBuffer(bufferTemporales, listaRegistrosTemporales);
+	separarRegistrosYCargarALista(bufferTemporales, listaRegistrosTemporales);
 	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporales);
 
 	list_destroy_and_destroy_elements(listaRegistrosTemporales,(void*)liberarRegistros);
