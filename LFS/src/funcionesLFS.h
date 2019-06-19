@@ -94,6 +94,7 @@ pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
 void funcionDrop(char* nombreTabla,int socket);
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarTablaALista(char* nombreTabla);
+void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros);
 
 void inicializarRegistroError(){
 	registroError = malloc(sizeof(registro));
@@ -125,7 +126,7 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
 }
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
-	registro* guardarRegistro = malloc (sizeof(registro));
+	registro* guardarRegistro; //= malloc (sizeof(registro));
 	guardarRegistro->timestamp = atoi(unTimestamp);
 	guardarRegistro->key = atoi(unaKey);
 	guardarRegistro->value = string_duplicate(unValue);
@@ -416,7 +417,7 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 				return registroBuscado;
 }
 
-char** separarRegistrosDeBuffer(char* buffer, t_list* listaRegistros){
+void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros){
 	char** separarRegistro = string_split(buffer,"\n");
 			int j =0;
 			for(j=0;*(separarRegistro+j)!=NULL;j++){
@@ -424,7 +425,8 @@ char** separarRegistrosDeBuffer(char* buffer, t_list* listaRegistros){
 				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
 				liberarDoblePuntero(aCargar);
 			}
-		return separarRegistro;
+
+	liberarDoblePuntero(separarRegistro);
 }
 
 void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
@@ -469,6 +471,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_unlock(&mutexLogger);
 
 		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones)); //cant de particiones de la tabla
+		liberarMetadata(metadataTabla);
 		char* buffer = string_new();
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Tables/");
@@ -482,22 +485,13 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 		int sizeParticion=config_get_int_value(part,"SIZE");
 
-		//ver si esta vacio que no haga esto desde infoenbloque
-	/*
-		while(*(arrayDeBloques+i)!= NULL){
-			char* informacion = infoEnBloque(key,*(arrayDeBloques+i),sizeParticion,listaRegistros);
-			string_append(&buffer, informacion);
-			i++;
-		}
-	*/
-		//PASAJE POR REFERENCIA
 		cargarInfoDeTmp(&buffer, *(argSeparados+0));
 
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Informacion de bloques cargada");
 		pthread_mutex_unlock(&mutexLogger);
 
-		char** separarRegistro = separarRegistrosDeBuffer(buffer, listaRegistros);
+		separarRegistrosYCargarALista(buffer, listaRegistros);
 
 
 
@@ -515,7 +509,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 				pthread_mutex_lock(&mutexLogger);
 				log_info(logger, "El registro no se encuentra en la memtable");
 				pthread_mutex_unlock(&mutexLogger);
-			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket);
+			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket); //me pa que esto no va aca
 			}
 			}
 
@@ -524,7 +518,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
 
 		liberarDoblePuntero(arrayDeBloques);
-		liberarDoblePuntero(separarRegistro);
 		liberarDoblePuntero(argSeparados);
 
 		config_destroy(part);
@@ -534,7 +527,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		free(particion);
 
 		//ver si la funcion tiene que devolver el registro
-		//printf("Registro seleccionado: %s \n",registroBuscado->value);
 		//enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
 		if(socket!=-1){
 			if(!registroBuscado) {
@@ -543,10 +535,15 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			}
 			else {
 				serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,*(argSeparados+0)));
-				log_info(loggerConsola,"El value del registro buscado es",registroBuscado->value);
+				pthread_mutex_lock(&mutexLogger);
+				log_info(logger,"El value del registro buscado es",registroBuscado->value);
+				pthread_mutex_unlock(&mutexLogger);
 				return;
 			}
 		}
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log_info(loggerConsola,"El value del registro buscado es %d ",registroBuscado->value);
+		pthread_mutex_unlock(&mutexLoggerConsola);
 	}
 }
 
@@ -772,9 +769,11 @@ void liberarTabla(tablaMem* tabla) {
 	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);
 	free(tabla);
 }
+
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
 	free(unMetadata->nombreTabla);
 	pthread_mutex_destroy(&(unMetadata->semaforoTabla));
+	free(unMetadata);
 }
 
 void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
@@ -881,11 +880,13 @@ pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
 	return metadataBuscado->semaforoTabla;
 }
 metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
-	metadataConSemaforo* nuevoMetadata;
+	metadataConSemaforo* nuevoMetadata=malloc (sizeof(metadataConSemaforo));
 	nuevoMetadata->cantParticiones = unMetadata->cantParticiones;
-	nuevoMetadata->nombreTabla = unMetadata->nombreTabla;
+	nuevoMetadata->nombreTabla = string_duplicate(unMetadata->nombreTabla);
 	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
 	nuevoMetadata->tipoConsistencia = unMetadata->tipoConsistencia;
+
+	liberarMetadata(unMetadata);
 	return nuevoMetadata;
 }
 
@@ -904,10 +905,13 @@ void agregarTablaALista(char* nombreTabla){
 		//pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
 		//pthread_detach(&threadCompactacion);
 	}
+	else{
+		liberarMetadataConSemaforo(metadataBuscado);
+	}
 	pthread_mutex_unlock(&mutexListaDeTablas);
 }
 void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){
-	metadata* metadataSinSemaforo;
+	metadata* metadataSinSemaforo; //ver si hay que hacer un malloc
 	metadataSinSemaforo->cantParticiones = metadataATransformar->cantParticiones;
 	metadataSinSemaforo->nombreTabla = metadataATransformar->nombreTabla;
 	metadataSinSemaforo->tiempoCompactacion = metadataATransformar->tiempoCompactacion;
@@ -966,7 +970,7 @@ void funcionDescribe(char* argumentos,int socket) {
 		if(socket!=-1){
 			serializarYEnviarMetadata(socket,metadataBuscado);
 		}
-		free(metadataBuscado->nombreTabla);
+		liberarMetadata(metadataBuscado);
 		}
 	}
 }

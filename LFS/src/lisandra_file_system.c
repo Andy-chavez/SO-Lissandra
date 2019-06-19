@@ -28,26 +28,25 @@
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG)
 
 
-
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
-			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT");
+			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT\n");
 				funcionInsert(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT\n");
 				funcionSelect(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DESCRIBE")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE\n");
 				funcionDescribe(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "CREATE")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE\n");
 				funcionCreate(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP\n");
 				funcionDrop(operacionAParsear->parametros,socket);
 			}
 			else if(string_equals_ignore_case(operacionAParsear->operacion, "DUMP")) {
@@ -59,7 +58,7 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 							compactar(operacionAParsear->parametros);
 			}
 	else {
-		printf("no entendi xD");
+		printf("no entendi xD\n");
 	}
 	liberarOperacionLQL(operacionAParsear);
 	pthread_mutex_lock(&mutexRetardo);
@@ -241,9 +240,14 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 		inicializarRegistroError();
 
+<<<<<<< HEAD
 	//	leerConsola();
 
 
+=======
+
+
+>>>>>>> b9bb7cfeab6f183b1aa65ea6e7d2c0260f88cd1e
 		funcionCreate("PELICULAS SC 5 10000", -1);
 				funcionInsert("PELICULAS 10 \"Toy story\"", -1);
 				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
@@ -259,7 +263,7 @@ int main(int argc, char* argv[]) {
 
 		//hasta aca working
 		//ver lo de borrar los tmp y arrancar de cero.....
-/*
+
 		funcionInsert("PELICULAS 10 \"Story2\"", -1);
 		funcionInsert("PELICULAS 10 \"Story3\"", -1);
 		funcionInsert("PELICULAS 1110 \"Harry2\"", -1);
@@ -269,7 +273,7 @@ int main(int argc, char* argv[]) {
 		dump();
 
 		compactar("PELICULAS");
-*/
+/*
 		pthread_t threadConsola;
 //		pthread_t threadServer;
 //		pthread_t threadDump;
@@ -281,7 +285,7 @@ int main(int argc, char* argv[]) {
 //		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 //
 //		pthread_join(threadServer,NULL);
-	pthread_join(threadConsola,NULL);
+	pthread_join(threadConsola,NULL);*/
 //		pthread_join(threadDump,NULL);
 
 	//	compactar("PELICULAS");
