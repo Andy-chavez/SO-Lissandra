@@ -14,6 +14,7 @@
 #include "structsYVariablesGlobales.h"
 #include <sys/types.h>
 #include <sys/inotify.h>
+#include <signal.h>
 
 // Defines para el inotify del config
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
@@ -232,9 +233,13 @@ void* cambiosConfig() {
 	}
 }
 
+void cambiarValor() {
+	DEBO_TERMINAR = 1;
+}
+
 int main() {
 	printf("%d %d\n", sizeof(time_t), sizeof(uint16_t));
-	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping; // threadTimedJournal,
+	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
@@ -251,13 +256,37 @@ int main() {
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
-	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
+	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
+
+	struct sigaction terminar;
+	terminar.sa_handler = cambiarValor;
+	sigemptyset(&terminar.sa_mask);
+	terminar.sa_flags = SA_RESTART;
+	sigaction(SIGINT, &terminar, NULL);
+
+	while(!DEBO_TERMINAR) {
+		sem_wait(&MUTEX_RETARDO_FIN_PROCESO);
+		int retardoFinalizacionProceso = RETARDO_FIN_PROCESO * 1000;
+		sem_post(&MUTEX_RETARDO_FIN_PROCESO);
+
+		usleep(retardoFinalizacionProceso);
+	}
+
+	sem_wait(&MUTEX_LOG);
+	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
+	// no libero mutex ya que quiero que sea lo ultimo que se loguee.
+
+	pthread_cancel(threadServer);
+	pthread_cancel(threadConsola);
+	pthread_cancel(threadCambiosConfig);
+	pthread_cancel(threadTimedGossiping);
+	pthread_cancel(threadTimedJournal);
 
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadCambiosConfig, NULL);
-	//pthread_detach(threadTimedJournal);
+	pthread_join(threadTimedJournal, NULL);
 	pthread_join(threadTimedGossiping, NULL);
 
 	liberarMemoria();
