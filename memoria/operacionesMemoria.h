@@ -160,8 +160,12 @@ marco* algoritmoLRU() {
 	paginaEnTabla* paginaACambiar = NULL;
 
 	void compararTimestamp(paginaEnTabla* pagina){
-		if(pagina->flag == SI && (pagina->timestamp < paginaACambiar->timestamp || paginaACambiar == NULL)){
-			paginaACambiar = pagina;
+		if(pagina->flag == NO) {
+			if(paginaACambiar == NULL) {
+				paginaACambiar = pagina;
+			} else if(pagina->timestamp < paginaACambiar->timestamp){
+				paginaACambiar = pagina;
+			}
 		}
 	}
 
@@ -179,8 +183,7 @@ marco* algoritmoLRU() {
 
 }
 
-
-marco* encontrarEspacio() {
+marco* encontrarEspacio(int socketKernel) {
 	void* encontrarLibreEnTablaMarcos(marco* unMarcoEnTabla) {
 		return !(unMarcoEnTabla->estaEnUso);
 	}
@@ -190,8 +193,15 @@ marco* encontrarEspacio() {
 		enviarOMostrarYLogearInfo(-1, "No se encontro espacio libre en la tabla de marcos. Empezando algoritmo LRU");
 		if(!(marcoLibre = algoritmoLRU())) {
 			enviarOMostrarYLogearInfo(-1, "el algoritmo LRU no pudo liberar memoria. empezando proceso de journal");
-			//TODO informar a Kernel para que fuerze un JournalLQL()
-		};
+			char lleno = "FULL";
+				if(socketKernel == -1){
+					enviarYLogearMensajeError(socketKernel, "ERROR: No se puede realizar el Insert, espere el timed journal ");
+					return NULL;
+				}
+
+			enviar(socketKernel, (void*) lleno , strlen(lleno) + 1);
+			return NULL;
+		}
 	}
 
 	return marcoLibre;
@@ -227,10 +237,10 @@ void guardarEnMarco(marco* unMarco, bufferDePagina* bufferAGuardar) {
 	unMarco->tamanioValue = bufferAGuardar->tamanio - sizeof(time_t) - sizeof(uint16_t); // restando estos tipos obtenemos el tamanio del value.
 }
 
-marco* guardar(registroConNombreTabla* unRegistro) {
+marco* guardar(registroConNombreTabla* unRegistro,int socketKernel) {
 	bufferDePagina *bufferAGuardar = armarBufferDePagina(unRegistro, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
-	marco *guardarEn = encontrarEspacio();
+	marco *guardarEn = encontrarEspacio(socketKernel);
 
 	if(!guardarEn) {
 		return NULL;
@@ -243,8 +253,11 @@ marco* guardar(registroConNombreTabla* unRegistro) {
 	return guardarEn;
 }
 
-int guardarEnMemoria(registroConNombreTabla* unRegistro) {
-	marco* marcoGuardado = guardar(unRegistro);
+int guardarEnMemoria(registroConNombreTabla* unRegistro,int socketKernel) {
+	marco* marcoGuardado = guardar(unRegistro,socketKernel);
+		if(marcoGuardado == NULL){
+			return -1;
+		}
 	return marcoGuardado->marco;
 }
 
@@ -301,9 +314,9 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 // ------------------------------------------------------------------------ //
 // 4) OPERACIONES SOBRE LISTAS, SEGMENTOS Y PAGINAS //
 
-paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo) { // deDondevengo insert= 1 ,select=0
+paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo, int socketKernel) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
-	int marco = guardarEnMemoria(unRegistro);
+	int marco = guardarEnMemoria(unRegistro,socketKernel);
 	if(marco == -1) {
 		// TODO Avisar que no se pudo guardar en memoria.
 		return NULL;
@@ -322,9 +335,9 @@ paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, i
 	return pagina;
 }
 
-int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo){
+int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int socketKernel){
 
-	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(0, primerRegistro,deDondeVengo);
+	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(0, primerRegistro,deDondeVengo, socketKernel);
 
 	if(!primeraPagina) {
 		return 0;
@@ -342,12 +355,12 @@ int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo){
 }
 
 
-int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDondeVengo) {
-	return agregarSegmento(registroLFS, registroLFS->nombreTabla,deDondeVengo);
+int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDondeVengo, int socketKernel) {
+	return agregarSegmento(registroLFS, registroLFS->nombreTabla,deDondeVengo, socketKernel);
 }
 
 void* agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo) {
-	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(list_size(unSegmento->tablaPaginas), unRegistro, deDondeVengo);
+	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(list_size(unSegmento->tablaPaginas), unRegistro, deDondeVengo, socketKernel);
 	if(!paginaParaAgregar) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
 		return NULL;
@@ -397,7 +410,12 @@ void dropearSegmento(segmento* unSegmento) {
 		free(unaPagina);
 	}
 
+	void* igualNombreSegmento(segmento* otroSegmento){
+		return unSegmento->nombreTabla == otroSegmento->nombreTabla;
+	}
+
 	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
+	list_remove_by_condition(MEMORIA_PRINCIPAL->tablaSegmentos,igualNombreSegmento);
 	free(unSegmento->nombreTabla);
 	free(unSegmento);
 }
@@ -472,17 +490,6 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 }
 
 // ------------------------------------------------------------------------ //
-// 5) CHECKS A OPERACIONESLQL //
-
-int esInsertOSelectEjecutable(char* parametros) {
-	char** parametrosSpliteados = string_split(parametros, " ");
-	if(!atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) != "0"){
-		return 0;
-	}
-	return 1;
-}
-
-// ------------------------------------------------------------------------ //
 // 6) OPERACIONESLQL //
 
 operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEnTabla* unaPagina) {
@@ -491,6 +498,9 @@ operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEn
 
 	operacionARetornar->operacion = string_duplicate("INSERT");
 	operacionARetornar->parametros = string_from_format("%s %d \"%s\" %d", nombreTablaPerteneciente, unRegistro->key, unRegistro->value, unRegistro->timestamp);
+
+	liberarRegistro(unRegistro);
+	return operacionARetornar;
 }
 
 void journalLQL(int socketKernel) {
@@ -564,7 +574,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel){
 	else {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
-		if(agregarSegmentoConNombreDeLFS(registroLFS,0)){
+		if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel)){
 		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
@@ -607,12 +617,17 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 
 			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 		} else {
-			agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel,1);
+			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel,1)){
+				enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente");
+			} else {
+				enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+			}
+
 		}
 	}
 
 	else {
-		if(agregarSegmento(registroNuevo,nombreTabla,1)) {
+		if(agregarSegmento(registroNuevo,nombreTabla,1, socketKernel)) {
 			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 		} else {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
@@ -665,8 +680,8 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 		dropearSegmento(unSegmento);
 	}
 
-	char* mensaje = (char*) pedirALFS(operacionDrop);
-
+	//char* mensaje = (char*) pedirALFS(operacionDrop);
+	char* mensaje = string_duplicate("VAMAAAA"); // WEA RE LEAGIAENGOEANHR
 	if(!mensaje) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DROP");
 	}
@@ -729,6 +744,12 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 }
 
 void intercambiarTablasGossip(int unSocketMemoria) {
+	operacionProtocolo* protocolo = malloc(sizeof(operacionProtocolo));
+	*(protocolo) = TABLAGOSSIP;
+	enviar(unSocketMemoria, (void*) protocolo, sizeof(operacionProtocolo));
+
+	free(protocolo);
+
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	serializarYEnviarTablaGossip(unSocketMemoria, TABLA_GOSSIP);
 	sem_post(&MUTEX_TABLA_GOSSIP);
@@ -798,3 +819,20 @@ void* timedGossip() {
 		usleep(retardoGossip);
 	}
 }
+
+void* timedJournal(){
+
+	while(1){
+		sem_wait(&MUTEX_RETARDO_JOURNAL);
+		int retardoJournal = RETARDO_JOURNAL * 1000;
+		sem_post(&MUTEX_RETARDO_JOURNAL);
+
+		usleep(retardoJournal);
+
+		sem_wait(&MUTEX_OPERACION);
+		journalLQL(-1);
+		sem_post(&MUTEX_OPERACION);
+
+	}
+}
+
