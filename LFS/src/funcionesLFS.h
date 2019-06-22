@@ -51,7 +51,6 @@ void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones,
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
 void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
-void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 int obtenerCantTemporales(char* nombreTabla);
 void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
 void enviarYLogearMensajeError(int socket, char* mensaje);

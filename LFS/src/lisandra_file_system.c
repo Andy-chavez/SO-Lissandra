@@ -221,8 +221,6 @@ void* cambiosConfig() {
 
 int main(int argc, char* argv[]) {
 
-
-
 		//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
 		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
@@ -258,7 +256,7 @@ int main(int argc, char* argv[]) {
 		//ver de liberar la memtable al final
 
 
-
+		liberarRegistros(registroError);
 		liberarConfigYLogs();
 		return EXIT_SUCCESS;
 }
