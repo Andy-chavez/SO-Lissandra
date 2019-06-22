@@ -1,5 +1,6 @@
 #ifndef KER_STRUCTS_H_
 #define KER_STRUCTS_H_
+
 #include <commons/log.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
@@ -30,7 +31,6 @@ typedef struct{
 	t_list* memorias;
 }criterio;
 typedef struct{
-	int socket;
 	int numero;
 	char* puerto;
 	char* ip;
@@ -73,5 +73,6 @@ int multiprocesamiento;
 int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
+int destroy = 0;
 
 #endif /* KER_STRUCTS_H_ */

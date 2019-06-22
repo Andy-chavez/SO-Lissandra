@@ -38,7 +38,7 @@ void eliminarTablaCreada(char* parametros);
 int socketMemoriaSolicitada(consistencia criterio);
 int encontrarSocketDeMemoria(int numero);
 int realizarConexion(memoria* mem);
-int enviarJournal(int socket);
+void enviarJournal(int socket);
 
 tabla* encontrarTablaPorNombre(char* nombre);
 
@@ -46,23 +46,33 @@ memoria* encontrarMemoria(int numero);
 memoria* encontrarMemoriaStrong();
 
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
+int obtenerListaDeConsistencia(consistencia unaConsistencia);
+int obtenerSocket(operacionLQL* opAux,int index);
+
+int obtenerListaDeConsistencia(consistencia unaConsistencia){
+	if(unaConsistencia == SC){
+		return STRONG;
+	}
+	else if(unaConsistencia == EC){
+		return EVENTUAL;
+	}
+	else if(unaConsistencia == SH){
+		return HASH;
+	}
+	return -1;
+}
 /******************************IMPLEMENTACIONES******************************************/
 //------ OPERACIONES LQL ---------
-int enviarJournal(int socket){
+void enviarJournal(int socket){
 	operacionLQL* opAux=splitear_operacion("JOURNAL");
 	serializarYEnviarOperacionLQL(socket, opAux);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, "ENVIADO: JOURNAL");
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		return -1;
-	}
 	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
 	free(recibido);
 	liberarOperacionLQL(opAux);
-	return 0;
 }
 //------ INSTRUCCIONES DE PCB ---------
 bool instruccion_no_ejecutada(instruccion* instruc){
@@ -123,30 +133,30 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
 int realizarConexion(memoria* mem){
 	return crearSocketCliente(mem->ip,mem->puerto);
 }
-int encontrarSocketDeMemoria(int numero){
-	bool encontrarSocket(memoria* unaConex){
-		return unaConex->numero == numero;
-	}
-	memoria* mem = list_find(conexionesMemoria,(void*) encontrarSocket);
-	return mem->socket;
-}
-
-int socketMemoriaSolicitada(consistencia criterio){
-	memoria* mem = NULL;
-	switch (criterio){
-
-		case SC:
-			mem = encontrarMemoriaStrong();
-			break;
-		case SH:
-
-			break;
-		case EC:
-			break;
-	}
-
-	return encontrarSocketDeMemoria(mem->numero);
-}
+//int encontrarSocketDeMemoria(int numero){
+//	bool encontrarSocket(memoria* unaConex){
+//		return unaConex->numero == numero;
+//	}
+//	memoria* mem = list_find(conexionesMemoria,(void*) encontrarSocket);
+//	return mem->socket;
+//}
+//
+//int socketMemoriaSolicitada(consistencia criterio){
+//	memoria* mem = NULL;
+//	switch (criterio){
+//
+//		case SC:
+//			mem = encontrarMemoriaStrong();
+//			break;
+//		case SH:
+//
+//			break;
+//		case EC:
+//			break;
+//	}
+//
+//	return encontrarSocketDeMemoria(mem->numero);
+//}
 //------ ERRORES ---------
 bool recibidoContiene(char* recibido, char* contiene){
 	string_to_upper(recibido);
