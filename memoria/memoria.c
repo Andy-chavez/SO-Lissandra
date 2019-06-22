@@ -88,6 +88,8 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 //------------------------------------------------------------------------
 
 void* trabajarConConexion(void* socket) {
+	agregarHiloAListaDeHilos();
+
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
 	/*
@@ -99,11 +101,10 @@ void* trabajarConConexion(void* socket) {
 
 	while(hayMensaje) {
 		void* bufferRecepcion = recibir(socketKernel);
-		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
-		sem_post(&MUTEX_OPERACION);
 	}
 
+	eliminarHiloDeListaDeHilos();
 	pthread_exit(0);
 }
 
@@ -139,6 +140,8 @@ int crearSocketLFS() {
 }
 
 void* manejarConsola() {
+	agregarHiloAListaDeHilos();
+
 	enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada.");
 	while(1) {
 		char* comando = NULL;
@@ -149,11 +152,11 @@ void* manejarConsola() {
 			free(comando);
 			continue;
 		}
-		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
+
 		APIMemoria(splitear_operacion(comando), -1);
-		sem_post(&MUTEX_OPERACION);
 		free(comando);
 	}
+	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
 }
 
 void *servidorMemoria() {
@@ -169,7 +172,6 @@ void *servidorMemoria() {
 
 	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
 	while(1){
-
 		sem_wait(&BINARIO_SOCKET_KERNEL);
 		socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
@@ -288,6 +290,7 @@ int main() {
 	liberarMemoria();
 	liberarConfigYLogs();
 	liberarTablaMarcos();
+	liberarTablaGossip();
 	return 0;
 
 }
