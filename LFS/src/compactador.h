@@ -46,12 +46,10 @@ int calcularLargoArrayDeBloques(char** arrayDeBloques){
 	return cantidad;
 }
 
-void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion,int cantidadTotalNecesaria,int size){
+void actualizarBloquesEnArchivo(char* rutaParticion,int cantidadTotalNecesaria,int size){
 //aca entras cuando ya necesitas mas bloques de los que ya tenes
 	char* infoAGuardar = string_new();
 
-
-				int largoArrayDeBloques = calcularLargoArrayDeBloques(arrayDeBloques);
 				char* tamanioTotal = string_itoa(size);
 				string_append(&infoAGuardar, "SIZE=");
 
@@ -59,12 +57,8 @@ void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion,int c
 				string_append(&infoAGuardar, "\n");
 				string_append(&infoAGuardar, "BLOCKS=[");
 				free(tamanioTotal);
-				for(int i=0;i<largoArrayDeBloques;i++){
-					string_append(&infoAGuardar, *(arrayDeBloques + i));
-					cantidadTotalNecesaria--;
-					string_append(&infoAGuardar,",");
-			}
-				for(int j=0;j<cantidadTotalNecesaria;j++){
+
+				for(int j=0;j=cantidadTotalNecesaria;j++){
 						char* bloqueLibre = devolverBloqueLibre();
 						string_append(&infoAGuardar,bloqueLibre);
 						cantidadTotalNecesaria--;
@@ -73,46 +67,33 @@ void actualizarBloquesEnArchivo(char** arrayDeBloques, char* rutaParticion,int c
 				}
 				string_append(&infoAGuardar, "]");
 
-remove(rutaParticion);
+//remove(rutaParticion);
 guardarInfoEnArchivo(rutaParticion, infoAGuardar);
 free(infoAGuardar);
 }
 
 
-void ingresarNuevaInfo(char* rutaParticion,char** arrayDeBloques, char* buffer){
+void ingresarNuevaInfo(char* rutaParticion, char* buffer, char** arrayDeBloques){
 	int tamanioDelBuffer = strlen(buffer);
 	char* size = string_itoa(tamanioDelBuffer);
+	//free del array de bloques
 	int cantBloquesNecesarios =  ceil((float) (tamanioDelBuffer/ (float) tamanioBloques));
-	int largoDeArrayDeBloques =calcularLargoArrayDeBloques(arrayDeBloques);
+	//int largoDeArrayDeBloques =calcularLargoArrayDeBloques(arrayDeBloques);
+
 	//si solo se necesita un bloque se guarda en el unico bloque que se le asigno a la particion al cargar la tabla
-	if (cantBloquesNecesarios == largoDeArrayDeBloques){
-		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloques, buffer);
+	//aca no
 
+		actualizarBloquesEnArchivo(rutaParticion,cantBloquesNecesarios,tamanioDelBuffer);
 		t_config* particion = config_create(rutaParticion);
-		config_set_value(particion, "SIZE", size);
-		config_destroy(particion);
 
-		//Si no, hay que darle mas bloques libres y cargarlos al array
-
-	}else{
-		//se necesitan mas bloques
-
-		actualizarBloquesEnArchivo(arrayDeBloques, rutaParticion,cantBloquesNecesarios,tamanioDelBuffer); //aca se crea la nueva particion
-		t_config* particion = config_create(rutaParticion);
 		char** arrayDeBloquesFinal = config_get_array_value(particion, "BLOCKS");
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, buffer);
+		config_set_value(particion, "SIZE", size);
 
 
-	//	guardarInfoEnArchivo(rutaParticion, infoAGuardar);
-
-
-//		liberarDoblePuntero(separarRegistro);
-	config_destroy(particion);
+		config_destroy(particion);
 	liberarDoblePuntero(arrayDeBloquesFinal);
-	}
-
 	free(size);
-
 }
 
 bool seEncuentraElRegistroYTieneLaMismaKey(registro* registroOriginal, registro* registroTemporal){
@@ -240,17 +221,26 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 								free(bufferFinal);
 								free(bufferTemporales);
 								liberarDoblePuntero(arrayDeBloques);
-
 					continue;
 		}
+
+//se liberan los bloques del array de bloques
+		int pos =0;
+		while(*(arrayDeBloques+pos)!=NULL){
+			pthread_mutex_lock(&mutexBitarray);
+			bitarray_clean_bit(bitarray,atoi(*(arrayDeBloques+pos)));
+			pthread_mutex_unlock(&mutexBitarray);
+			pos++;
+		}
+
+
+
+		//el array de bloques no se pasa, hay que liberar los viejos
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferParticion, arrayDeBloques)){
-
 			//particion vacía y hay temporales
-
 			//meter una lista de registros temporales en un buffer
 			cargarListaEnBuffer(listaRegistrosTemporalesDeParticionActual, &bufferTemporales);
-			ingresarNuevaInfo(rutaParticion, arrayDeBloques, bufferTemporales);
-
+			ingresarNuevaInfo(rutaParticion, bufferTemporales, arrayDeBloques );
 
 			//break porque no puede haber una particion que tenga data si la anterior no tenia data
 			//puede ser q sea continue
@@ -296,7 +286,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			t_list* listaRegistrosFinal = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
 			list_iterate(listaRegistrosFinal, (void *)guardarEnBuffer);
 */
-			ingresarNuevaInfo(rutaParticion, arrayDeBloques, bufferFinal);
+			ingresarNuevaInfo(rutaParticion, bufferFinal, arrayDeBloques);
 
 			list_destroy_and_destroy_elements(listaRegistrosOriginalesDeParticionActual,(void*)liberarRegistrosNoTemporales);
 //			list_destroy(listaRegistrosFinal);
@@ -382,7 +372,6 @@ void compactar(char* nombreTabla){
 		cargarInfoDeBloquesParaCompactacion(&bufferTemporales, arrayDeBloques);
 
 		liberarBloquesDeTmpYPart(nombreDelTmpc, rutaTabla);
-
 
 		remove(rutaTmpCompactar);
 		free(rutaTmpOriginal);
