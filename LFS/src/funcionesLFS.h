@@ -37,7 +37,6 @@ typedef struct {
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
 metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
 int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
-void agregarALista(char* timestamp,char* key,char* value,t_list* head); //este es para la lista del select
 char* infoEnBloque(char* numeroBloque);
 bool estaLaKey(int key,void* elemento);
 bool esIgualAlNombre(char* nombreTabla,void * elemento);
@@ -56,9 +55,7 @@ void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cam
 void inicializarRegistroError();
 pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
 void funcionDrop(char* nombreTabla,int socket);
-void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarTablaALista(char* nombreTabla);
-void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros);
 void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDeParticion);
 
 void inicializarRegistroError(){
@@ -69,14 +66,6 @@ void inicializarRegistroError(){
 	registroError->nombreTabla = string_duplicate("1");
 }
 
-
-void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
-	registro* guardarRegistro= malloc (sizeof(registro));
-	guardarRegistro->timestamp = atoi(unTimestamp);
-	guardarRegistro->key = atoi(unaKey);
-	guardarRegistro->value = string_duplicate(unValue);
-	list_add(head,guardarRegistro);
-}
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla){
 	int validacion;
@@ -317,17 +306,6 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 				return registroBuscado;
 }
 
-void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros){
-	char** separarRegistro = string_split(buffer,"\n");
-			int j =0;
-			for(j=0;*(separarRegistro+j)!=NULL;j++){
-				char **aCargar =string_split(*(separarRegistro+j),";");
-				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
-				liberarDoblePuntero(aCargar);
-			}
-
-	liberarDoblePuntero(separarRegistro);
-}
 
 void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y en la segunda la key
 	char** argSeparados = string_n_split(argumentos,2," ");
@@ -599,26 +577,6 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
-	char* rutaCompleta = string_new();
-	string_append(&rutaCompleta,rutaTabla);
-	string_append(&rutaCompleta,"/");
-	string_append(&rutaCompleta,nombreArchivo);
-	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
-		remove(rutaCompleta);
-		return;
-	}
-
-	t_config* archivo= config_create(rutaCompleta);
-	char **bloques = config_get_array_value(archivo,"BLOCKS");
-
-	marcarBloquesComoLibre(bloques);
-	liberarDoblePuntero(bloques);
-	config_destroy(archivo);
-	remove(rutaCompleta);
-	free(rutaCompleta);
-
-}
 
 
 void funcionDrop(char* nombreTabla,int socket){

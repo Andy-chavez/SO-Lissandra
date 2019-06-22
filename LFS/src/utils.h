@@ -54,6 +54,15 @@ void enviarYLogearMensajeError(int socket, char* mensaje); //ta
 void enviarOMostrarYLogearInfo(int socket, char* mensaje);
 void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)); //ta
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
+void agregarALista(char* timestamp,char* key,char* value,t_list* head);
+
+void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
+	registro* guardarRegistro= malloc (sizeof(registro));
+	guardarRegistro->timestamp = atoi(unTimestamp);
+	guardarRegistro->key = atoi(unaKey);
+	guardarRegistro->value = string_duplicate(unValue);
+	list_add(head,guardarRegistro);
+}
 
 
 void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros){
