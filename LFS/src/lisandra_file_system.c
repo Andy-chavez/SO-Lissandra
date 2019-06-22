@@ -134,7 +134,7 @@ void* servidorLisandra(){
 			enviarYLogearMensajeError(-1,"No se pudo crear socket para memoria");
 			continue;
 		}
-
+		enviarOMostrarYLogearInfo(-1,"Se conecto una nueva Memoria");
 		realizarHandshake(socketMemoria);
 
 		pthread_t threadMemoria;
@@ -236,19 +236,19 @@ int main(int argc, char* argv[]) {
 		inicializarRegistroError();
 
 		pthread_t threadConsola;
-		/*pthread_t threadServer;
+		pthread_t threadServer;
 		pthread_t threadDump;
-		pthread_t threadCambiosConfig;*/
+		pthread_t threadCambiosConfig;
 
+		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
-		/*pthread_create(&threadServer, NULL, servidorLisandra, NULL);
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
-		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);*/
+		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
+		pthread_join(threadServer,NULL);
 		pthread_join(threadConsola,NULL);
-		/*pthread_join(threadServer,NULL);
 		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);*/
+		pthread_join(threadCambiosConfig,NULL);
 
 
 		//ver de liberar la memtable al final
