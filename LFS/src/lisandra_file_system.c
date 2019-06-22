@@ -234,82 +234,32 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 		inicializarArchivoBitmap(); //sacar esto despues
-		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
-		//inicializarArchivoBitmap(); //sacar despues
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
 
-	//leerConsola();
-
-
-		funcionCreate("PELICULAS SC 5 10000", -1);
-
-		funcionInsert("PELICULAS 10 \"Toy story\"", -1);
-				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
-				funcionInsert("PELICULAS 1110 \"harryPuter\"", -1);
-				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
-				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
-				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
-				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatarrrrrrr\"", -1);
-
-
-
-		funcionCreate("PELICULAS2 SC 5 10000", -1);
-						funcionInsert("PELICULAS2 10 \"Toy story\"", -1);
-						funcionInsert("PELICULAS2 163 \"Nemo\"", -1);
-						funcionInsert("PELICULAS2 1110 \"harryPuter\"", -1);
-						funcionInsert("PELICULAS2 13535 \"Titanic\"", -1);
-						funcionInsert("PELICULAS2 922 \"RATATOULI\"", -1);
-						funcionInsert("PELICULAS2 4829 \"Aladdin\"", -1);
-						funcionInsert("PELICULAS2 2516 \"Godzilla\"", -1);
-						funcionInsert("PELICULAS2 3671 \"Avatarrrrrrr\"", -1);
-
-		dump();
-		compactar("PELICULAS");
-		compactar("PELICULAS2");
-
-
-		funcionInsert("PELICULAS 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS 1110 \"Harryyy2\"", -1);
-
-		funcionInsert("PELICULAS2 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS2 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS2 1110 \"Harryyy2\"", -1);
-
-		dump();
-
-		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
-		funcionInsert("PELICULAS2 2516 \"MORCILLA\"", -1);
-
-		dump();
-
-		compactar("PELICULAS");
-		compactar("PELICULAS2");
-/*
 		pthread_t threadConsola;
-//		pthread_t threadServer;
-//		pthread_t threadDump;
-//		pthread_t threadCambiosConfig;
-//
-		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
-//		pthread_create(&threadDump, NULL,(void*) dump, NULL);
-//		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-//		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
-//
-//		pthread_join(threadServer,NULL);
-	pthread_join(threadConsola,NULL);*/
-//		pthread_join(threadDump,NULL);
+		pthread_t threadServer;
+		pthread_t threadDump;
+		pthread_t threadCambiosConfig;
 
-	//	compactar("PELICULAS");
+		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
+		pthread_create(&threadDump, NULL,(void*) dump, NULL);
+		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
+
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
+
 
 		//ver de liberar la memtable al final
 
-	    //liberarConfigYLogs(archivosDeConfigYLog);
 
 
-		//liberarConfigYLogs();
+		liberarConfigYLogs();
 		return EXIT_SUCCESS;
 }
 

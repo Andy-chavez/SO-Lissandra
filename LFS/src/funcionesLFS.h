@@ -640,24 +640,12 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-void liberarTabla(tablaMem* tabla) {
-	free(tabla->nombre);
-	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);
-	free(tabla);
-}
-
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
 	free(unMetadata->nombreTabla);
 	pthread_mutex_destroy(&(unMetadata->semaforoTabla));
 	free(unMetadata);
 }
 
-void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
-	list_clean_and_destroy_elements(memtable,(void*) liberarTabla);
-}
-void liberarListaDeTablas(){
-	list_clean_and_destroy_elements(listaDeTablas,(void*) liberarMetadataConSemaforo);
-}
 int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
 											//REUTILIZAR EN COMPACTACION
 	//puntoMontaje/Tables/TABLA1/1.tmp, suponemos que los temporales se hacen en orden
@@ -774,10 +762,9 @@ void agregarTablaALista(char* nombreTabla){
 		//pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
 		//pthread_detach(&threadCompactacion);
 	}
-	//else{
-
-		//liberarMetadataConSemaforo(metadataBuscado);
-	//}
+	else{
+		liberarMetadataConSemaforo(metadataBuscado);
+	}
 	pthread_mutex_unlock(&mutexListaDeTablas);
 }
 void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){

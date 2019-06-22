@@ -134,6 +134,7 @@ void inicializarLog(char* ruta){
 
 void liberarConfigYLogs() {
 	log_destroy(logger);
+	log_destroy(loggerConsola);
 	config_destroy(archivoDeConfig);
 }
 

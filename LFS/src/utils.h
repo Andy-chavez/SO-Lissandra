@@ -32,6 +32,17 @@ void* devolverMayor(registro* registro1, registro* registro2);
 int calcularParticion(int key,int cantidadParticiones);
 void liberarRegistros(registro* unRegistro);
 
+void liberarTablaMem(tablaMem* tabla) {
+	free(tabla->nombre);
+	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);
+	free(tabla);
+}
+void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
+	list_clean_and_destroy_elements(memtable,(void*) liberarTablaMem);
+}
+void liberarListaDeTablas(){
+	list_clean_and_destroy_elements(listaDeTablas,(void*) liberarMetadataConSemaforo);
+}
 void liberarRegistros(registro* unRegistro) {
 		free(unRegistro->value);
 		free(unRegistro);
