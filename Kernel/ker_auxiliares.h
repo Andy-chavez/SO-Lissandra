@@ -171,11 +171,11 @@ memoria* encontrarMemoria(int numero){
 		return mem->numero == numero;
 	}
 	memoria * memory = malloc(sizeof(memoria));
-	memory = (memoria*) list_find(conexionesMemoria, (void*)memoriaEsNumero);
+	memory = (memoria*) list_find(memorias, (void*)memoriaEsNumero);
 	return memory;
 }
 memoria* encontrarMemoriaStrong(){
-	return list_get(criterios[STRONG].memorias, 0);
+	return list_get(criterios[STRONG].memorias, 0); //todo harcodeado
 }
 //------ CRITERIOS ---------
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){

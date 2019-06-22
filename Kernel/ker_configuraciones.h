@@ -44,12 +44,13 @@ void kernel_crearListas(){
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
 	conexionesMemoria = list_create();
+	memorias = list_create();
 }
 void guardarDatos(seed* unaSeed){ //todo ver conexiones
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
-	memAux->puerto = unaSeed->puerto;
-	memAux->ip = unaSeed->ip;
+	memAux->puerto = string_duplicate(unaSeed->puerto);
+	memAux->ip = string_duplicate(unaSeed->ip);
 	agregarALista(memorias,memAux,mMemorias);
 }
 int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
@@ -57,7 +58,8 @@ int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de cone
 	if(socketClienteKernel==-1){
 		return -1;
 	}
-	serializarYEnviarHandshake(socketClienteKernel,0);
+	operacionProtocolo protocoloGossip = TABLAGOSSIP;
+	enviar(socketClienteKernel,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
 	return 0;
 }
@@ -71,9 +73,10 @@ void kernel_inicializarVariables(){
 	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
 	metadataRefresh = config_get_int_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
+	kernel_crearListas();
 }
 void kernel_inicializarEstructuras(){
-	kernel_crearListas();
+	//kernel_crearListas();
 	kernel_inicializarSemaforos();
 }
 //-----------------FINALIZAR KERNEL-----------------------------

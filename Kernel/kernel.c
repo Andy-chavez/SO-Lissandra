@@ -30,11 +30,13 @@ int main(int argc, char *argv[]){
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
 	pthread_t threadInotify;
-	if(argc==1){
-		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.\n");
-		return EXIT_FAILURE;
-	}
-	pathConfig = (char*) argv[1];
+//	if(argc==1){
+//		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.\n");
+//		return EXIT_FAILURE;
+//	}
+
+	pathConfig = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
+			//(char*) argv[1];
 	kernel_inicializarVariables();
 	if(kernel_inicializarMemoria()==-1)
 		return EXIT_FAILURE;

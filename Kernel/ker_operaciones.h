@@ -80,13 +80,12 @@ bool kernel_describe(char* operacion){
 }
 bool kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
 	char** parametros = string_n_split(operacion,2," ");
-		int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
-		if((enviarOperacion(opAux,index))== -1){
-			return false;
-		}
-	eliminarTablaCreada(parametros);
+	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	if((enviarOperacion(opAux,index))== -1){
+		return false;
+	}
+	eliminarTablaCreada(*(parametros+1));
 	liberarParametrosSpliteados(parametros);
 	return 0;
 }
@@ -95,15 +94,6 @@ bool kernel_journal(){
 	journal_consistencia(STRONG);
 	journal_consistencia(EVENTUAL);
 	journal_consistencia(HASH);
-//	operacionLQL* opAux=splitear_operacion("JOURNAL");
-//	int socket = socketMemoriaSolicitada(SC);
-//	serializarYEnviarOperacionLQL(socket, opAux);
-//	char* recibido = (char*) recibir(socket);
-//	if(recibidoContiene(recibido, "ERROR")){
-//		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-//		return -1;
-//	}
-//	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
 	return true;
 }
 bool kernel_metrics(){
@@ -111,7 +101,6 @@ bool kernel_metrics(){
 	return 0;
 }
 void journal_consistencia(int consistencia){
-	//list_iterate(t_list *, void(*closure)(void*));
 	void realizarJournal(memoria * mem){
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
 		enviarJournal(socket);
@@ -125,8 +114,7 @@ bool kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 	if((mem = encontrarMemoria(numero))){
 		if(string_equals_ignore_case(*(opAux+4),"HASH")){
 			list_add(criterios[HASH].memorias, mem );
-			kernel_journal();
-			//todo journal cada vez que se agregue una aca a TODAS las memorias de este criterio
+			journal_consistencia(HASH);
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
@@ -145,7 +133,7 @@ bool kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 	}
 	else{
 		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s.Memmoria no conectada.", operacion);
+		log_error(kernel_configYLog->log,"EXEC: %s.Memoria no conectada.", operacion);
 		pthread_mutex_unlock(&mLog);
 		return -1;
 	}
@@ -344,7 +332,7 @@ bool kernel_api(char* operacionAParsear)
 		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
 		pthread_mutex_unlock(&mLog);
 		free(operacionAParsear);
-		return 0;
+		return false;
 	}
 }
 #endif /* KER_OPERACIONES_H_ */
