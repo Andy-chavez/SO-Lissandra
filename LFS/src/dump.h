@@ -78,6 +78,7 @@ void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesar
 	}
 }
 
+
 void dump(){
 
 	/*

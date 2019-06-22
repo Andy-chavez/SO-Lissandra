@@ -246,6 +246,8 @@ int main(int argc, char* argv[]) {
 		funcionCreate("PELICULAS SC 5 10000", -1);
 
 		funcionInsert("PELICULAS 10 \"Toy story\"", -1);
+		funcionInsert("PELICULAS 100 \"quieroqocupe2blocks\"", -1);
+
 				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
 				funcionInsert("PELICULAS 1110 \"harryPuter\"", -1);
 				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
