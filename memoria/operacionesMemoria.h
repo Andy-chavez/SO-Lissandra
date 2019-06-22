@@ -22,6 +22,7 @@ void inicializarRetardos() {
 	RETARDO_GOSSIP = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_GOSSIPING");
 	RETARDO_JOURNAL = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_JOURNAL");
 	RETARDO_MEMORIA = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM");
+	RETARDO_FIN_PROCESO = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_FIN_PROCESO");
 }
 
 void inicializarTablaMarcos() {
