@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include "utils.h"
+#include "compactador.h"
 
 
 typedef enum {
@@ -639,10 +640,6 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-void liberarRegistros(registro* unRegistro) {
-		free(unRegistro->value);
-		free(unRegistro);
-}
 void liberarTabla(tablaMem* tabla) {
 	free(tabla->nombre);
 	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);

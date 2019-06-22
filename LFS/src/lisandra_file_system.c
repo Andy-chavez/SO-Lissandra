@@ -20,8 +20,9 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "funcionesLFS.h"
+#include "dump.h"
 #include <sys/inotify.h>
+#include "configuraciones.h"
 
 //para el inotify
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
