@@ -638,11 +638,11 @@ void agregarTablaALista(char* nombreTabla){
 	pthread_mutex_lock(&mutexListaDeTablas);
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
 		pthread_mutex_init(&metadataBuscado->semaforoTabla,NULL); //inicias el semaforo de la nueva tabla
-		list_add(listaDeTablas,metadataBuscado);
-
 		pthread_t threadCompactacion;
+		metadataBuscado->hiloDeCompactacion = threadCompactacion;
+		list_add(listaDeTablas,metadataBuscado);
 		pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
-		pthread_detach(&threadCompactacion);
+		//pthread_detach(&threadCompactacion);
 	}
 	else{
 		liberarMetadataConSemaforo(metadataBuscado);
@@ -690,10 +690,14 @@ void funcionDescribe(char* argumentos,int socket) {
 			}
 
 		}
-		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
 		if(list_size(listaDeTablas)==0){
 			enviarOMostrarYLogearInfo(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
+			closedir(dir);
+			free(rutaDirectorioTablas);
+			liberarMetadata(metadataBuscado);
+			return;
 		}
+		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
 		if(socket==-1){
 			pthread_mutex_lock(&mutexListaDeTablas);
 			list_iterate(listaDeTablas,(void*)loggearYMostarTabla);

@@ -32,6 +32,7 @@ typedef struct{
 	int tiempoCompactacion;
 	char* nombreTabla;
 	pthread_mutex_t semaforoTabla;
+	pthread_t hiloDeCompactacion;
 }metadataConSemaforo;
 
 //funciones en comun entre funcionesLFS y compactador
@@ -136,6 +137,9 @@ void liberarMemtable() { //no elimina toda la memtable sino las tablas y registr
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
 	free(unMetadata->nombreTabla);
 	pthread_mutex_destroy(&(unMetadata->semaforoTabla));
+
+	pthread_cancel(unMetadata->hiloDeCompactacion);
+	pthread_join(unMetadata->hiloDeCompactacion,NULL);
 	free(unMetadata);
 }
 
