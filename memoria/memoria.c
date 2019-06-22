@@ -14,6 +14,7 @@
 #include "structsYVariablesGlobales.h"
 #include <sys/types.h>
 #include <sys/inotify.h>
+#include <signal.h>
 
 // Defines para el inotify del config
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
@@ -47,17 +48,11 @@ int APIProtocolo(void* buffer, int socket) {
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
-		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) {
-			insertLQL(operacionAParsear, socketKernel);
-		}
-		else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
-		}
+		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
-		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) selectLQL(operacionAParsear, socketKernel);
-		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
+		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
@@ -74,7 +69,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un JOURNAL");
 		journalLQL(socketKernel);
-		}
+	}
 	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
@@ -150,6 +145,11 @@ void* manejarConsola() {
 		char* comando = NULL;
 		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
 		comando = readline(">");
+		if(!esOperacionEjecutable(comando)) {
+			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
+			free(comando);
+			continue;
+		}
 		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
 		APIMemoria(splitear_operacion(comando), -1);
 		sem_post(&MUTEX_OPERACION);
@@ -237,6 +237,10 @@ void* cambiosConfig() {
 	}
 }
 
+void cambiarValor() {
+	sem_post(&BINARIO_FINALIZACION_PROCESO);
+}
+
 int main() {
 	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 	inicializarProcesoMemoria();
@@ -258,10 +262,28 @@ int main() {
 	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
 
+	struct sigaction terminar;
+	terminar.sa_handler = cambiarValor;
+	sigemptyset(&terminar.sa_mask);
+	terminar.sa_flags = SA_RESTART;
+	sigaction(SIGINT, &terminar, NULL);
+
+	sem_wait(&BINARIO_FINALIZACION_PROCESO);
+
+	sem_wait(&MUTEX_LOG);
+	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
+	// no libero mutex ya que quiero que sea lo ultimo que se loguee.
+
+	pthread_cancel(threadServer);
+	pthread_cancel(threadConsola);
+	pthread_cancel(threadCambiosConfig);
+	pthread_cancel(threadTimedGossiping);
+	pthread_cancel(threadTimedJournal);
+
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadCambiosConfig, NULL);
-	pthread_detach(threadTimedJournal);
+	pthread_join(threadTimedJournal, NULL);
 	pthread_join(threadTimedGossiping, NULL);
 
 	liberarMemoria();

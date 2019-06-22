@@ -93,6 +93,7 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_LOG_CONSOLA, 0, 1);
 	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
 	sem_init(&MUTEX_LISTA_SEEDS, 0, 1);
+	sem_init(&BINARIO_FINALIZACION_PROCESO, 0, 0);
 }
 
 void* liberarSegmento(segmento* unSegmento) {
@@ -489,17 +490,6 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
 }
 
 // ------------------------------------------------------------------------ //
-// 5) CHECKS A OPERACIONESLQL //
-
-int esInsertOSelectEjecutable(char* parametros) {
-	char** parametrosSpliteados = string_split(parametros, " ");
-	if(!atoi(*(parametrosSpliteados + 1)) && *(parametrosSpliteados + 1) != "0"){
-		return 0;
-	}
-	return 1;
-}
-
-// ------------------------------------------------------------------------ //
 // 6) OPERACIONESLQL //
 
 operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEnTabla* unaPagina) {
@@ -508,6 +498,9 @@ operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEn
 
 	operacionARetornar->operacion = string_duplicate("INSERT");
 	operacionARetornar->parametros = string_from_format("%s %d \"%s\" %d", nombreTablaPerteneciente, unRegistro->key, unRegistro->value, unRegistro->timestamp);
+
+	liberarRegistro(unRegistro);
+	return operacionARetornar;
 }
 
 void journalLQL(int socketKernel) {
@@ -833,8 +826,13 @@ void* timedJournal(){
 		sem_wait(&MUTEX_RETARDO_JOURNAL);
 		int retardoJournal = RETARDO_JOURNAL * 1000;
 		sem_post(&MUTEX_RETARDO_JOURNAL);
-		journalLQL(-1);
+
 		usleep(retardoJournal);
+
+		sem_wait(&MUTEX_OPERACION);
+		journalLQL(-1);
+		sem_post(&MUTEX_OPERACION);
+
 	}
 }
 
