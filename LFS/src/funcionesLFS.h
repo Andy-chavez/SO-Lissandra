@@ -516,12 +516,6 @@ void funcionInsert(char* argumentos,int socket) {
 
 }
 
-void marcarBloqueComoLibre(int posicion){
-	pthread_mutex_lock(&mutexBitarray);
-	bitarray_clean_bit(bitarray, posicion);
-	pthread_mutex_unlock(&mutexBitarray);
-}
-
 void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion) {
 
 	char* infoDelMetadata = string_new();
@@ -682,13 +676,8 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 
 	t_config* archivo= config_create(rutaCompleta);
 	char **bloques = config_get_array_value(archivo,"BLOCKS");
-	int pos =0;
-	while(*(bloques+pos)!=NULL){
-		pthread_mutex_lock(&mutexBitarray);
-		bitarray_clean_bit(bitarray,atoi(*(bloques+pos)));
-		pthread_mutex_unlock(&mutexBitarray);
-		pos++;
-	}
+
+	marcarBloquesComoLibre(bloques);
 	liberarDoblePuntero(bloques);
 	config_destroy(archivo);
 	remove(rutaCompleta);

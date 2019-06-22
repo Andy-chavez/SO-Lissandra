@@ -225,13 +225,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		}
 
 //se liberan los bloques del array de bloques
-		int pos =0;
-		while(*(arrayDeBloques+pos)!=NULL){
-			pthread_mutex_lock(&mutexBitarray);
-			bitarray_clean_bit(bitarray,atoi(*(arrayDeBloques+pos)));
-			pthread_mutex_unlock(&mutexBitarray);
-			pos++;
-		}
+		marcarBloquesComoLibre(arrayDeBloques);
 
 
 
