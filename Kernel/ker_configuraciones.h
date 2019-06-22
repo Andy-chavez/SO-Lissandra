@@ -43,7 +43,7 @@ void kernel_crearListas(){
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
-	conexionesMemoria = list_create();
+	//conexionesMemoria = list_create();
 	memorias = list_create();
 }
 void guardarDatos(seed* unaSeed){ //todo ver conexiones

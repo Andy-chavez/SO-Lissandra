@@ -44,7 +44,6 @@ int realizarConexion(memoria* mem);
 tabla* encontrarTablaPorNombre(char* nombre);
 
 memoria* encontrarMemoria(int numero);
-memoria* encontrarMemoriaStrong();
 
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 int obtenerListaDeConsistencia(consistencia unaConsistencia);
@@ -55,7 +54,7 @@ int enviarOperacion(operacionLQL* opAux,int index);
 int enviarOperacion(operacionLQL* opAux,int index){
 	int socket = obtenerSocket(opAux,index);
 	if(socket != -1){
-		serializarYEnviarOperacionLQL(socket, opAux);
+		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
 		if(recibidoContiene(recibido, "ERROR")){
 			loggearErrorYLiberarParametrosEXEC(recibido,opAux);
@@ -174,52 +173,17 @@ memoria* encontrarMemoria(int numero){
 	memory = (memoria*) list_find(memorias, (void*)memoriaEsNumero);
 	return memory;
 }
-memoria* encontrarMemoriaStrong(){
-	return list_get(criterios[STRONG].memorias, 0); //todo harcodeado
-}
+//memoria* encontrarMemoriaStrong(){
+//	return list_get(criterios[STRONG].memorias, 0); //todo harcodeado
+//}
 //------ CRITERIOS ---------
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
-	bool encontrarTabla(tabla t){
-		return t.nombreDeTabla == nombreTablaBuscada;
+	bool encontrarTabla(tabla* t){
+		return string_equals_ignore_case(t->nombreDeTabla, nombreTablaBuscada);
 	}
-	tabla retorno =*(tabla*) list_find(tablas,(void*)encontrarTabla);
-	return retorno.consistenciaDeTabla;
+	tabla* retorno =(tabla*) list_find(tablas,(void*)encontrarTabla);
+	return retorno->consistenciaDeTabla;
 }
-//int (char* nombreTablaBuscada){
-//	bool encontrarTabla(tabla t){
-//		return t.nombreDeTabla == nombreTablaBuscada;
-//	}
-//	tabla retorno =*(tabla*) list_find(tablas,(void*)encontrarTabla);
-//	return retorno.consistenciaDeTabla;
-//}
-//------ CONEXION ---------
-//int realizarConexion(memoria* mem){
-//	return crearSocketCliente(mem->ip,mem->puerto);
-//}
-//int encontrarSocketDeMemoria(int numero){
-//	bool encontrarSocket(memoria* unaConex){
-//		return unaConex->numero == numero;
-//	}
-//	memoria* mem = list_find(conexionesMemoria,(void*) encontrarSocket);
-//	return mem->socket;
-//}
-//
-//int socketMemoriaSolicitada(consistencia criterio){
-//	memoria* mem = NULL;
-//	switch (criterio){
-//
-//		case SC:
-//			mem = encontrarMemoriaStrong();
-//			break;
-//		case SH:
-//
-//			break;
-//		case EC:
-//			break;
-//	}
-//
-//	return encontrarSocketDeMemoria(mem->numero);
-//}
 //------ ERRORES ---------
 bool recibidoContiene(char* recibido, char* contiene){
 	string_to_upper(recibido);

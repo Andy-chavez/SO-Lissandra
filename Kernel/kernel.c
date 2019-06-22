@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
 	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
 	for(int i = 0; i<multiprocesamiento;i++){
-		pthread_t i;
+		pthread_t i; //armar diccionario para estos threads, lista  que adentro del for se vaya creando haciendo sus respectivos mallocs
 		pthread_create(&i, NULL,(void*) kernel_roundRobin, (void*)i);
 	}
 	pthread_join(threadConsola, NULL);

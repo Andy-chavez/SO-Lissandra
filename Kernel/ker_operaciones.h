@@ -54,7 +54,7 @@ bool kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
 	char** parametros = string_n_split(opAux->parametros,3," ");
-	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros+1)));
+	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
 	if((enviarOperacion(opAux,index))== -1){
 		eliminarTablaCreada(*(parametros+1));
 		return false;
@@ -185,7 +185,7 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(kernel_api(instruc->operacion)){
+				if(!kernel_api(instruc->operacion)){
 					loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
