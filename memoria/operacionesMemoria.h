@@ -92,7 +92,6 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_RETARDO_JOURNAL, 0, 1);
 	sem_init(&MUTEX_LOG_CONSOLA, 0, 1);
 	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
-	sem_init(&MUTEX_LISTA_SEEDS, 0, 1);
 	sem_init(&BINARIO_FINALIZACION_PROCESO, 0, 0);
 }
 
@@ -695,8 +694,6 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 // 7) TIMED OPERATIONS //
 
 void cargarSeeds() {
-	LISTA_SEEDS = list_create();
-
 	char** IPs = config_get_array_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_SEEDS");
 	char** puertos = config_get_array_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO_SEEDS");
 
@@ -706,7 +703,9 @@ void cargarSeeds() {
 		unaSeed->ip = string_duplicate(*(IPs + i));
 		unaSeed->puerto = string_duplicate(*(puertos + i));
 
-		list_add(LISTA_SEEDS, unaSeed);
+		sem_wait(&MUTEX_TABLA_GOSSIP);
+		list_add(TABLA_GOSSIP, unaSeed);
+		sem_post(&MUTEX_TABLA_GOSSIP);
 
 		free(*(IPs + i));
 		free(*(puertos + i));
@@ -717,93 +716,77 @@ void cargarSeeds() {
 	free(puertos);
 }
 
+int sonSeedsIguales(seed* unaSeed, seed* otraSeed) {
+	return string_equals_ignore_case(unaSeed->ip, otraSeed->ip) && string_equals_ignore_case(unaSeed->puerto, otraSeed->puerto);
+}
+
+void pedirTablaGossip(int socketMemoria) {
+	operacionProtocolo protocolo = TABLAGOSSIP;
+	enviar(socketMemoria, (void*) &protocolo, sizeof(operacionProtocolo));
+}
+
 void recibirYGuardarEnTablaGossip(int socketMemoria) {
 	void guardarEnTablaGossip(seed* unaSeed) {
 		// Duplicamos strings de IP y Puerto ya que la funcion de recibir libera la seed
 
 		void* esIgualA(seed* otraSeed) {
-			return string_equals_ignore_case(unaSeed->ip, otraSeed->ip) && string_equals_ignore_case(unaSeed->puerto, otraSeed->puerto);
+			return sonSeedsIguales(unaSeed, otraSeed);
 		}
 
 		seed* seedAGuardar = malloc(sizeof(seed));
 		seedAGuardar->ip = string_duplicate(unaSeed->ip);
 		seedAGuardar->puerto = string_duplicate(unaSeed->puerto);
 
-		sem_wait(&MUTEX_TABLA_GOSSIP);
-		list_add(TABLA_GOSSIP, seedAGuardar);
-		sem_post(&MUTEX_TABLA_GOSSIP);
-
-		sem_wait(&MUTEX_LISTA_SEEDS);
-		if(!list_find(LISTA_SEEDS, esIgualA)) {
-			list_add(LISTA_SEEDS, seedAGuardar);
+		if(list_find(TABLA_GOSSIP, esIgualA)) {
+			return;
 		}
-		sem_post(&MUTEX_LISTA_SEEDS);
+
+		list_add(TABLA_GOSSIP, seedAGuardar);
 	}
 
+	pedirTablaGossip(socketMemoria);
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
 
-void intercambiarTablasGossip(int unSocketMemoria) {
-	operacionProtocolo* protocolo = malloc(sizeof(operacionProtocolo));
-	*(protocolo) = TABLAGOSSIP;
-	enviar(unSocketMemoria, (void*) protocolo, sizeof(operacionProtocolo));
-
-	free(protocolo);
-
-	sem_wait(&MUTEX_TABLA_GOSSIP);
-	serializarYEnviarTablaGossip(unSocketMemoria, TABLA_GOSSIP);
-	sem_post(&MUTEX_TABLA_GOSSIP);
-	recibirYGuardarEnTablaGossip(unSocketMemoria);
-
-}
-
 void intentarConexiones() {
+	seed* seedPropia = malloc(sizeof(seed));
+	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
+	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
 
-	void* intentarConexion(seed* unaSeed) {
+	void intentarConexion(seed* unaSeed) {
 
 		void* esIgualA(seed* otraSeed) {
-			return string_equals_ignore_case(unaSeed->ip, otraSeed->ip) && string_equals_ignore_case(unaSeed->puerto, otraSeed->puerto);
+			return sonSeedsIguales(unaSeed, otraSeed);
+		}
+
+		if(sonSeedsIguales(seedPropia, unaSeed)) {
+			return; // Para no hacer una conexion al pedo con la propia memoria.
 		}
 
 		int socketMemoria = crearSocketCliente(unaSeed->ip, unaSeed->puerto);
 
-		sem_wait(&MUTEX_TABLA_GOSSIP);
-		if(list_find(TABLA_GOSSIP, esIgualA)) {
-			sem_post(&MUTEX_TABLA_GOSSIP);
-
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "Intentando conexion de nuevo de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
-			sem_post(&MUTEX_LOG_CONSOLA);
-
-			if(socketMemoria == -1) {
-				sem_wait(&MUTEX_LOG_CONSOLA);
-				log_info(LOGGER_CONSOLA, "se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
-				sem_post(&MUTEX_LOG_CONSOLA);
-
-				list_remove_by_condition(TABLA_GOSSIP, esIgualA);
-			} else {
-				log_info(LOGGER_CONSOLA, "hay conexion todavia con esta IP y este puerto.");
-				cerrarConexion(socketMemoria);
-			}
-
-			return NULL;
-		}
-		sem_post(&MUTEX_TABLA_GOSSIP);
+		sem_wait(&MUTEX_LOG_CONSOLA);
+		log_info(LOGGER_CONSOLA, "Intentando conexion con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
+		sem_post(&MUTEX_LOG_CONSOLA);
 
 		if(socketMemoria == -1) {
 			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "No se pudo conectar con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
+			log_info(LOGGER_CONSOLA, "se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 			sem_post(&MUTEX_LOG_CONSOLA);
-			return NULL;
+
+			list_remove_by_condition(TABLA_GOSSIP, esIgualA);
+
+			return;
 		}
 
-		log_info(LOGGER_CONSOLA, "Intercambiando tablas Gossip con la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
-		intercambiarTablasGossip(socketMemoria);
+		log_info(LOGGER_CONSOLA, "recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
+		recibirYGuardarEnTablaGossip(socketMemoria);
 		cerrarConexion(socketMemoria);
-		socketMemoria = -1;
 	}
 
-	list_iterate(LISTA_SEEDS, intentarConexion);
+	sem_wait(&MUTEX_TABLA_GOSSIP);
+	list_iterate(TABLA_GOSSIP, intentarConexion);
+	sem_post(&MUTEX_TABLA_GOSSIP);
 }
 
 void* timedGossip() {
