@@ -21,66 +21,15 @@ bool kernel_drop(char* operacion);
 bool kernel_select(char* operacion);
 bool kernel_insert(char* operacion);
 
-void journal_strong();
-void journal_hash();
-void journal_eventual();
+void journal_consistencia(int consistencia);
 void kernel_almacenar_en_new(char*operacion);
 void kernel_crearPCB(char* operacion);
 void kernel_run(char* operacion);
 void kernel_pasar_a_ready();
 void kernel_consola();
 void kernel_roundRobin(int threadProcesador);
-void kernel_destroy();
 /******************************IMPLEMENTACIONES******************************************/
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
-void kernel_destroy(){
-	destroy = 1;
-}
-int enviarOperacion(operacionLQL* opAux,int index){
-	int socket = obtenerSocket(opAux,index);
-	if(socket != -1){
-		serializarYEnviarOperacionLQL(socket, opAux);
-		char* recibido = (char*) recibir(socket);
-		if(recibidoContiene(recibido, "ERROR")){
-			loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-			cerrarConexion(socket);
-			return -1;
-		}
-		else{
-			while(recibidoContiene(recibido, "FULL")){
-				enviarJournal(socket);
-				serializarYEnviarOperacionLQL(socket, opAux);
-				recibido = (char*) recibir(socket);
-			}
-			loggearInfoYLiberarParametrosEXEC(recibido,opAux);
-			cerrarConexion(socket);
-			return 1;
-		}
-	}
-	else{
-		pthread_mutex_lock(&mLog);
-		log_info(kernel_configYLog->log, "ERROR: No hay memorias para enviar la request %s %s", opAux->operacion, opAux->parametros);
-		pthread_mutex_unlock(&mLog);
-		return -1;
-	}
-}
-int obtenerSocket(operacionLQL* opAux,int index){
-	int socket = -1;
-	bool pudeConectarYEnviar(memoria* mem){
-		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
-			serializarYEnviarOperacionLQL(socket, opAux);
-			pthread_mutex_lock(&mLog);
-			log_info(kernel_configYLog->log, "ENVIADO: %s %s", opAux->operacion, opAux->parametros);
-			pthread_mutex_unlock(&mLog);
-			return true;
-		}
-		else
-			//todo sacar memoria de lista
-			return false;
-	}
-	list_find(criterios[index].memorias,(void*)pudeConectarYEnviar);
-	return socket;
-}
 bool kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a la cual mandarle esto
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
@@ -113,60 +62,61 @@ bool kernel_create(char* operacion){
 	return true;
 }
 bool kernel_describe(char* operacion){
-	operacionLQL* opAux=splitear_operacion(operacion);
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
-	pthread_mutex_unlock(&mLog);
-	metadata* met = deserializarMetadata(recibir(socket));
-	//TODO ACTUALIZAR ESTRUCTURAS y arreglar esto
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
-	pthread_mutex_unlock(&mLog);
-	liberarMetadata(met);
-	liberarOperacionLQL(opAux);
-	return 0;
+//	operacionLQL* opAux=splitear_operacion(operacion);
+//	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
+//	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
+//	serializarYEnviarOperacionLQL(socket, opAux);
+//	pthread_mutex_lock(&mLog);
+//	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
+//	pthread_mutex_unlock(&mLog);
+//	metadata* met = deserializarMetadata(recibir(socket));
+//	//TODO ACTUALIZAR ESTRUCTURAS y arreglar esto
+//	pthread_mutex_lock(&mLog);
+//	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
+//	pthread_mutex_unlock(&mLog);
+//	liberarMetadata(met);
+//	liberarOperacionLQL(opAux);
+	return true;
 }
 bool kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		return -1;
-	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	char** parametros = string_n_split(operacion,2," ");
+		int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+		if((enviarOperacion(opAux,index))== -1){
+			return false;
+		}
+	eliminarTablaCreada(parametros);
+	liberarParametrosSpliteados(parametros);
 	return 0;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 bool kernel_journal(){
-	operacionLQL* opAux=splitear_operacion("JOURNAL");
-	int socket = socketMemoriaSolicitada(SC);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		return -1;
-	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
-	return 0;
+	journal_consistencia(STRONG);
+	journal_consistencia(EVENTUAL);
+	journal_consistencia(HASH);
+//	operacionLQL* opAux=splitear_operacion("JOURNAL");
+//	int socket = socketMemoriaSolicitada(SC);
+//	serializarYEnviarOperacionLQL(socket, opAux);
+//	char* recibido = (char*) recibir(socket);
+//	if(recibidoContiene(recibido, "ERROR")){
+//		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
+//		return -1;
+//	}
+//	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	return true;
 }
 bool kernel_metrics(){
 	printf("Not yet -> metrics\n");
 	return 0;
 }
-void journal_strong(){
-	enviarJournal(socketMemoriaSolicitada(SC));
-}
-void journal_hash(){
-
-}
-void journal_eventual(){
-
+void journal_consistencia(int consistencia){
+	//list_iterate(t_list *, void(*closure)(void*));
+	void realizarJournal(memoria * mem){
+		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		enviarJournal(socket);
+	}
+	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);
 }
 bool kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 	char** opAux = string_n_split(operacion,5," ");

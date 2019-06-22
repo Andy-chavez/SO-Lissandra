@@ -25,6 +25,7 @@
 bool recibidoContiene(char* recibido, char* contiene);
 bool instruccion_no_ejecutada(instruccion* instruc);
 
+void kernel_destroy();
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
 void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
 void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
@@ -34,11 +35,11 @@ void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
 void guardarTablaCreada(char* parametros);
 void eliminarTablaCreada(char* parametros);
+void enviarJournal(int socket);
 
 int socketMemoriaSolicitada(consistencia criterio);
 int encontrarSocketDeMemoria(int numero);
 int realizarConexion(memoria* mem);
-void enviarJournal(int socket);
 
 tabla* encontrarTablaPorNombre(char* nombre);
 
@@ -48,7 +49,63 @@ memoria* encontrarMemoriaStrong();
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 int obtenerListaDeConsistencia(consistencia unaConsistencia);
 int obtenerSocket(operacionLQL* opAux,int index);
+int enviarOperacion(operacionLQL* opAux,int index);
 
+/******************************IMPLEMENTACIONES******************************************/
+int enviarOperacion(operacionLQL* opAux,int index){
+	int socket = obtenerSocket(opAux,index);
+	if(socket != -1){
+		serializarYEnviarOperacionLQL(socket, opAux);
+		char* recibido = (char*) recibir(socket);
+		if(recibidoContiene(recibido, "ERROR")){
+			loggearErrorYLiberarParametrosEXEC(recibido,opAux);
+			cerrarConexion(socket);
+			return -1;
+		}
+		else{
+			while(recibidoContiene(recibido, "FULL")){
+				enviarJournal(socket);
+				serializarYEnviarOperacionLQL(socket, opAux);
+				recibido = (char*) recibir(socket);
+			}
+			loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+			cerrarConexion(socket);
+			return 1;
+		}
+	}
+	else{
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "ERROR: No hay memorias para enviar la request %s %s", opAux->operacion, opAux->parametros);
+		pthread_mutex_unlock(&mLog);
+		return -1;
+	}
+}
+int obtenerSocket(operacionLQL* opAux,int index){
+	int socket = -1;
+	bool pudeConectarYEnviar(memoria* mem){
+		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
+			serializarYEnviarOperacionLQL(socket, opAux);
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, "ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+			pthread_mutex_unlock(&mLog);
+			return true;
+		}
+		else{
+			bool memoriaASacar(memoria* mem2){
+				return mem2->numero == mem->numero;
+			}
+			void freeMemoria(memoria* mem3){
+				free(mem3->ip);
+				free(mem3->puerto);
+				free(mem3);
+			}
+		 	list_remove_and_destroy_by_condition(criterios[index].memorias,(void*)memoriaASacar, (void*)freeMemoria);
+			return false;
+		}
+	}
+	list_find(criterios[index].memorias,(void*)pudeConectarYEnviar);
+	return socket;
+}
 int obtenerListaDeConsistencia(consistencia unaConsistencia){
 	if(unaConsistencia == SC){
 		return STRONG;
@@ -61,7 +118,6 @@ int obtenerListaDeConsistencia(consistencia unaConsistencia){
 	}
 	return -1;
 }
-/******************************IMPLEMENTACIONES******************************************/
 //------ OPERACIONES LQL ---------
 void enviarJournal(int socket){
 	operacionLQL* opAux=splitear_operacion("JOURNAL");
@@ -161,6 +217,10 @@ int realizarConexion(memoria* mem){
 bool recibidoContiene(char* recibido, char* contiene){
 	string_to_upper(recibido);
 	return string_contains(recibido, contiene);
+}
+//------ CERRAR ---------
+void kernel_destroy(){
+	destroy = 1;
 }
 //----------------- LOGS -----------------------------
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
