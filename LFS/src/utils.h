@@ -21,6 +21,19 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
+typedef struct {
+	char* nombre;
+	t_list* listaRegistros;
+} tablaMem;
+
+typedef struct{
+	consistencia tipoConsistencia;
+	int cantParticiones;
+	int tiempoCompactacion;
+	char* nombreTabla;
+	pthread_mutex_t semaforoTabla;
+}metadataConSemaforo;
+
 //funciones en comun entre funcionesLFS y compactador
 int existeArchivo(char * filename);
 void printearBitmap();
@@ -34,7 +47,7 @@ void liberarRegistros(registro* unRegistro);
 void marcarBloquesComoLibre(char** arrayDeBloques);
 void liberarMemtable();
 void liberarListaDeTablas();
-
+void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata);
 
 
 
@@ -43,9 +56,17 @@ void liberarTablaMem(tablaMem* tabla) {
 	list_destroy_and_destroy_elements(tabla->listaRegistros,(void*) liberarRegistros);
 	free(tabla);
 }
+
 void liberarMemtable() { //no elimina toda la memtable sino las tablas y registros de ella
 	list_clean_and_destroy_elements(memtable,(void*) liberarTablaMem);
 }
+
+void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
+	free(unMetadata->nombreTabla);
+	pthread_mutex_destroy(&(unMetadata->semaforoTabla));
+	free(unMetadata);
+}
+
 void liberarListaDeTablas(){
 	list_clean_and_destroy_elements(listaDeTablas,(void*) liberarMetadataConSemaforo);
 }

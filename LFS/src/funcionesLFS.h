@@ -24,23 +24,12 @@ typedef enum {
 	SELECT
 } operacion;
 registroConNombreTabla* registroError;
-typedef struct {
-	char* nombre;
-	t_list* listaRegistros;
-} tablaMem;
 
 typedef struct {
 	char* nombre;
 	t_list* temporales;
 } tablaTmp;
 
-typedef struct{
-	consistencia tipoConsistencia;
-	int cantParticiones;
-	int tiempoCompactacion;
-	char* nombreTabla;
-	pthread_mutex_t semaforoTabla;
-}metadataConSemaforo;
 
 //Funciones
 
@@ -632,12 +621,6 @@ int tamanioRegistros(char* nombreTabla){
 	list_fold(encuentraTabla->listaRegistros, 0, sumarRegistros);
 
 return tamanioTotal;
-}
-
-void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
-	free(unMetadata->nombreTabla);
-	pthread_mutex_destroy(&(unMetadata->semaforoTabla));
-	free(unMetadata);
 }
 
 int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
