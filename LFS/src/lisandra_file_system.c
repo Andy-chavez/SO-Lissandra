@@ -73,7 +73,7 @@ void realizarHandshake(int socket){
 
 int APIProtocolo(void* buffer, int socket) {
 		void operacionLQLSola(operacionLQL* unaOperacionLQL){
-			parserGeneral(unaOperacionLQL,socket);
+			funcionInsert(unaOperacionLQL->parametros,socket);
 		}
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
