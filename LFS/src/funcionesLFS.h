@@ -51,7 +51,6 @@ void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones,
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
 void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
-void liberarMemtable(); //no elimina toda la memtable sino las tablas y registros de ella
 int obtenerCantTemporales(char* nombreTabla);
 void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
 void enviarYLogearMensajeError(int socket, char* mensaje);
@@ -623,30 +622,6 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
-											//REUTILIZAR EN COMPACTACION
-	//puntoMontaje/Tables/TABLA1/1.tmp, suponemos que los temporales se hacen en orden
-	int cantTemporal = 0;
-	int existe;
-	do{
-
-		char* ruta = string_new();
-		char* numeroTmp =string_itoa(cantTemporal);
-		string_append(&ruta,puntoMontaje);
-		string_append(&ruta,"Tables/");
-		string_append(&ruta,nombreTabla);
-		string_append(&ruta,"/");
-		string_append(&ruta,numeroTmp);
-		string_append(&ruta,".tmp");
-		existe = existeArchivo(ruta);
-		free(numeroTmp);
-		free(ruta);
-		if(existe==0) break;
-		cantTemporal++;
-	}while(existe!=0);
-	return cantTemporal;
-}
-
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 	char* rutaCompleta = string_new();
 	string_append(&rutaCompleta,rutaTabla);
@@ -730,9 +705,9 @@ void agregarTablaALista(char* nombreTabla){
 		pthread_mutex_init(&metadataBuscado->semaforoTabla,NULL); //inicias el semaforo de la nueva tabla
 		list_add(listaDeTablas,metadataBuscado);
 
-		//pthread_t threadCompactacion;  ver donde poner la funcion compactar para poder usarla
-		//pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
-		//pthread_detach(&threadCompactacion);
+		pthread_t threadCompactacion;
+		pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
+		pthread_detach(&threadCompactacion);
 	}
 	else{
 		liberarMetadataConSemaforo(metadataBuscado);

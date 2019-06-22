@@ -48,6 +48,7 @@ void marcarBloquesComoLibre(char** arrayDeBloques);
 void liberarMemtable();
 void liberarListaDeTablas();
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata);
+int obtenerCantTemporales(char* nombreTabla);
 
 
 
@@ -78,6 +79,31 @@ int calcularParticion(int key,int cantidadParticiones){
 	int particion= key%cantidadParticiones;
 	return particion;
 }
+
+int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
+											//REUTILIZAR EN COMPACTACION
+	//puntoMontaje/Tables/TABLA1/1.tmp, suponemos que los temporales se hacen en orden
+	int cantTemporal = 0;
+	int existe;
+	do{
+
+		char* ruta = string_new();
+		char* numeroTmp =string_itoa(cantTemporal);
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Tables/");
+		string_append(&ruta,nombreTabla);
+		string_append(&ruta,"/");
+		string_append(&ruta,numeroTmp);
+		string_append(&ruta,".tmp");
+		existe = existeArchivo(ruta);
+		free(numeroTmp);
+		free(ruta);
+		if(existe==0) break;
+		cantTemporal++;
+	}while(existe!=0);
+	return cantTemporal;
+}
+
 
 void* devolverMayor(registro* registro1, registro* registro2){
 	if (registro1->timestamp > registro2->timestamp){
