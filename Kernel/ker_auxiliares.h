@@ -185,10 +185,17 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
 	tabla retorno =*(tabla*) list_find(tablas,(void*)encontrarTabla);
 	return retorno.consistenciaDeTabla;
 }
+//int (char* nombreTablaBuscada){
+//	bool encontrarTabla(tabla t){
+//		return t.nombreDeTabla == nombreTablaBuscada;
+//	}
+//	tabla retorno =*(tabla*) list_find(tablas,(void*)encontrarTabla);
+//	return retorno.consistenciaDeTabla;
+//}
 //------ CONEXION ---------
-int realizarConexion(memoria* mem){
-	return crearSocketCliente(mem->ip,mem->puerto);
-}
+//int realizarConexion(memoria* mem){
+//	return crearSocketCliente(mem->ip,mem->puerto);
+//}
 //int encontrarSocketDeMemoria(int numero){
 //	bool encontrarSocket(memoria* unaConex){
 //		return unaConex->numero == numero;

@@ -52,13 +52,14 @@ bool kernel_select(char* operacion){
 }
 bool kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	guardarTablaCreada(opAux->parametros);
+	char** parametros = string_n_split(opAux->parametros,3," ");
+	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros+1)));
 	if((enviarOperacion(opAux,index))== -1){
+		eliminarTablaCreada(*(parametros+1));
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
-	guardarTablaCreada(opAux->parametros);
 	return true;
 }
 bool kernel_describe(char* operacion){
@@ -83,6 +84,7 @@ bool kernel_drop(char* operacion){
 	char** parametros = string_n_split(operacion,2," ");
 	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
 	if((enviarOperacion(opAux,index))== -1){
+		guardarTablaCreada(opAux->parametros);
 		return false;
 	}
 	eliminarTablaCreada(*(parametros+1));
