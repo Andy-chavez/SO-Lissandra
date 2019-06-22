@@ -53,9 +53,6 @@ void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
 int obtenerCantTemporales(char* nombreTabla);
 void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
-void enviarYLogearMensajeError(int socket, char* mensaje);
-void enviarOMostrarYLogearInfo(int socket, char* mensaje);
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 void inicializarRegistroError();
 pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
 void funcionDrop(char* nombreTabla,int socket);
@@ -73,26 +70,6 @@ void inicializarRegistroError(){
 }
 
 
-
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)){
-	if(socket != -1) {
-		pthread_mutex_lock(&mutexLogger);
-		log(logger, mensaje);
-		pthread_mutex_unlock(&mutexLogger);
-		enviar(socket, mensaje, strlen(mensaje) + 1);
-	} else {
-		pthread_mutex_lock(&mutexLoggerConsola);
-		log(loggerConsola, mensaje);
-		pthread_mutex_unlock(&mutexLoggerConsola);
-	}
-}
-void enviarYLogearMensajeError(int socket, char* mensaje) {
-	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
-}
-
-void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
-	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
-}
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
 	registro* guardarRegistro= malloc (sizeof(registro));
 	guardarRegistro->timestamp = atoi(unTimestamp);

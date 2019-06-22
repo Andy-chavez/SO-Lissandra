@@ -47,8 +47,70 @@ void liberarRegistros(registro* unRegistro);
 void marcarBloquesComoLibre(char** arrayDeBloques);
 void liberarMemtable();
 void liberarListaDeTablas();
+void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros);
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata);
 int obtenerCantTemporales(char* nombreTabla);
+void enviarYLogearMensajeError(int socket, char* mensaje); //ta
+void enviarOMostrarYLogearInfo(int socket, char* mensaje);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)); //ta
+void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
+
+
+void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros){
+	char** separarRegistro = string_split(buffer,"\n");
+			int j =0;
+			for(j=0;*(separarRegistro+j)!=NULL;j++){
+				char **aCargar =string_split(*(separarRegistro+j),";");
+				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+				liberarDoblePuntero(aCargar);
+			}
+
+	liberarDoblePuntero(separarRegistro);
+}
+
+
+void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
+	char* rutaCompleta = string_new();
+	string_append(&rutaCompleta,rutaTabla);
+	string_append(&rutaCompleta,"/");
+	string_append(&rutaCompleta,nombreArchivo);
+	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
+		remove(rutaCompleta);
+		return;
+	}
+
+	t_config* archivo= config_create(rutaCompleta);
+	char **bloques = config_get_array_value(archivo,"BLOCKS");
+
+	marcarBloquesComoLibre(bloques);
+	liberarDoblePuntero(bloques);
+	config_destroy(archivo);
+	remove(rutaCompleta);
+	free(rutaCompleta);
+
+}
+
+
+void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+}
+
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)){
+	if(socket != -1) {
+		pthread_mutex_lock(&mutexLogger);
+		log(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+		enviar(socket, mensaje, strlen(mensaje) + 1);
+	} else {
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log(loggerConsola, mensaje);
+		pthread_mutex_unlock(&mutexLoggerConsola);
+	}
+}
+
+void enviarYLogearMensajeError(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
+}
 
 
 
