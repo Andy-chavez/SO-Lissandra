@@ -31,6 +31,12 @@ void liberarDoblePuntero(char** doblePuntero);
 void* devolverMayor(registro* registro1, registro* registro2);
 int calcularParticion(int key,int cantidadParticiones);
 void liberarRegistros(registro* unRegistro);
+void marcarBloquesComoLibre(char** arrayDeBloques);
+void liberarMemtable();
+void liberarListaDeTablas();
+
+
+
 
 void liberarTablaMem(tablaMem* tabla) {
 	free(tabla->nombre);
@@ -73,6 +79,18 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 		fputs(info, fp);
 		fclose(fp);
 	}
+}
+
+void marcarBloquesComoLibre(char** arrayDeBloques){
+	int pos =0;
+	while(*(arrayDeBloques+pos)!=NULL){
+			int posicionActual = atoi(*(arrayDeBloques+pos));
+
+			pthread_mutex_lock(&mutexBitarray);
+			bitarray_clean_bit(bitarray, posicionActual);
+			pthread_mutex_unlock(&mutexBitarray);
+			pos++;
+		}
 }
 
 char* devolverBloqueLibre(){
