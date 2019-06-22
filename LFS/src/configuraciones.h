@@ -15,44 +15,14 @@
 #include <sys/types.h>
 #include <sys/io.h>
 #include <fcntl.h>
-
-pthread_mutex_t mutexMemtable;
-pthread_mutex_t mutexLogger;
-pthread_mutex_t mutexLoggerConsola;
-//pthread_mutex_t mutexDump;
-pthread_mutex_t mutexOperacion;
-pthread_mutex_t mutexListaDeTablas;
-pthread_mutex_t mutexBitarray;
-pthread_mutex_t mutexTiempoDump;
-pthread_mutex_t mutexRetardo;
-
-t_log* logger;
-t_log* loggerConsola;
-
-int tamanioBloques;
-int cantDeBloques;
-char* magicNumber;
-t_config* archivoMetadata;
-//hasta aca todo se saca del metadata
-
-char* ipLisandra;
-char* puertoLisandra;
-char* puntoMontaje;
-int tiempoDump;
-
-int tamanioValue;
-int retardo;
-t_config* archivoDeConfig;
-//hasta aca del archivo de config
-t_list* memtable;
-t_list* listaDeTablas;
-t_bitarray* bitarray;
+#include "utils.h"
+#include "variablesGlobales.h"
 
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
 		pthread_mutex_init(&mutexLoggerConsola, NULL);
-		pthread_mutex_init(&mutexOperacion,NULL);
+		//pthread_mutex_init(&mutexOperacion,NULL);
 		pthread_mutex_init(&mutexListaDeTablas,NULL);
 //		pthread_mutex_init(&mutexDump,NULL);
 		pthread_mutex_init(&mutexBitarray,NULL);
@@ -65,7 +35,7 @@ void liberarSemaforos(){
 	pthread_mutex_destroy(&mutexMemtable);
 	pthread_mutex_destroy(&mutexLogger);
 	pthread_mutex_destroy(&mutexLoggerConsola);
-	pthread_mutex_destroy(&mutexOperacion);
+	//pthread_mutex_destroy(&mutexOperacion);
 	pthread_mutex_destroy(&mutexListaDeTablas);
 
 	pthread_mutex_destroy(&mutexBitarray);
@@ -91,14 +61,13 @@ void inicializarBloques(){
 		string_append(&ruta,"Bloques/");
 		string_append(&ruta,numeroDeBloque);
 		string_append(&ruta,".bin");
-		FILE *bloque = fopen(ruta,"w");
+		FILE *bloque = fopen(ruta,"w"); //cambiarlo por una 'a' cuando sea entrega
 		free(numeroDeBloque);
 		free(ruta);
 		fclose(bloque);
 
 	}
 }
-
 
 void inicializarArchivoBitmap(){
 	FILE *f;
@@ -107,6 +76,10 @@ void inicializarArchivoBitmap(){
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");
+	if(existeArchivo(ruta)){
+		free(ruta);
+		return;
+	}
 	f = fopen(ruta, "wb");
 
 	for(i=0; i < cantDeBloques/8; i++){

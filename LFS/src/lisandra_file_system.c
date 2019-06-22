@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "compactador.h"
+#include "funcionesLFS.h"
 #include <sys/inotify.h>
 
 //para el inotify
@@ -61,9 +61,6 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 		printf("no entendi xD\n");
 	}
 	liberarOperacionLQL(operacionAParsear);
-	pthread_mutex_lock(&mutexRetardo);
-	usleep(retardo*1000);
-	pthread_mutex_unlock(&mutexRetardo);
 }
 
 void realizarHandshake(int socket){
@@ -73,7 +70,7 @@ void realizarHandshake(int socket){
 		serializarYEnviarHandshake(socket, tamanioValue);
 	}
 	else {
-		log_error(logger, "no se pudo realizar Handshake");//poner semaforo
+		enviarOMostrarYLogearInfo(-1,"No se pudo realizar handshake");
 	}
 }
 
@@ -113,10 +110,11 @@ void trabajarConexion(void* socket){
 	int socketMemoria = *(int*) socket;
 	int hayMensaje = 1;
 	while(hayMensaje) {
-			void* bufferRecepcion = recibir(socketMemoria); //quizas vaya semaforo
-			pthread_mutex_lock(&mutexOperacion);
+			void* bufferRecepcion = recibir(socketMemoria);
+			pthread_mutex_lock(&mutexRetardo);
+			usleep(retardo*1000);
+			pthread_mutex_unlock(&mutexRetardo);
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
-			pthread_mutex_unlock(&mutexOperacion);
 		}
 
 		pthread_exit(0);
