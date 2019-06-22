@@ -131,13 +131,13 @@ bool kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
 		}
-		return 0;
+		return true;
 	}
 	else{
 		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log,"EXEC: %s.Memoria no conectada.", operacion);
 		pthread_mutex_unlock(&mLog);
-		return -1;
+		return false;
 	}
 	liberarParametrosSpliteados(opAux);
 }
