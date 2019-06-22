@@ -9,6 +9,7 @@
 #define SRC_VARIABLESGLOBALES_H_
 #include <commons/collections/list.h>
 #include <commons/bitarray.h>
+#include <semaphore.h>
 
 pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
@@ -19,6 +20,7 @@ pthread_mutex_t mutexListaDeTablas;
 pthread_mutex_t mutexBitarray;
 pthread_mutex_t mutexTiempoDump;
 pthread_mutex_t mutexRetardo;
+
 
 t_log* logger;
 t_log* loggerConsola;
@@ -41,6 +43,8 @@ t_config* archivoDeConfig;
 t_list* memtable;
 t_list* listaDeTablas;
 t_bitarray* bitarray;
+sem_t* binarioLFS;
+
 
 
 #endif /* SRC_VARIABLESGLOBALES_H_ */

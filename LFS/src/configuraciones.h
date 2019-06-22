@@ -30,7 +30,7 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexRetardo,NULL);
 
 }
-
+//*  liberar lista de tablas
 void liberarSemaforos(){
 	pthread_mutex_destroy(&mutexMemtable);
 	pthread_mutex_destroy(&mutexLogger);
@@ -76,10 +76,12 @@ void inicializarArchivoBitmap(){
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");
+	//DESCOMENTARLO MAS ALEDANTE, PONERLO AL FINAL
+	/*
 	if(existeArchivo(ruta)){
 		free(ruta);
 		return;
-	}
+	}*/
 	f = fopen(ruta, "wb");
 
 	for(i=0; i < cantDeBloques/8; i++){

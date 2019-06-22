@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h> //malloc,alloc,realloc
 #include <string.h>
+#include <signal.h>
 #include<readline/readline.h>
 #include <time.h>
 #include <readline/readline.h>
@@ -21,8 +22,11 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include "dump.h"
+#include <semaphore.h>
+
 #include <sys/inotify.h>
 #include "configuraciones.h"
+
 
 //para el inotify
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
@@ -214,6 +218,9 @@ void* cambiosConfig() {
 	}
 }
 
+void terminarTodo() {
+	sem_post(&binarioLFS);
+}
 
 int main(int argc, char* argv[]) {
 
@@ -228,12 +235,14 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 		inicializarArchivoBitmap(); //sacar esto despues
-		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
 
 		pthread_t threadConsola;
+		pthread_t threadDump;
+
 		/*pthread_t threadServer;
 		pthread_t threadDump;
 		pthread_t threadCambiosConfig;*/
@@ -243,6 +252,9 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);*/
 
+		pthread_create(&threadDump, NULL,(void*) dump, NULL);
+
+		pthread_join(threadDump,NULL);
 		pthread_join(threadConsola,NULL);
 		/*pthread_join(threadServer,NULL);
 		pthread_join(threadDump,NULL);
@@ -251,10 +263,29 @@ int main(int argc, char* argv[]) {
 
 		//ver de liberar la memtable al final
 
+		leerConsola();
 
-		liberarRegistros(registroError);
+		sem_init(&binarioLFS, 0, 1);
+
+		struct sigaction terminar;
+			terminar.sa_handler = terminarTodo;
+			sigemptyset(&terminar.sa_mask);
+			terminar.sa_flags = SA_RESTART;
+			sigaction(SIGINT, &terminar, NULL);
+
+
+		sem_wait(&binarioLFS);
+
+
+
+		//que mas quedaría liberar x aca?
+
+		//create y despues cancel y join
+		//enviar logear mensaje de error
+		liberarSemaforos();
+		liberarMemtable();
+		liberarListaDeTablas();
+
 		liberarConfigYLogs();
 		return EXIT_SUCCESS;
 }
-
-

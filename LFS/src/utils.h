@@ -196,7 +196,9 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 		//fwrite(info , 1 , largo , fp );
 		fputs(info, fp);
 		fclose(fp);
+		return;
 	}
+	fclose(fp);
 }
 
 void marcarBloquesComoLibre(char** arrayDeBloques){
