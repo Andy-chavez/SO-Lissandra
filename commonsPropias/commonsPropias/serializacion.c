@@ -522,7 +522,7 @@ int esInsertEjecutable(char* operacion) {
 
 	char** parametrosSpliteados = string_split(operacion, " ");
 
-	if(esNumeroParseable(*(parametrosSpliteados + 2)) && tieneValorParseable(*(parametrosSpliteados + 3))){
+	if(esNumeroParseable(*(parametrosSpliteados + 2)) && tieneValorParseable(string_duplicate(*(parametrosSpliteados + 3)))){
 
 		if(*(parametrosSpliteados + 4) == NULL) {
 			string_iterate_lines(parametrosSpliteados, free);
@@ -640,17 +640,16 @@ void* liberarOperacionLQL(operacionLQL* operacion) {
 
 operacionLQL* splitear_operacion(char* operacion){
 	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
-	char** opSpliteada;
 
 	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE") || string_equals_ignore_case(operacion, "HEXDUMP")) {
-		operacionAux->operacion = operacion;
+		operacionAux->operacion = string_duplicate(operacion);
 		operacionAux->parametros = string_duplicate("ALL");
 	} else {
-		opSpliteada = string_n_split(operacion,2," ");
+		char** opSpliteada = string_n_split(operacion,2," ");
 		operacionAux->operacion=string_duplicate(*opSpliteada);
 		if(*(opSpliteada+1)){
 			operacionAux->parametros=string_duplicate(*(opSpliteada+1));
-			free(*(opSpliteada + 1));
+			free(*(opSpliteada+1));
 		} else {
 			operacionAux->parametros = NULL;
 		}

@@ -22,7 +22,6 @@ void inicializarRetardos() {
 	RETARDO_GOSSIP = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_GOSSIPING");
 	RETARDO_JOURNAL = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_JOURNAL");
 	RETARDO_MEMORIA = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM");
-	RETARDO_FIN_PROCESO = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_FIN_PROCESO");
 }
 
 void inicializarTablaMarcos() {
@@ -570,7 +569,10 @@ void journalLQL(int socketKernel) {
 
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, armarPaqueteParaEnviarALFS);
 
+	operacionProtocolo protocoloJournal = PAQUETEOPERACIONES;
+
 	sem_wait(&MUTEX_SOCKET_LFS);
+	enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo));
 	serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
 	sem_post(&MUTEX_SOCKET_LFS);
 
@@ -707,6 +709,8 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 
 	free(mensaje);
 	}
+
+	enviarOMostrarYLogearInfo(socketKernel, "JAJAXD");
 }
 
 void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
@@ -927,6 +931,7 @@ void esperarAHilosEjecutandose() {
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
+	list_destroy(listaHilosEsperandoSemaforos);
 }
 
 void dejarEjecutarOperacionesDeNuevo() {

@@ -153,7 +153,9 @@ void* manejarConsola() {
 			continue;
 		}
 
-		APIMemoria(splitear_operacion(comando), -1);
+		operacionLQL* operacionDelComando = splitear_operacion(comando);
+
+		APIMemoria(operacionDelComando, -1);
 		free(comando);
 	}
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
