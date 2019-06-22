@@ -47,7 +47,79 @@ void liberarRegistros(registro* unRegistro);
 void marcarBloquesComoLibre(char** arrayDeBloques);
 void liberarMemtable();
 void liberarListaDeTablas();
+void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros);
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata);
+int obtenerCantTemporales(char* nombreTabla);
+void enviarYLogearMensajeError(int socket, char* mensaje); //ta
+void enviarOMostrarYLogearInfo(int socket, char* mensaje);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)); //ta
+void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
+void agregarALista(char* timestamp,char* key,char* value,t_list* head);
+
+void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
+	registro* guardarRegistro= malloc (sizeof(registro));
+	guardarRegistro->timestamp = atoi(unTimestamp);
+	guardarRegistro->key = atoi(unaKey);
+	guardarRegistro->value = string_duplicate(unValue);
+	list_add(head,guardarRegistro);
+}
+
+
+void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros){
+	char** separarRegistro = string_split(buffer,"\n");
+			int j =0;
+			for(j=0;*(separarRegistro+j)!=NULL;j++){
+				char **aCargar =string_split(*(separarRegistro+j),";");
+				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
+				liberarDoblePuntero(aCargar);
+			}
+
+	liberarDoblePuntero(separarRegistro);
+}
+
+
+void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
+	char* rutaCompleta = string_new();
+	string_append(&rutaCompleta,rutaTabla);
+	string_append(&rutaCompleta,"/");
+	string_append(&rutaCompleta,nombreArchivo);
+	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
+		remove(rutaCompleta);
+		return;
+	}
+
+	t_config* archivo= config_create(rutaCompleta);
+	char **bloques = config_get_array_value(archivo,"BLOCKS");
+
+	marcarBloquesComoLibre(bloques);
+	liberarDoblePuntero(bloques);
+	config_destroy(archivo);
+	remove(rutaCompleta);
+	free(rutaCompleta);
+
+}
+
+
+void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+}
+
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)){
+	if(socket != -1) {
+		pthread_mutex_lock(&mutexLogger);
+		log(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+		enviar(socket, mensaje, strlen(mensaje) + 1);
+	} else {
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log(loggerConsola, mensaje);
+		pthread_mutex_unlock(&mutexLoggerConsola);
+	}
+}
+
+void enviarYLogearMensajeError(int socket, char* mensaje) {
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
+}
 
 
 
@@ -78,6 +150,31 @@ int calcularParticion(int key,int cantidadParticiones){
 	int particion= key%cantidadParticiones;
 	return particion;
 }
+
+int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
+											//REUTILIZAR EN COMPACTACION
+	//puntoMontaje/Tables/TABLA1/1.tmp, suponemos que los temporales se hacen en orden
+	int cantTemporal = 0;
+	int existe;
+	do{
+
+		char* ruta = string_new();
+		char* numeroTmp =string_itoa(cantTemporal);
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Tables/");
+		string_append(&ruta,nombreTabla);
+		string_append(&ruta,"/");
+		string_append(&ruta,numeroTmp);
+		string_append(&ruta,".tmp");
+		existe = existeArchivo(ruta);
+		free(numeroTmp);
+		free(ruta);
+		if(existe==0) break;
+		cantTemporal++;
+	}while(existe!=0);
+	return cantTemporal;
+}
+
 
 void* devolverMayor(registro* registro1, registro* registro2){
 	if (registro1->timestamp > registro2->timestamp){

@@ -301,16 +301,17 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 	free(rutaMetadata);
 }
 
-void compactar(char* nombreTabla){
+void compactar(metadataConSemaforo* metadataDeTabla){
 
-	//aca habria que poner un while 1
+	while(1){
+	usleep(metadataDeTabla->tiempoCompactacion*1000);
 	int i;
-	int numeroTmp = obtenerCantTemporales(nombreTabla);
-	/*
+	int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
+
 	if(numeroTmp == 0){
 		continue;
 	}
-	*/
+
 	char* bufferTemporales = string_new();
 	char* rutaTabla = string_new();
 
@@ -320,7 +321,7 @@ void compactar(char* nombreTabla){
 
 	string_append(&rutaTabla, puntoMontaje);
 	string_append(&rutaTabla, "Tables/");
-	string_append(&rutaTabla, nombreTabla);
+	string_append(&rutaTabla, metadataDeTabla->nombreTabla);
 	string_append(&rutaTabla, "/");
 
 	for (i = 0; i< numeroTmp; i++){
@@ -383,6 +384,5 @@ void compactar(char* nombreTabla){
 	free(rutaTabla);
 	free(bufferTemporales);
 
-//	string_append(bufferRegistrosTemporales, infoDeTmps);
-
+}
 }

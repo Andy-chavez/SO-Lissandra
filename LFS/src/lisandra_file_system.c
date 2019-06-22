@@ -54,10 +54,6 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 				enviarOMostrarYLogearInfo(-1,"Se recibio un DUMP");
 				dump();
 			}
-			else if(string_equals_ignore_case(operacionAParsear->operacion, "COMPACTAR")) {
-							enviarOMostrarYLogearInfo(-1,"Se recibio un COMPACTAR");
-							compactar(operacionAParsear->parametros);
-			}
 	else {
 		printf("no entendi xD\n");
 	}
