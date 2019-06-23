@@ -5,8 +5,7 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-/* TODO describe, metrics y journal(a cada una de las memorias asociadas a los criterios), hash de criterio y eventual
- * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
+/* TODO describe, metrics, hash de criterio y eventual
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
  */
@@ -30,10 +29,10 @@ void kernel_consola();
 void kernel_roundRobin(int threadProcesador);
 /******************************IMPLEMENTACIONES******************************************/
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
-bool kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a la cual mandarle esto
+bool kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
 	if((enviarOperacion(opAux,index))== -1){
 		return false;
 	}
@@ -43,7 +42,7 @@ bool kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a 
 bool kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
 	if((enviarOperacion(opAux,index))== -1){
 		return false;
 	}
@@ -54,7 +53,7 @@ bool kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
 	char** parametros = string_n_split(opAux->parametros,3," ");
-	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
 	if((enviarOperacion(opAux,index))== -1){
 		eliminarTablaCreada(*(parametros+1));
 		return false;
@@ -82,7 +81,7 @@ bool kernel_describe(char* operacion){ //todo separar table y all
 bool kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerListaDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
 	if((enviarOperacion(opAux,index))== -1){
 		guardarTablaCreada(opAux->parametros);
 		return false;
@@ -109,7 +108,7 @@ void journal_consistencia(int consistencia){
 	}
 	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);
 }
-bool kernel_add(char* operacion){ //TODO preguntar si mem full cuado
+bool kernel_add(char* operacion){
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
@@ -131,15 +130,16 @@ bool kernel_add(char* operacion){ //TODO preguntar si mem full cuado
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
 		}
+		liberarParametrosSpliteados(opAux);
 		return true;
 	}
 	else{
 		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log,"EXEC: %s.Memoria no conectada.", operacion);
 		pthread_mutex_unlock(&mLog);
+		liberarParametrosSpliteados(opAux);
 		return false;
 	}
-	liberarParametrosSpliteados(opAux);
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 // ---------------.: THREAD ROUND ROBIN :.---------------
@@ -161,10 +161,10 @@ void kernel_roundRobin(int threadProcesador){
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(!kernel_api(pcb_auxiliar->operacion)){
-				loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearErrorYLiberarEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			}
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfoYLiberarEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
@@ -175,7 +175,7 @@ void kernel_roundRobin(int threadProcesador){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(!kernel_api(pcb_auxiliar->operacion)){
-						loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+						thread_loggearErrorYLiberarEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -186,7 +186,7 @@ void kernel_roundRobin(int threadProcesador){
 				}
 				instruc->ejecutado = 1;
 				if(!kernel_api(instruc->operacion)){
-					loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearErrorYLiberarEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
@@ -198,7 +198,7 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfoYLiberarEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -240,6 +240,7 @@ void kernel_consola(){
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
 	}
+	free(linea);
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){

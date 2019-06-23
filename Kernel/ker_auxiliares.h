@@ -28,10 +28,8 @@ bool instruccion_no_ejecutada(instruccion* instruc);
 void kernel_destroy();
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
 void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
+void thread_loggearErrorYLiberarEXEC(char* estado, int threadProcesador, char* operacion);
+void thread_loggearInfoYLiberarEXEC(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
 void guardarTablaCreada(char* parametros);
 void eliminarTablaCreada(char* parametros);
@@ -46,7 +44,7 @@ tabla* encontrarTablaPorNombre(char* nombre);
 memoria* encontrarMemoria(int numero);
 
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
-int obtenerListaDeConsistencia(consistencia unaConsistencia);
+int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
 int obtenerSocket(operacionLQL* opAux,int index);
 int enviarOperacion(operacionLQL* opAux,int index);
 
@@ -105,7 +103,7 @@ int obtenerSocket(operacionLQL* opAux,int index){
 	list_find(criterios[index].memorias,(void*)pudeConectarYEnviar);
 	return socket;
 }
-int obtenerListaDeConsistencia(consistencia unaConsistencia){
+int obtenerIndiceDeConsistencia(consistencia unaConsistencia){
 	if(unaConsistencia == SC){
 		return STRONG;
 	}
@@ -126,8 +124,6 @@ void enviarJournal(int socket){
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
 	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
-	//free(recibido);
-	//liberarOperacionLQL(opAux);
 }
 //------ INSTRUCCIONES DE PCB ---------
 bool instruccion_no_ejecutada(instruccion* instruc){
@@ -174,7 +170,7 @@ memoria* encontrarMemoria(int numero){
 	return memory;
 }
 //memoria* encontrarMemoriaStrong(){
-//	return list_get(criterios[STRONG].memorias, 0); //todo harcodeado
+//	return list_get(criterios[STRONG].memorias, 0);
 //}
 //------ CRITERIOS ---------
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
@@ -208,15 +204,17 @@ void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	free(recibido);
 	liberarOperacionLQL(opAux);
 }
-void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
+void thread_loggearErrorYLiberarEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
 }
-void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
+void thread_loggearInfoYLiberarEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
+	free(estado);
+	free(operacion);
 }
 //------ LISTAS ---------
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore){

@@ -46,14 +46,14 @@ void kernel_crearListas(){
 	//conexionesMemoria = list_create();
 	memorias = list_create();
 }
-void guardarDatos(seed* unaSeed){ //todo ver conexiones
+void guardarDatos(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
 	agregarALista(memorias,memAux,mMemorias);
 }
-int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
+int kernel_inicializarMemoria(){
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	if(socketClienteKernel==-1){
 		return -1;
