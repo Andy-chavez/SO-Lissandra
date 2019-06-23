@@ -95,8 +95,6 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
-	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
-	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
 	sem_init(&MUTEX_MEMORIA_PRINCIPAL, 0, 1);
 
 }
