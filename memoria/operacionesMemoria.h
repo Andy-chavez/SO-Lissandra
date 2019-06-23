@@ -22,7 +22,6 @@ void inicializarRetardos() {
 	RETARDO_GOSSIP = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_GOSSIPING");
 	RETARDO_JOURNAL = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_JOURNAL");
 	RETARDO_MEMORIA = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM");
-	RETARDO_FIN_PROCESO = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_FIN_PROCESO");
 }
 
 void inicializarTablaMarcos() {
@@ -58,7 +57,6 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar, configYLo
 	nuevaMemoria->limite = nuevaMemoria->base + tamanioMemoria;
 	nuevaMemoria->tamanioMaximoValue = datosParaInicializar->tamanio;
 	nuevaMemoria->tablaSegmentos = list_create();
-
 
 	TAMANIO_UN_REGISTRO_EN_MEMORIA = calcularEspacioParaUnRegistro(nuevaMemoria->tamanioMaximoValue);
 
@@ -96,16 +94,23 @@ void inicializarSemaforos() {
 	sem_init(&BINARIO_FINALIZACION_PROCESO, 0, 0);
 	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
+	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
+	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
+	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
+	sem_init(&MUTEX_MEMORIA_PRINCIPAL, 0, 1);
+
 }
 
 void* liberarSegmento(segmento* unSegmento) {
 	void* liberarPaginas(paginaEnTabla* unRegistro) {
 		free(unRegistro);
 	}
-
+	sem_wait(&unSegmento->MUTEX_SEGMENTO);
 		free(unSegmento->nombreTabla);
 		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
+	sem_post(&unSegmento->MUTEX_SEGMENTO);
 		free(unSegmento);
+
 }
 
 void liberarConfigYLogs() {
@@ -115,12 +120,13 @@ void liberarConfigYLogs() {
 	free(ARCHIVOS_DE_CONFIG_Y_LOG);
 
 }
+
 void liberarMemoria() {
 	free(MEMORIA_PRINCIPAL->base);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
 	free(MEMORIA_PRINCIPAL);
 }
-
+}
 void liberarTablaGossip() {
 	list_destroy_and_destroy_elements(TABLA_GOSSIP, liberarSeed);
 }
@@ -129,26 +135,28 @@ void vaciarMemoria() {
 	void* marcarMarcoComoDisponible(marco* unMarco) {
 		unMarco->estaEnUso = 0;
 	}
-
+	sem_wait(&MUTEX_TABLA_MARCOS);
 	list_iterate(TABLA_MARCOS, marcarMarcoComoDisponible);
+	sem_post(&MUTEX_TABLA_MARCOS);
+
 	size_t tamanioMemoria = MEMORIA_PRINCIPAL->limite - MEMORIA_PRINCIPAL->base;
+
 	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria); // para que se vea lindo despues de hacer el journal tambien
 
+	sem_wait(&MUTEX_MEMORIA_PRINCIPAL);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
-
 	MEMORIA_PRINCIPAL->tablaSegmentos = list_create();
+	sem_post(&MUTEX_MEMORIA_PRINCIPAL);
 }
 
 void liberarTablaMarcos() {
 	void* destructorMarcos(marco* unMarco) {
 		free(unMarco);
 	}
-
 	list_destroy_and_destroy_elements(TABLA_MARCOS, destructorMarcos);
 }
 // ------------------------------------------------------------------------ //
 // 2) OPERACIONES SOBRE MEMORIA PRINCIPAL //
-
 
 int calcularEspacioParaUnRegistro(int tamanioMaximo) {
 	int timeStamp = sizeof(time_t);
@@ -175,11 +183,12 @@ marco* algoritmoLRU() {
 		}
 	}
 
-	void iterarSegmento(segmento* segmento){
-		list_iterate(segmento->tablaPaginas, compararTimestamp);
+	void iterarSegmento(segmento* unSegmento){
+		list_iterate(unSegmento->tablaPaginas, compararTimestamp);
 	}
 
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, iterarSegmento);
+
 
 		if(paginaACambiar == NULL){
 			return NULL;
@@ -212,8 +221,6 @@ marco* encontrarEspacio(int socketKernel) {
 
 	return marcoLibre;
 }
-
-
 
 bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tamanioValueMaximo) {
 	bufferDePagina* buffer = malloc(sizeof(bufferDePagina));
@@ -267,10 +274,10 @@ int guardarEnMemoria(registroConNombreTabla* unRegistro,int socketKernel) {
 	return marcoGuardado->marco;
 }
 
-
-
 registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	registro* registroARetornar = malloc(sizeof(registro));
+
+	sem_wait(&MUTEX_TABLA_MARCOS);
 	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
 
 	memcpy(&(registroARetornar->timestamp),(time_t*) marcoEnMemoria->lugarEnMemoria, sizeof(time_t));
@@ -282,15 +289,17 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	registroARetornar->value = malloc(marcoEnMemoria->tamanioValue);
 	memcpy(registroARetornar->value, (marcoEnMemoria->lugarEnMemoria + desplazamiento), marcoEnMemoria->tamanioValue);
 
+	sem_post(&MUTEX_TABLA_MARCOS);
 	return registroARetornar;
 }
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
 	bufferDePagina* bufferParaCambio = armarBufferDePagina(registroNuevo, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
+	sem_wait(&MUTEX_TABLA_MARCOS);
 	marco* marcoACambiarValue = list_get(TABLA_MARCOS, registroACambiar->marco);
-
 	guardarEnMarco(marcoACambiarValue, bufferParaCambio);
+	sem_post(&MUTEX_TABLA_MARCOS);
 
 	liberarbufferDePagina(bufferParaCambio);
 }
@@ -322,7 +331,13 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 
 paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo, int socketKernel) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
+
+	sem_wait(&MUTEX_TABLA_MARCOS); //TODO Este semaforo es muy gordo xdxd
+	sem_wait(&MUTEX_MEMORIA_PRINCIPAL);
 	int marco = guardarEnMemoria(unRegistro,socketKernel);
+	sem_post(&MUTEX_TABLA_MARCOS);
+	sem_post(&MUTEX_MEMORIA_PRINCIPAL);
+
 	if(marco == -1) {
 		// TODO Avisar que no se pudo guardar en memoria.
 		return NULL;
@@ -352,6 +367,8 @@ int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int 
 	segmento* segmentoNuevo = malloc(sizeof(segmento));
 	segmentoNuevo->nombreTabla = string_duplicate(tabla);
 	segmentoNuevo->tablaPaginas = list_create();
+	sem_init(segmentoNuevo->MUTEX_SEGMENTO, 0, 1);
+
 
 	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
 
@@ -420,7 +437,10 @@ void dropearSegmento(segmento* unSegmento) {
 		return unSegmento->nombreTabla == otroSegmento->nombreTabla;
 	}
 
+	sem_wait(&MUTEX_TABLA_MARCOS);
 	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
+	sem_post(&MUTEX_TABLA_MARCOS);
+
 	list_remove_by_condition(MEMORIA_PRINCIPAL->tablaSegmentos,igualNombreSegmento);
 	free(unSegmento->nombreTabla);
 	free(unSegmento);

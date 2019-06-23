@@ -78,11 +78,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	liberarOperacionLQL(operacionAParsear);
 
-	sem_wait(&MUTEX_RETARDO_MEMORIA);
-	int retardoMemoria = RETARDO_MEMORIA * 1000;
-	sem_post(&MUTEX_RETARDO_MEMORIA);
 
-	usleep(retardoMemoria);
 }
 
 //------------------------------------------------------------------------
@@ -152,6 +148,11 @@ void* manejarConsola() {
 			free(comando);
 			continue;
 		}
+
+		sem_wait(&MUTEX_RETARDO_MEMORIA);
+		int retardoMemoria = RETARDO_MEMORIA * 1000;
+		sem_post(&MUTEX_RETARDO_MEMORIA);
+		usleep(retardoMemoria);
 
 		APIMemoria(splitear_operacion(comando), -1);
 		free(comando);
