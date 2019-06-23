@@ -28,8 +28,8 @@ bool instruccion_no_ejecutada(instruccion* instruc);
 void kernel_destroy();
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
 void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
-void thread_loggearErrorYLiberarEXEC(char* estado, int threadProcesador, char* operacion);
-void thread_loggearInfoYLiberarEXEC(char* estado, int threadProcesador, char* operacion);
+void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
+void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
 void guardarTablaCreada(char* parametros);
 void eliminarTablaCreada(char* parametros);
@@ -38,15 +38,15 @@ void enviarJournal(int socket);
 int socketMemoriaSolicitada(consistencia criterio);
 int encontrarSocketDeMemoria(int numero);
 int realizarConexion(memoria* mem);
+int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
+int obtenerSocket(operacionLQL* opAux,int index);
+int enviarOperacion(operacionLQL* opAux,int index);
 
 tabla* encontrarTablaPorNombre(char* nombre);
 
 memoria* encontrarMemoria(int numero);
 
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
-int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
-int obtenerSocket(operacionLQL* opAux,int index);
-int enviarOperacion(operacionLQL* opAux,int index);
 
 /******************************IMPLEMENTACIONES******************************************/
 int enviarOperacion(operacionLQL* opAux,int index){
@@ -165,8 +165,8 @@ memoria* encontrarMemoria(int numero){
 	bool memoriaEsNumero(memoria* mem) {
 		return mem->numero == numero;
 	}
-	memoria * memory = malloc(sizeof(memoria));
-	memory = (memoria*) list_find(memorias, (void*)memoriaEsNumero);
+	//memoria * memory = malloc(sizeof(memoria));
+	memoria* memory = (memoria*) list_find(memorias, (void*)memoriaEsNumero);
 	return memory;
 }
 //memoria* encontrarMemoriaStrong(){
@@ -204,17 +204,17 @@ void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	free(recibido);
 	liberarOperacionLQL(opAux);
 }
-void thread_loggearErrorYLiberarEXEC(char* estado, int threadProcesador, char* operacion){
+void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
+	free(estado);
 }
-void thread_loggearInfoYLiberarEXEC(char* estado, int threadProcesador, char* operacion){
+void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
 	free(estado);
-	free(operacion);
 }
 //------ LISTAS ---------
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore){

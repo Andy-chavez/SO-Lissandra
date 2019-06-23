@@ -50,11 +50,13 @@ t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* memorias;
 t_list* tablas;
-t_list* conexionesMemoria;
+
 criterio criterios[3];
+
 sem_t hayNew;
 sem_t hayReady;
 sem_t modificables;
+
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
 pthread_mutex_t mMetadataRefresh;
@@ -64,15 +66,18 @@ pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
 pthread_mutex_t mLog;
 //char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
+
 char* pathConfig;
 char* ipMemoria;
 char* puertoMemoria;
+
 configYLogs *kernel_configYLog;
+
+int destroy = 0;
 int multiprocesamiento;
 // -------------------- CAMBIAN EN TIEMPO DE EXEC ------------------------
 int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
-int destroy = 0;
 
 #endif /* KER_STRUCTS_H_ */

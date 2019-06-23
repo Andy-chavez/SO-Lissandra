@@ -43,7 +43,6 @@ void kernel_crearListas(){
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
-	//conexionesMemoria = list_create();
 	memorias = list_create();
 }
 void guardarDatos(seed* unaSeed){
@@ -103,18 +102,32 @@ void liberarColas(pcb* element){
 	free(element);
 }
 void liberarPCB(pcb* elemento) {
-	void liberarInstrucciones(instruccion* listaIns) {
-		free(listaIns->operacion);
-		free(listaIns);
+	void liberarInstrucciones(instruccion* instrucc) {
+		free(instrucc->operacion);
+		free(instrucc);
 	}
-	//list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
+	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 	free(elemento->operacion);
 	free(elemento);
 }
-void liberarListas(){ //todo agregar memorias, tablas,conexiones[3]
+void liberarMemoria(memoria* elemento) {
+	free(elemento->ip);
+	free(elemento->puerto);
+	free(elemento);
+}
+void liberarTabla(tabla* t) {
+	free(t->nombreDeTabla);
+	free(t);
+}
+void liberarListas(){
 	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
+	 list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(criterios[STRONG].memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);
 }
 void kernel_finalizar(){
 	liberarConfigYLogs();
@@ -133,7 +146,7 @@ void* cambiosConfig(){
 		pthread_mutex_unlock(&mLog);
 	}
 
- 	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+ 	inotify_add_watch(fdConfig, path, IN_MODIFY);
 
  	while(1) {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);

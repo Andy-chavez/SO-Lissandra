@@ -15,7 +15,6 @@ bool kernel_journal();
 bool kernel_metrics();
 bool kernel_api(char* operacionAParsear);
 bool kernel_add(char* operacion);
-void enviarJournal(int socket);
 bool kernel_drop(char* operacion);
 bool kernel_select(char* operacion);
 bool kernel_insert(char* operacion);
@@ -116,22 +115,33 @@ bool kernel_add(char* operacion){
 		if(string_equals_ignore_case(*(opAux+4),"HASH")){
 			list_add(criterios[HASH].memorias, mem );
 			journal_consistencia(HASH);
+			liberarParametrosSpliteados(opAux);
+			return true;
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
 				list_add(criterios[STRONG].memorias, mem );
+				liberarParametrosSpliteados(opAux);
+				return true;
 			}
 			else{
 				pthread_mutex_lock(&mLog);
 				log_error(kernel_configYLog->log,"EXEC: %s.Ya se posee una memoria del tipo STRONG.", operacion);
 				pthread_mutex_unlock(&mLog);
+				liberarParametrosSpliteados(opAux);
+				return false;
 			}
 		}
 		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
+			liberarParametrosSpliteados(opAux);
+			return true;
 		}
+		pthread_mutex_lock(&mLog);
+		log_error(kernel_configYLog->log,"EXEC: %s.Consistencia invalida.", operacion);
+		pthread_mutex_unlock(&mLog);
 		liberarParametrosSpliteados(opAux);
-		return true;
+		return false;
 	}
 	else{
 		pthread_mutex_lock(&mLog);
@@ -161,10 +171,11 @@ void kernel_roundRobin(int threadProcesador){
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(!kernel_api(pcb_auxiliar->operacion)){
-				thread_loggearErrorYLiberarEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			}
+			thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			thread_loggearInfoYLiberarEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
@@ -175,7 +186,7 @@ void kernel_roundRobin(int threadProcesador){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(!kernel_api(pcb_auxiliar->operacion)){
-						thread_loggearErrorYLiberarEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+						thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -186,19 +197,20 @@ void kernel_roundRobin(int threadProcesador){
 				}
 				instruc->ejecutado = 1;
 				if(!kernel_api(instruc->operacion)){
-					thread_loggearErrorYLiberarEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
+				thread_loggearInfoEXEC("NEW",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfoYLiberarEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -336,18 +348,15 @@ bool kernel_api(char* operacionAParsear)
 		return kernel_add(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "JOURNAL")) {
-		free(operacionAParsear);
 		return kernel_journal();
 	}
 	else if (string_contains(operacionAParsear, "METRICS")) {
-		free(operacionAParsear);
 		return kernel_metrics();
 	}
 	else {
 		pthread_mutex_lock(&mLog);
 		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
 		pthread_mutex_unlock(&mLog);
-		free(operacionAParsear);
 		return false;
 	}
 }
