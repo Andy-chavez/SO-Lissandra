@@ -1,10 +1,3 @@
-/*
- * ker_auxiliares.h
- *
- *  Created on: 17 jun. 2019
- *      Author: utnso
- */
-
 #ifndef KER_AUXILIARES_H_
 #define KER_AUXILIARES_H_
 #include <commons/log.h>
