@@ -62,7 +62,7 @@ bool kernel_create(char* operacion){
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
-bool kernel_describe(char* operacion){
+bool kernel_describe(char* operacion){ //todo separar table y all
 //	operacionLQL* opAux=splitear_operacion(operacion);
 //	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
 //	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
@@ -217,13 +217,26 @@ void kernel_almacenar_en_new(char*operacion){
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayNew);
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "NEW: %s", operacion);
+	log_info(kernel_configYLog->log, " NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 }
 void kernel_consola(){
-	printf("Proceso Kernel:\n	Ingrese la operacion que desea ejecutar y siga su ejecución mediante el archivo KERNEL.log\n");
+	printf(">> Welcome to Kernel <<\n"
+			">> Ingrese alguna de las siguientes operaciones:\n"
+			">> SELECT [NOMBRE_TABLA] [KEY]\n"
+			">> INSERT [NOMBRE_TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] <timestamp opcional>\n"
+			">> CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]\n"
+			">> DESCRIBE [NOMBRE_TABLA] <nombre de tabla opcional>\n"
+			">> DROP [NOMBRE_TABLA]\n"
+			">> METRICS\n"
+			">> JOURNAL\n"
+			">> ADD MEMORY [NUMERO] TO [STRONG/HASH/EVENTUAL]\n"
+			">> DROP [NOMBRE_TABLA]\n"
+			">> RUN [PATH_ARCHIVO]\n"
+			">> Y siga su ejecucion mediante el archivo Kernel.log\n");
 	char* linea= NULL;
 	while(!destroy){
+		printf(">");
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
 	}

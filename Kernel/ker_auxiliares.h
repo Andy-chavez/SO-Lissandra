@@ -74,7 +74,7 @@ int enviarOperacion(operacionLQL* opAux,int index){
 	}
 	else{
 		pthread_mutex_lock(&mLog);
-		log_info(kernel_configYLog->log, "ERROR: No hay memorias para enviar la request %s %s", opAux->operacion, opAux->parametros);
+		log_error(kernel_configYLog->log, "ERROR: No hay memorias para enviar la request %s %s", opAux->operacion, opAux->parametros);
 		pthread_mutex_unlock(&mLog);
 		return -1;
 	}
@@ -85,7 +85,7 @@ int obtenerSocket(operacionLQL* opAux,int index){
 		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
-			log_info(kernel_configYLog->log, "ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLog);
 			return true;
 		}
@@ -122,12 +122,12 @@ void enviarJournal(int socket){
 	operacionLQL* opAux=splitear_operacion("JOURNAL");
 	serializarYEnviarOperacionLQL(socket, opAux);
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "ENVIADO: JOURNAL");
+	log_info(kernel_configYLog->log, " ENVIADO: JOURNAL");
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
 	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
-	free(recibido);
-	liberarOperacionLQL(opAux);
+	//free(recibido);
+	//liberarOperacionLQL(opAux);
 }
 //------ INSTRUCCIONES DE PCB ---------
 bool instruccion_no_ejecutada(instruccion* instruc){
@@ -203,7 +203,7 @@ void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 }
 void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	log_info(kernel_configYLog->log, " RECIBIDO: %s", recibido);
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
@@ -215,7 +215,7 @@ void loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
 }
 void loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
+	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
 }
 //------ LISTAS ---------
