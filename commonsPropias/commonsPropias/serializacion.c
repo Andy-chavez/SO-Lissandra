@@ -630,7 +630,7 @@ int esOperacionEjecutable(char* unaOperacion) {
 	}
 }
 
-void* liberarOperacionLQL(operacionLQL* operacion) {
+void liberarOperacionLQL(operacionLQL* operacion) {
 	free(operacion->operacion);
 	if(operacion->parametros) {
 		free(operacion->parametros);
@@ -687,12 +687,12 @@ void liberarRegistroConNombreTabla(registroConNombreTabla* registro) {
 	free(registro);
 }
 
-void* liberarMetadata(metadata* unaMetadata) {
+void liberarMetadata(metadata* unaMetadata) {
 	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
 }
 
-void* liberarSeed(seed* unaSeed) {
+void liberarSeed(seed* unaSeed) {
 	free(unaSeed->ip);
 	free(unaSeed->puerto);
 	free(unaSeed);

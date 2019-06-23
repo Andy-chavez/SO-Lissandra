@@ -41,6 +41,7 @@ typedef struct {
 typedef struct {
 	char *nombreTabla;
 	t_list* tablaPaginas;
+	sem_t MUTEX_SEGMENTO;
 } segmento;
 
 typedef struct {
@@ -85,6 +86,9 @@ sem_t MUTEX_RETARDO_JOURNAL;
 sem_t MUTEX_TABLA_GOSSIP;
 sem_t MUTEX_TABLA_THREADS;
 sem_t MUTEX_JOURNAL_REALIZANDOSE;
+
+sem_t MUTEX_TABLA_MARCOS;
+sem_t MUTEX_MEMORIA_PRINCIPAL;
 
 memoria* MEMORIA_PRINCIPAL;
 t_list* TABLA_MARCOS;

@@ -20,28 +20,48 @@
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG) // Lo dejo asi de grande porque sino segfaultea
 
-int APIProtocolo(void* buffer, int socket) {
+// DEFINICIONES //
+bool APIProtocolo(void* buffer, int socket);
+void APIMemoria(operacionLQL* operacionAParsear, int socketKernel);
+void* trabajarConConexion(void* socket);
+datosInicializacion* realizarHandshake();
+void liberarDatosDeInicializacion(datosInicializacion* datos);
+int crearSocketLFS();
+void* manejarConsola();
+void *servidorMemoria();
+void* cambiosConfig();
+void cambiarValor();
+
+
+bool APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
 	case OPERACIONLQL:
 		enviarOMostrarYLogearInfo(-1, "Recibi una operacionLQL");
 		APIMemoria(deserializarOperacionLQL(buffer), socket);
-		return 1;
+		return true;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
 	case DESCONEXION:
 		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
 		cerrarConexion(socket);
-		return 0;
+		return false;
 	case TABLAGOSSIP:
 		enviarOMostrarYLogearInfo(-1, "Una memoria o el kernel se comunico conmigo. Enviando mi tabla de gossip...");
 		sem_wait(&MUTEX_TABLA_GOSSIP);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
+		return true;
+	case PAQUETEOPERACIONES:
+	case UNREGISTRO:
+	case METADATA:
+	case PAQUETEMETADATAS:
+	case HANDSHAKE:
+	default:
+		enviarOMostrarYLogearInfo(-1, "Ha llegado una operacion que la memoria no puede operar en general, pero capaz si de una manera en particular.");
 		return 1;
 	}
-	free(buffer);
 }
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
@@ -78,11 +98,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	liberarOperacionLQL(operacionAParsear);
 
-	sem_wait(&MUTEX_RETARDO_MEMORIA);
-	int retardoMemoria = RETARDO_MEMORIA * 1000;
-	sem_post(&MUTEX_RETARDO_MEMORIA);
 
-	usleep(retardoMemoria);
 }
 
 //------------------------------------------------------------------------
@@ -114,7 +130,6 @@ datosInicializacion* realizarHandshake() {
 		enviarYLogearMensajeError(-1, "No se pudo conectar con LFS");
 		return NULL;
 	}
-	operacionProtocolo operacionHandshake = HANDSHAKE;
 	serializarYEnviarHandshake(SOCKET_LFS, 0);
 
 	void* bufferHandshake = recibir(SOCKET_LFS);
@@ -153,9 +168,12 @@ void* manejarConsola() {
 			continue;
 		}
 
-		operacionLQL* operacionDelComando = splitear_operacion(comando);
+		sem_wait(&MUTEX_RETARDO_MEMORIA);
+		int retardoMemoria = RETARDO_MEMORIA * 1000;
+		sem_post(&MUTEX_RETARDO_MEMORIA);
+		usleep(retardoMemoria);
 
-		APIMemoria(operacionDelComando, -1);
+		APIMemoria(splitear_operacion(comando), -1);
 		free(comando);
 	}
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
@@ -200,7 +218,7 @@ void* cambiosConfig() {
 		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
 	}
 
-	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+	inotify_add_watch(fdConfig, path, IN_MODIFY);
 
 	while(1) {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
@@ -255,7 +273,7 @@ int main() {
 		return -1;
 	};
 
-	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion, ARCHIVOS_DE_CONFIG_Y_LOG);
+	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion);
 	inicializarTablaMarcos();
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
