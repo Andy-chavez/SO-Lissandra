@@ -50,14 +50,14 @@ typedef enum {
 	PAQUETEMETADATAS,
 	HANDSHAKE,
 	DESCONEXION,
-	TABLAGOSSIP
+	TABLAGOSSIP,
+	ERROR
 } operacionProtocolo;
 
 typedef struct {
   char* operacion;
   char* parametros;
 } operacionLQL;
-
 
 typedef struct {
 	consistencia tipoConsistencia;
