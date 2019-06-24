@@ -8,6 +8,7 @@
 
 #include "structsYVariablesGlobales.h"
 #include <unistd.h>
+#include <stdarg.h>
 
 // DECLARACIONES //
 void inicializarProcesoMemoria();
@@ -50,9 +51,9 @@ segmento* encontrarSegmentoPorNombre(char* tablaNombre);
 bool igualKeyRegistro(paginaEnTabla* unRegistro,int keyDada);
 paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada);
 char* valueRegistro(paginaEnTabla* paginaEncontrada);
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
-void enviarYLogearMensajeError(int socket, char* mensaje);
-void enviarOMostrarYLogearInfo(int socket, char* mensaje);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *), va_list parametrosAdicionales);
+void enviarYLogearMensajeError(int socket, char* mensaje, ...);
+void enviarOMostrarYLogearInfo(int socket, char* mensaje, ...);
 void liberarRecursosSelectLQL(char* nombreTabla, char *key);
 void selectLQL(operacionLQL *operacionSelect, int socketKernel);
 void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro);
@@ -281,12 +282,12 @@ marco* encontrarEspacio(int socketKernel) {
 	if(!(marcoLibre = list_find(TABLA_MARCOS, encontrarLibreEnTablaMarcos))) {
 		enviarOMostrarYLogearInfo(-1, "No se encontro espacio libre en la tabla de marcos. Empezando algoritmo LRU");
 		if(!(marcoLibre = algoritmoLRU())) {
+			if(socketKernel == -1) {
+				enviarOMostrarYLogearInfo(-1, "el algoritmo LRU no pudo liberar memoria. Por favor, ingrese JOURNAL para liberar la memoria.");
+				return NULL;
+			}
 			enviarOMostrarYLogearInfo(-1, "el algoritmo LRU no pudo liberar memoria. empezando proceso de journal");
 			char* lleno = "FULL";
-				if(socketKernel == -1){
-					enviarYLogearMensajeError(socketKernel, "ERROR: No se puede realizar el Insert, espere el timed journal ");
-					return NULL;
-				}
 
 			enviar(socketKernel, (void*) lleno , strlen(lleno) + 1);
 			return NULL;
@@ -569,25 +570,33 @@ char* valueRegistro(paginaEnTabla* paginaEncontrada){
 	return value;
 }
 
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)) { // ME ILUMINE AH BUENO
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *), va_list parametrosAdicionales) {
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket != -1) {
 		sem_wait(&MUTEX_LOG);
-		log(ARCHIVOS_DE_CONFIG_Y_LOG->logger, mensaje);
+		log(ARCHIVOS_DE_CONFIG_Y_LOG->logger, mensajeTotal);
 		sem_post(&MUTEX_LOG);
-		enviar(socket, mensaje, strlen(mensaje) + 1);
+		enviar(socket, mensajeTotal, strlen(mensajeTotal) + 1);
 	} else {
 		sem_wait(&MUTEX_LOG_CONSOLA);
-		log(LOGGER_CONSOLA, mensaje);
+		log(LOGGER_CONSOLA, mensajeTotal);
 		sem_post(&MUTEX_LOG_CONSOLA);
 	}
+	free(mensajeTotal);
 }
 
-void enviarYLogearMensajeError(int socket, char* mensaje) {
-	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
+void enviarYLogearMensajeError(int socket, char* mensaje, ...) {
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error, parametrosAdicionales);
+	va_end(parametrosAdicionales);
 }
 
-void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
-	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+void enviarOMostrarYLogearInfo(int socket, char* mensaje, ...) {
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info, parametrosAdicionales);
+	va_end(parametrosAdicionales);
 }
 
 // ------------------------------------------------------------------------ //
@@ -717,13 +726,13 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-				enviarYLogearMensajeError(socketKernel, "ERROR: No se encontro el registro en LFS, o hubo un error al buscarlo.");
+				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 			else if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 			}
 			else {
-				enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al guardar el registro LFS en la memoria.");
+				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 		}
 	}
@@ -735,7 +744,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 	}
 	// TODO else journal();
@@ -759,7 +768,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
 	if(!registroNuevo) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: El value era mayor al tamanio maximo del value posible.");
+		enviarYLogearMensajeError(socketKernel, "ERROR: El value %s es mayor al tamanio maximo del value posible. (Tamanio maximo posible: %d)", *(parametrosSpliteados+2), MEMORIA_PRINCIPAL->tamanioMaximoValue);
 		free(nombreTabla);
 		liberarParametrosSpliteados(parametrosSpliteados);
 		return;
@@ -774,12 +783,12 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo);
 			paginaEncontrada->flag = SI;
 
-			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
+			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
 			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel,1)){
 				enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente");
 			} else {
-				enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 			}
 
 		}
@@ -787,9 +796,9 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 
 	else {
 		if(agregarSegmento(registroNuevo,nombreTabla,1, socketKernel)) {
-			enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
+			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al agregar el segmento en la memoria.");
+			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 		};
 	}
 	// TODO else journal();
@@ -802,7 +811,7 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 	char* mensaje = (char*) pedirALFS(operacionCreate);
 
 	if(!mensaje) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE");
+		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara CREATE %s", operacionCreate->parametros);
 	}
 
 	else {
@@ -810,15 +819,13 @@ void createLQL(operacionLQL* operacionCreate, int socketKernel) {
 
 	free(mensaje);
 	}
-
-	enviarOMostrarYLogearInfo(socketKernel, "JAJAXD");
 }
 
 void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 	void* bufferMetadata = pedirALFS(operacionDescribe);
 
 	if(!bufferMetadata) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE");
+		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE %s", operacionDescribe->parametros);
 		return;
 	}
 
