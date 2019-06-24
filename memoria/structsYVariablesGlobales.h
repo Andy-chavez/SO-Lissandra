@@ -41,7 +41,7 @@ typedef struct {
 typedef struct {
 	char *nombreTabla;
 	t_list* tablaPaginas;
-	sem_t MUTEX_SEGMENTO;
+	sem_t mutexSegmento;
 } segmento;
 
 typedef struct {

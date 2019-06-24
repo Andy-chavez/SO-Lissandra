@@ -177,10 +177,10 @@ void liberarSegmento(void* segmentoEnMemoria) {
 		free((paginaEnTabla*) paginaEnLaTabla);
 	}
 
-	sem_wait(&unSegmento->MUTEX_SEGMENTO);
+	sem_wait(&unSegmento->mutexSegmento);
 		free(unSegmento->nombreTabla);
 		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
-	sem_post(&unSegmento->MUTEX_SEGMENTO);
+	sem_post(&unSegmento->mutexSegmento);
 		free(unSegmento);
 
 }
@@ -442,7 +442,7 @@ int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int 
 	segmento* segmentoNuevo = malloc(sizeof(segmento));
 	segmentoNuevo->nombreTabla = string_duplicate(tabla);
 	segmentoNuevo->tablaPaginas = list_create();
-	sem_init(&segmentoNuevo->MUTEX_SEGMENTO, 0, 1);
+	sem_init(&segmentoNuevo->mutexSegmento, 0, 1);
 
 
 	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
