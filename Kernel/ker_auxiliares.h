@@ -32,7 +32,7 @@ int socketMemoriaSolicitada(consistencia criterio);
 int encontrarSocketDeMemoria(int numero);
 int realizarConexion(memoria* mem);
 int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
-int obtenerSocket(operacionLQL* opAux,int index);
+int obtenerSocketAlQueSeEnvio(operacionLQL* opAux,int index);
 int enviarOperacion(operacionLQL* opAux,int index);
 
 tabla* encontrarTablaPorNombre(char* nombre);
@@ -43,7 +43,7 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 
 /******************************IMPLEMENTACIONES******************************************/
 int enviarOperacion(operacionLQL* opAux,int index){
-	int socket = obtenerSocket(opAux,index);
+	int socket = obtenerSocketAlQueSeEnvio(opAux,index);
 	if(socket != -1){
 		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
@@ -70,7 +70,7 @@ int enviarOperacion(operacionLQL* opAux,int index){
 		return -1;
 	}
 }
-int obtenerSocket(operacionLQL* opAux,int index){
+int obtenerSocketAlQueSeEnvio(operacionLQL* opAux,int index){
 	int socket = -1;
 	bool pudeConectarYEnviar(memoria* mem){
 		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
@@ -167,11 +167,15 @@ memoria* encontrarMemoria(int numero){
 //}
 //------ CRITERIOS ---------
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
+	consistencia c = -1;
 	bool encontrarTabla(tabla* t){
 		return string_equals_ignore_case(t->nombreDeTabla, nombreTablaBuscada);
 	}
 	tabla* retorno =(tabla*) list_find(tablas,(void*)encontrarTabla);
-	return retorno->consistenciaDeTabla;
+	if(retorno){
+		c = retorno->consistenciaDeTabla;
+	}
+	return c;
 }
 //------ ERRORES ---------
 bool recibidoContiene(char* recibido, char* contiene){

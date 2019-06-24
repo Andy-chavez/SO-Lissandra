@@ -31,7 +31,11 @@ void kernel_roundRobin(int threadProcesador);
 bool kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index))== -1){
 		return false;
 	}
@@ -41,7 +45,11 @@ bool kernel_insert(char* operacion){
 bool kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index))== -1){
 		return false;
 	}
@@ -51,8 +59,12 @@ bool kernel_select(char* operacion){
 bool kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
-	char** parametros = string_n_split(opAux->parametros,3," ");
-	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	char** parametros = string_n_split(opAux->parametros,2," ");
+	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index))== -1){
 		eliminarTablaCreada(*(parametros+1));
 		return false;
@@ -60,27 +72,63 @@ bool kernel_create(char* operacion){
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
-bool kernel_describe(char* operacion){ //todo separar table y all
-//	operacionLQL* opAux=splitear_operacion(operacion);
-//	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
-//	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-//	serializarYEnviarOperacionLQL(socket, opAux);
-//	pthread_mutex_lock(&mLog);
-//	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
-//	pthread_mutex_unlock(&mLog);
-//	metadata* met = deserializarMetadata(recibir(socket));
-//	//TODO ACTUALIZAR ESTRUCTURAS y arreglar esto
-//	pthread_mutex_lock(&mLog);
-//	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
-//	pthread_mutex_unlock(&mLog);
-//	liberarMetadata(met);
-//	liberarOperacionLQL(opAux);
+void actualizarListaMetadata(metadata* met){
+	tabla* t = malloc(sizeof(tabla));
+	bool tablaYaGuardada(tabla* t){
+		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
+	}
+	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
+		liberarMetadata(met);
+		return;
+	}
+	t->nombreDeTabla = string_duplicate(met->nombreTabla);
+	t->consistenciaDeTabla = met->tipoConsistencia;
+	agregarALista(tablas,t,mTablas);
+	liberarMetadata(met);
+}
+bool kernel_describe(char* operacion){ //todo describe table
+	if(string_length(operacion) <= string_length("describe ")){ //describe all
+		operacionLQL* opAux=splitear_operacion(operacion);
+		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
+		if(socket != -1){
+			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
+			pthread_mutex_unlock(&mLog);
+			cerrarConexion(socket);
+			return true;
+		}
+		return false;
+	}
+	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
+	char** opSpliteada = string_n_split(operacion,2," ");
+	operacionAux->operacion=string_duplicate(*opSpliteada);
+	if(*(opSpliteada+1))
+		operacionAux->parametros=string_duplicate(*(opSpliteada+1));
+	free(*(opSpliteada+1));
+	free(*opSpliteada);
+	free(opSpliteada);
+	consistencia consist =encontrarConsistenciaDe(operacionAux->parametros);
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
+	int socket = obtenerSocketAlQueSeEnvio(operacionAux,index);
+	actualizarListaMetadata(deserializarMetadata(recibir(socket)));
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
+	pthread_mutex_unlock(&mLog);
+	cerrarConexion(socket);
 	return true;
 }
 bool kernel_drop(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
-	int index =  obtenerIndiceDeConsistencia(encontrarConsistenciaDe(*(parametros)));
+	consistencia consist =encontrarConsistenciaDe(opAux->parametros);
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index))== -1){
 		guardarTablaCreada(opAux->parametros);
 		return false;
@@ -190,6 +238,9 @@ void kernel_roundRobin(int threadProcesador){
 						ERROR = -1;
 						break;
 					}
+					thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					usleep(sleep);
+					continue;
 				}
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
 				if (instruc == NULL){
@@ -201,6 +252,7 @@ void kernel_roundRobin(int threadProcesador){
 					ERROR = -1;
 					break;
 				}
+				thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
