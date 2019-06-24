@@ -392,6 +392,10 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	return unMetadata;
 }
 
+void enviarError(int socket) {
+	operacionProtocolo protocoloError = ERROR;
+	enviar(socket, (void*) &protocoloError, sizeof(operacionProtocolo));
+}
 // ------------------------------------------------------------------------ //
 // 3) SERIALIZACIONES/DESERIALIZACIONES DE PAQUETES/TABLAS //
 

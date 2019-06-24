@@ -196,4 +196,6 @@ void serializarYEnviarTablaGossip(int socket, t_list* tablaGossip);
 
 int esOperacionEjecutable(char* unaOperacion);
 
+void enviarError(int socket);
+
 #endif /* SERIALIZACION_H_ */
