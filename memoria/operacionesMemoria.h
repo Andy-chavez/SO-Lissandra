@@ -688,9 +688,8 @@ void journalLQL(int socketKernel) {
 	list_destroy_and_destroy_elements(insertsAEnviar, liberarOperacionLQL);
 	enviarOMostrarYLogearInfo(socketKernel, "Se realizo el Journal exitosamente.");
 
-	dejarEjecutarOperacionesDeNuevo();
-
 	modificarValorJournalRealizandose(0);
+	dejarEjecutarOperacionesDeNuevo();
 }
 
 void liberarRecursosSelectLQL(char* nombreTabla, char *key) {
@@ -786,7 +785,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
 			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel,1)){
-				enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente");
+				enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 			} else {
 				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 			}
