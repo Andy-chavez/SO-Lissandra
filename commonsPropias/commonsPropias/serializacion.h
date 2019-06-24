@@ -50,14 +50,14 @@ typedef enum {
 	PAQUETEMETADATAS,
 	HANDSHAKE,
 	DESCONEXION,
-	TABLAGOSSIP
+	TABLAGOSSIP,
+	ERROR
 } operacionProtocolo;
 
 typedef struct {
   char* operacion;
   char* parametros;
 } operacionLQL;
-
 
 typedef struct {
 	consistencia tipoConsistencia;
@@ -146,7 +146,7 @@ int deserializarHandshake(void* bufferHandshake);
 // si bien no tiene nada que ver, nos va a servir a todos
 char* string_trim_quotation(char* string);
 
-void* liberarOperacionLQL(operacionLQL* operacion);
+void liberarOperacionLQL(operacionLQL* operacion);
 
 void serializarYEnviarHandshake(int socket, int tamanioValue);
 
@@ -156,7 +156,7 @@ registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* 
 
 void liberarRegistroConNombreTabla(registroConNombreTabla* registro);
 
-void* liberarMetadata(metadata* unaMetadata);
+void liberarMetadata(metadata* unaMetadata);
 
 void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio);
 
@@ -170,7 +170,7 @@ void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas);
 
 void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*));
 
-void* liberarSeed(seed* unaSeed);
+void liberarSeed(seed* unaSeed);
 
 void liberarParametrosSpliteados(char** parametrosSpliteados);
 
@@ -194,5 +194,8 @@ void* serializarTablaGossip(t_list* tablaGossip, int* tamanio);
 
 void serializarYEnviarTablaGossip(int socket, t_list* tablaGossip);
 
+int esOperacionEjecutable(char* unaOperacion);
+
+void enviarError(int socket);
 
 #endif /* SERIALIZACION_H_ */
