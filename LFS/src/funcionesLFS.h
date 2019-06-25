@@ -360,9 +360,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTabla(nombreTabla);
 		pthread_mutex_lock(&semaforoDeTabla);
 		cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques); //poner nombre y de particion
-		separarRegistrosYCargarALista(buffer, listaRegistros);
 		pthread_mutex_unlock(&semaforoDeTabla);
-		enviarOMostrarYLogearInfo(-1,"Informacion de bloques cargada");
+		separarRegistrosYCargarALista(buffer, listaRegistros);
+		soloLoggear(socket,"Informacion de bloques cargada");
 
 
 		//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
@@ -371,7 +371,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_lock(&mutexMemtable);
 
 		if (memtable->elements_count == 0){
-			enviarOMostrarYLogearInfo(-1,"El registro no se encuentra en la memtable");
+			soloLoggear(-1,"Memtable esta Vacia");
 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
