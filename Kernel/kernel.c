@@ -50,16 +50,17 @@ int main(int argc, char *argv[]){
 	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
 	//for(int i = 0; i<multiprocesamiento;i++){
-		pthread_t i; //todo armar lista  que adentro del for se vaya creando haciendo sus respectivos mallocs
-		pthread_create(&i, NULL,(void*) kernel_roundRobin, (void*)1);
-//		pthread_t i2;
-//		pthread_create(&i2, NULL,(void*) kernel_roundRobin, (void*)2);
+	pthread_t i; //todo armar lista  que adentro del for se vaya creando haciendo sus respectivos mallocs
+	pthread_create(&i, NULL,(void*) kernel_roundRobin, (void*)1);
+	pthread_t i2;
+	pthread_create(&i2, NULL,(void*) kernel_roundRobin, (void*)2);
 	//}
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
-	for(int i = 0; i<multiprocesamiento;i++){
-		pthread_join(i,NULL);
-	}
+//	for(int i = 0; i<multiprocesamiento;i++){
+	pthread_join(i,NULL);
+	pthread_join(i2,NULL);
+//	}
 	struct sigaction terminar;
 	terminar.sa_handler = kernel_semFinalizar;
 	sigemptyset(&terminar.sa_mask);

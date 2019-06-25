@@ -30,8 +30,8 @@ void kernel_roundRobin(int threadProcesador);
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
-	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	char** parametros = string_n_split(operacion,3," ");
+	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
 	if(consist == -1){
 		return false;
 	}
@@ -44,7 +44,7 @@ bool kernel_insert(char* operacion){
 }
 bool kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
+	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
 	if(consist == -1){
 		return false;
@@ -139,9 +139,9 @@ bool kernel_drop(char* operacion){
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 bool kernel_journal(){
-	journal_consistencia(STRONG);
-	journal_consistencia(EVENTUAL);
-	//journal_consistencia(HASH); todo
+	journal_consistencia(0);
+	journal_consistencia(1);
+	//journal_consistencia(2); todo
 	return true;
 }
 bool kernel_metrics(){
@@ -299,7 +299,7 @@ void kernel_consola(){
 			">> Y siga su ejecucion mediante el archivo Kernel.log\n");
 	char* linea= NULL;
 	while(!destroy){
-		printf(">");
+		printf(" ");
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
 	}

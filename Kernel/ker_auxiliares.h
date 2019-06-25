@@ -47,6 +47,9 @@ int enviarOperacion(operacionLQL* opAux,int index){
 	if(socket != -1){
 		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
+		if(recibido == NULL){
+			return -1;
+		}
 		if(recibidoContiene(recibido, "ERROR")){
 			loggearErrorYLiberarParametrosEXEC(recibido,opAux);
 			cerrarConexion(socket);
