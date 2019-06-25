@@ -21,7 +21,7 @@ bool instruccion_no_ejecutada(instruccion* instruc);
 void kernel_destroy();
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
 void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux);
-void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
+//void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion);
 void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
 void guardarTablaCreada(char* parametros);
@@ -140,6 +140,7 @@ void guardarTablaCreada(char* parametros){
 		tablaAux->consistenciaDeTabla = EC;
 	}
 	list_add(tablas,tablaAux);
+	//todo liberar opAux
 }
 void eliminarTablaCreada(char* parametros){
 	//tablaAux = malloc(sizeof(tabla));
@@ -207,12 +208,12 @@ void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	free(recibido);
 	liberarOperacionLQL(opAux);
 }
-void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
-	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log,"@ %s[%d]: %s",estado,threadProcesador, operacion);
-	pthread_mutex_unlock(&mLog);
-	//free(estado);
-}
+//void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
+//	pthread_mutex_lock(&mLog);
+//	log_error(kernel_configYLog->log,"@ %s[%d]: %s",estado,threadProcesador, operacion);
+//	pthread_mutex_unlock(&mLog);
+//	//free(estado);
+//}
 void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);

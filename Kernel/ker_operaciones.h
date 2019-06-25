@@ -121,7 +121,7 @@ bool kernel_describe(char* operacion){ //todo describe table
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
-	liberarOperacionSpliteada(operacionAux);
+	//liberarOperacionSpliteada(operacionAux);
 	return true;
 }
 bool kernel_drop(char* operacion){
@@ -203,18 +203,18 @@ bool kernel_add(char* operacion){
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 // ---------------.: THREAD ROUND ROBIN :.---------------
 void crearThreadRR(int numero){
-	t_thread t = malloc(sizeof(t_thread));
-	t->thread = malloc(sizeof(pthread_t));
+	t_thread* t = malloc(sizeof(t_thread));
+	t->thread = malloc(sizeof(pthread_t*));
 	t->numero = numero;
 	pthread_create(t->thread, NULL,(void*) kernel_roundRobin, (void*)t->numero);
 	agregarALista(rrThreads,t,mThread);
 }
 void joinThreadRR(){
-	void realizarJoin(t_thread t){
-		pthread_join(t->thread,NULL);
+	void realizarJoin(t_thread* t){
+		pthread_join(*(t->thread),NULL);
 	}
 	pthread_mutex_lock(&mThread);
-	list_iterate(rrThreads, realizarJoin);
+	list_iterate(rrThreads, (void*)realizarJoin);
 	pthread_mutex_unlock(&mThread);
 }
 void kernel_roundRobin(int threadProcesador){
@@ -235,7 +235,7 @@ void kernel_roundRobin(int threadProcesador){
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(!kernel_api(pcb_auxiliar->operacion)){
-				thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -251,7 +251,7 @@ void kernel_roundRobin(int threadProcesador){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(kernel_api(pcb_auxiliar->operacion)==false){
-						thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+						thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -265,7 +265,7 @@ void kernel_roundRobin(int threadProcesador){
 				}
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion)==false){
-					thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
@@ -369,7 +369,7 @@ void kernel_run(char* operacion){
 		free(*(opYArg+1));
 		free(*(opYArg));
 		free(opYArg);
-		exit(EXIT_FAILURE);
+		return;
 	}
 	char *lineaLeida;
 	size_t limite = 250;
