@@ -51,11 +51,25 @@ void liberarListaDeTablas();
 void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros);
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata);
 int obtenerCantTemporales(char* nombreTabla);
-void enviarYLogearMensajeError(int socket, char* mensaje); //ta
+void enviarYLogearMensajeError(int socket, char* mensaje);
 void enviarOMostrarYLogearInfo(int socket, char* mensaje);
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)); //ta
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
+void soloLoggear(int socket,char* mensaje);
+
+void soloLoggear(int socket,char* mensaje){
+	if(socket==-1){
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log_info(loggerConsola, mensaje);
+		pthread_mutex_unlock(&mutexLoggerConsola);
+	}
+	else{
+		pthread_mutex_lock(&mutexLogger);
+		log_info(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+	}
+}
 
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
 	registro* guardarRegistro= malloc (sizeof(registro));

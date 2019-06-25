@@ -229,11 +229,14 @@ int main(int argc, char* argv[]) {
 
 		inicializarBloques();
 		inicializarSemaforos();
-		inicializarArchivoBitmap(); //sacar esto despues
+
 		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
+
+		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
