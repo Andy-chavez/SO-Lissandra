@@ -116,12 +116,17 @@ bool kernel_describe(char* operacion){ //todo describe table
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	int socket = obtenerSocketAlQueSeEnvio(operacionAux,index);
-	actualizarListaMetadata(deserializarMetadata(recibir(socket)));
+//todo
+	void* buffer =recibir(socket);
+	if(buffer == NULL){
+		return false;
+	}
+	actualizarListaMetadata(deserializarMetadata(buffer));
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
-	//liberarOperacionSpliteada(operacionAux);
+	liberarOperacionLQL(operacionAux);
 	return true;
 }
 bool kernel_drop(char* operacion){
@@ -164,13 +169,13 @@ bool kernel_add(char* operacion){
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
-		if(string_equals_ignore_case(*(opAux+4),"HASH")){
+		if(string_contains(*(opAux+4),"HASH")){
 			list_add(criterios[HASH].memorias, mem );
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
-		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
+		else if(string_contains(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
 				list_add(criterios[STRONG].memorias, mem );
 				liberarParametrosSpliteados(opAux);
@@ -184,7 +189,7 @@ bool kernel_add(char* operacion){
 				return false;
 			}
 		}
-		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
+		else if(string_contains(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
 			liberarParametrosSpliteados(opAux);
 			return true;

@@ -196,7 +196,7 @@ void kernel_semFinalizar() {
 //----------------- LOGS -----------------------------
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log, "@ RECIBIDO: %s", recibido);
+	log_info(kernel_configYLog->log, "@ RECIBIDO: %s", recibido); //todo cambiar
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);

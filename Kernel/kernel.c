@@ -42,19 +42,11 @@ int main(int argc, char *argv[]){
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
-//	pthread_t i;
-//	pthread_create(&i, NULL,(void*) kernel_roundRobin, (void*)1);
-//	pthread_t i2;
-//	pthread_create(&i2, NULL,(void*) kernel_roundRobin, (void*)2);
 	for(int i = 0; i<multiprocesamiento;i++){
 		crearThreadRR(i);
 	}
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
-//	for(int i = 0; i<multiprocesamiento;i++){
-//	pthread_join(i,NULL);
-//	pthread_join(i2,NULL);
-//	}
 	for(int i = 0; i<multiprocesamiento;i++){
 		joinThreadRR();
 	}
