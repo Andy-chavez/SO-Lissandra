@@ -165,7 +165,7 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
-	sem_init(&MUTEX_MEMORIA_PRINCIPAL, 0, 1);
+	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
 
 }
 
@@ -216,10 +216,10 @@ void vaciarMemoria() {
 
 	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria); // para que se vea lindo despues de hacer el journal tambien
 
-	sem_wait(&MUTEX_MEMORIA_PRINCIPAL);
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
 	MEMORIA_PRINCIPAL->tablaSegmentos = list_create();
-	sem_post(&MUTEX_MEMORIA_PRINCIPAL);
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
 }
 
 void liberarTablaMarcos() {
@@ -386,12 +386,20 @@ void* pedirALFS(operacionLQL *operacion) {
 	sem_wait(&MUTEX_SOCKET_LFS);
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
 	void* buffer = recibir(SOCKET_LFS);
+	if(buffer == NULL) {
+		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
+	}
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
 
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 	void* bufferRegistroConTabla = pedirALFS(operacion);
+
+	if(bufferRegistroConTabla == NULL) {
+		return NULL;
+	}
+
 	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
 
 	if(atoi(paginaEncontradaEnLFS->nombreTabla)) {
@@ -408,10 +416,8 @@ paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, i
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 
 	sem_wait(&MUTEX_TABLA_MARCOS); //TODO Este semaforo es muy gordo xdxd
-	sem_wait(&MUTEX_MEMORIA_PRINCIPAL);
 	int marco = guardarEnMemoria((registroConNombreTabla*) unRegistro,socketKernel);
 	sem_post(&MUTEX_TABLA_MARCOS);
-	sem_post(&MUTEX_MEMORIA_PRINCIPAL);
 
 	if(marco == -1) {
 		// TODO Avisar que no se pudo guardar en memoria.
@@ -444,10 +450,10 @@ int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int 
 	segmentoNuevo->tablaPaginas = list_create();
 	sem_init(&segmentoNuevo->mutexSegmento, 0, 1);
 
-
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
-
-	list_add(segmentoNuevo->tablaPaginas, primeraPagina);
+	list_add(segmentoNuevo->tablaPaginas, primeraPagina); // Por si hacen un select justo de esa primer pagina, que se cargue el segmento nuevo con la primer pagina antes de liberar la tablaSegmentos
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 	return 1;
 }
@@ -458,13 +464,19 @@ int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDon
 }
 
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo) {
+	sem_wait(&unSegmento->mutexSegmento);
 	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(list_size(unSegmento->tablaPaginas), unRegistro, deDondeVengo, socketKernel);
+	sem_post(&unSegmento->mutexSegmento);
+
 	if(!paginaParaAgregar) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
 		return false;
 	}
 
+	sem_wait(&unSegmento->mutexSegmento);
 	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
+	sem_post(&unSegmento->mutexSegmento);
+
 	enviarOMostrarYLogearInfo(socketKernel, "Se inserto exitosamente.");
 	return true;
 }
@@ -514,10 +526,15 @@ void dropearSegmento(segmento* unSegmento) {
 	}
 
 	sem_wait(&MUTEX_TABLA_MARCOS);
+	sem_wait(&unSegmento->mutexSegmento);
 	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
+	sem_post(&unSegmento->mutexSegmento);
 	sem_post(&MUTEX_TABLA_MARCOS);
 
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_remove_by_condition(MEMORIA_PRINCIPAL->tablaSegmentos,igualNombreSegmento);
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
+
 	free(unSegmento->nombreTabla);
 	free(unSegmento);
 }
@@ -536,7 +553,11 @@ segmento* encontrarSegmentoPorNombre(char* tablaNombre){
 		return tienenIgualNombre(unSegmento->nombreTabla, tablaNombre);
 	}
 
-	return (segmento*) list_find(MEMORIA_PRINCIPAL->tablaSegmentos, (void*)segmentoDeIgualNombre);
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
+	segmento* segmentoARetornar = (segmento*) list_find(MEMORIA_PRINCIPAL->tablaSegmentos, (void*)segmentoDeIgualNombre);
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
+
+	return segmentoARetornar;
 }
 
 bool igualKeyRegistro(paginaEnTabla* unRegistro,int keyDada){
@@ -551,7 +572,11 @@ paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 	bool tieneIgualKeyQueDada(paginaEnTabla* unRegistro) {
 			return igualKeyRegistro(unRegistro, keyDada);
 	}
+
+	sem_wait(&unSegmento->mutexSegmento);
 	paginaEnTabla* paginaEncontrada = (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
+	sem_post(&unSegmento->mutexSegmento);
+
 	if(!paginaEncontrada) {
 		return NULL;
 	}
@@ -739,8 +764,11 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 	else {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
+		if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
+			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+		}
 		if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel)){
-		enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
+			enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 		}
 		else {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
@@ -834,7 +862,6 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 
 	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
-	free(bufferMetadata);
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
@@ -877,6 +904,7 @@ void cargarSeeds() {
 		seed *unaSeed = malloc(sizeof(seed));
 		unaSeed->ip = string_duplicate(*(IPs + i));
 		unaSeed->puerto = string_duplicate(*(puertos + i));
+		unaSeed->numero = -1;
 
 		sem_wait(&MUTEX_TABLA_GOSSIP);
 		list_add(TABLA_GOSSIP, unaSeed);
@@ -908,15 +936,24 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 			return sonSeedsIguales(unaSeed,(seed*) otraSeed);
 		}
 
-		seed* seedAGuardar = malloc(sizeof(seed));
-		seedAGuardar->ip = string_duplicate(unaSeed->ip);
-		seedAGuardar->puerto = string_duplicate(unaSeed->puerto);
+		seed* seedEnTablaGossip = list_find(TABLA_GOSSIP, esIgualA);
+		if(seedEnTablaGossip && seedEnTablaGossip->numero == -1) {
 
-		if(list_find(TABLA_GOSSIP, esIgualA)) {
+			seedEnTablaGossip->numero = unaSeed->numero;
 			return;
 		}
+		else if (seedEnTablaGossip){
+			return;
+		}
+		else {
+			seed* seedAGuardar = malloc(sizeof(seed));
+			seedAGuardar->ip = string_duplicate(unaSeed->ip);
+			seedAGuardar->puerto = string_duplicate(unaSeed->puerto);
+			seedAGuardar->numero = unaSeed->numero;
 
-		list_add(TABLA_GOSSIP, seedAGuardar);
+			list_add(TABLA_GOSSIP, seedAGuardar);
+		}
+
 	}
 
 	pedirTablaGossip(socketMemoria);
@@ -1024,7 +1061,9 @@ void esperarAHilosEjecutandose() {
 	t_list* listaHilosEsperandoSemaforos = list_create();
 
 	void esperarHiloEsperando(void* hiloEsperando) {
-		pthread_join(*(pthread_t*) hiloEsperando, NULL);
+		if(pthread_join(*(pthread_t*) hiloEsperando, NULL)) {
+			printf("hubo un error al joinear un hilo esperando un semaforo\n");
+		}
 	}
 
 	void* esperarSemaforoDeHilo(void* buffer) {
@@ -1036,9 +1075,9 @@ void esperarAHilosEjecutandose() {
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
-		pthread_t hiloQueEspera;
-		pthread_create(&hiloQueEspera, NULL, esperarSemaforoDeHilo, unHilo);
-		list_add(listaHilosEsperandoSemaforos, &hiloQueEspera);
+		pthread_t *hiloQueEspera = malloc(sizeof(pthread_t));
+		pthread_create(hiloQueEspera, NULL, esperarSemaforoDeHilo, unHilo);
+		list_add(listaHilosEsperandoSemaforos, (void*) hiloQueEspera);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);

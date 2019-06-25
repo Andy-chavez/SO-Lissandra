@@ -66,23 +66,23 @@ bool APIProtocolo(void* buffer, int socket) {
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
+		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT %s", operacionAParsear->parametros);
 		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
+		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT %s", operacionAParsear->parametros);
 		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
+		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE %s", operacionAParsear->parametros);
 		describeLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE");
+		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE %s", operacionAParsear->parametros);
 		createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
+		enviarOMostrarYLogearInfo(-1, "Recibi un DROP %s", operacionAParsear->parametros);
 		dropLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
@@ -201,7 +201,6 @@ void *servidorMemoria() {
 		if(pthread_create(&threadConexion, NULL, trabajarConConexion, &socketKernel) < 0) {
 			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
 		}
-		pthread_detach(threadConexion);
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -212,13 +211,12 @@ void *servidorMemoria() {
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
-	char* path = "memoria.config";
 
 	if(fdConfig < 0) {
 		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
 	}
 
-	inotify_add_watch(fdConfig, path, IN_MODIFY);
+	inotify_add_watch(fdConfig, "memoria.config", IN_MODIFY);
 
 	while(1) {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
@@ -227,9 +225,9 @@ void* cambiosConfig() {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
 		}
 
-		t_config* configConNuevosDatos = config_create(path);
+		t_config* configConNuevosDatos = config_create("memoria.config");
 
-		if(!configConNuevosDatos) {
+		if(!configConNuevosDatos->path) {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
 		}
 
@@ -262,7 +260,7 @@ void cambiarValor() {
 	sem_post(&BINARIO_FINALIZACION_PROCESO);
 }
 
-int main() {
+ int main() {
 	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 	inicializarProcesoMemoria();
 
@@ -271,7 +269,7 @@ int main() {
 
 		liberarConfigYLogs();
 		return -1;
-	};
+	}
 
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion);
 	inicializarTablaMarcos();
