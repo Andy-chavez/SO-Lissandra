@@ -141,7 +141,7 @@ bool kernel_drop(char* operacion){
 bool kernel_journal(){
 	journal_consistencia(STRONG);
 	journal_consistencia(EVENTUAL);
-	journal_consistencia(HASH);
+	//journal_consistencia(HASH); todo
 	return true;
 }
 bool kernel_metrics(){
@@ -151,6 +151,7 @@ bool kernel_metrics(){
 void journal_consistencia(int consistencia){
 	void realizarJournal(memoria * mem){
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
 		enviarJournal(socket);
 	}
 	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);
@@ -192,9 +193,6 @@ bool kernel_add(char* operacion){
 		return false;
 	}
 	else{
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s.Memoria no conectada.", operacion);
-		pthread_mutex_unlock(&mLog);
 		liberarParametrosSpliteados(opAux);
 		return false;
 	}
@@ -220,6 +218,8 @@ void kernel_roundRobin(int threadProcesador){
 			pcb_auxiliar->ejecutado=1;
 			if(!kernel_api(pcb_auxiliar->operacion)){
 				thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				usleep(sleep);
+				continue;
 			}
 			thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
@@ -228,12 +228,11 @@ void kernel_roundRobin(int threadProcesador){
 			continue;
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
-			int ERROR= 0;
-
+			int ERROR = 0;
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					if(!kernel_api(pcb_auxiliar->operacion)){
+					if(kernel_api(pcb_auxiliar->operacion)==false){
 						thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
@@ -247,7 +246,7 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(!kernel_api(instruc->operacion)){
+				if(kernel_api(instruc->operacion)==false){
 					thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
@@ -406,9 +405,9 @@ bool kernel_api(char* operacionAParsear)
 		return kernel_metrics();
 	}
 	else {
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
-		pthread_mutex_unlock(&mLog);
+//		pthread_mutex_lock(&mLog);
+//		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
+//		pthread_mutex_unlock(&mLog);
 		return false;
 	}
 }

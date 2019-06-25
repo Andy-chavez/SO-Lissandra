@@ -139,12 +139,12 @@ void guardarTablaCreada(char* parametros){
 	list_add(tablas,tablaAux);
 }
 void eliminarTablaCreada(char* parametros){
-	tabla* tablaAux = malloc(sizeof(tabla));
+	//tablaAux = malloc(sizeof(tabla));
 	bool tablaDeNombre(tabla* t){
 			return t->nombreDeTabla == parametros;
 		}
-	tablaAux = list_remove_by_condition(tablas, (void*)tablaDeNombre);
-	free(tablaAux->nombreDeTabla);
+	tabla* tablaAux = list_remove_by_condition(tablas, (void*)tablaDeNombre);
+	//free(tablaAux->nombreDeTabla);
 	free(tablaAux);
 }
 tabla* encontrarTablaPorNombre(char* nombre){
@@ -186,10 +186,13 @@ bool recibidoContiene(char* recibido, char* contiene){
 void kernel_destroy(){
 	destroy = 1;
 }
+void kernel_semFinalizar() {
+	sem_post(&finalizar);
+}
 //----------------- LOGS -----------------------------
 void loggearErrorYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log, "RECIBIDO: %s", recibido);
+	log_error(kernel_configYLog->log, "@ RECIBIDO: %s", recibido);
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
@@ -203,15 +206,15 @@ void loggearInfoYLiberarParametrosEXEC(char* recibido, operacionLQL *opAux){
 }
 void thread_loggearErrorEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log,"%s[%d]: %s",estado,threadProcesador, operacion);
+	log_error(kernel_configYLog->log,"@ %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
-	free(estado);
+	//free(estado);
 }
 void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
-	free(estado);
+	//free(estado);
 }
 //------ LISTAS ---------
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore){

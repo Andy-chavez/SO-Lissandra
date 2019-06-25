@@ -55,6 +55,7 @@ criterio criterios[3];
 
 sem_t hayNew;
 sem_t hayReady;
+sem_t finalizar;
 sem_t modificables;
 
 pthread_mutex_t quantum;

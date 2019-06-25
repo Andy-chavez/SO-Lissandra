@@ -30,6 +30,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&mMetadataRefresh,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
+	sem_init(&finalizar,0,0);
 	sem_init(&modificables,0,0);
 }
 void kernel_crearListas(){
@@ -86,6 +87,7 @@ void liberarConfigYLogs() {
 }
 void destruirSemaforos(){
 	sem_destroy(&hayNew);
+	sem_destroy(&finalizar);
 	sem_destroy(&hayReady);
 	sem_destroy(&modificables);
 	pthread_mutex_destroy(&colaNuevos);
