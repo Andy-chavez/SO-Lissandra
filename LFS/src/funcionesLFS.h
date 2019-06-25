@@ -329,23 +329,15 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		return devolverMayor(primerElemento, segundoElemento);
 
 	}
-<<<<<<< HEAD
-	if(verificarExistenciaDirectorioTabla(nombreTabla) ==0)
-		{
+	pthread_mutex_lock(&semaforoDeTabla);
+	if(verificarExistenciaDirectorioTabla(nombreTabla) ==0){
+		pthread_mutex_unlock(&semaforoDeTabla);
 		soloLoggearError(socket,"No se encontro el directorio");
 		//return
 		}
 	else{
+		
 		soloLoggear(socket,"Directorio de tabla valido");
-=======
-	pthread_mutex_lock(&semaforoDeTabla);
-	if(verificarExistenciaDirectorioTabla(nombreTabla) ==0){
-	pthread_mutex_unlock(&semaforoDeTabla);
-
-	//	enviarOMostrarYLogearInfo(socket,"No se encontro el directorio");
-		}else{
-		enviarOMostrarYLogearInfo(-1,"Directorio de tabla valido");
->>>>>>> 405d5c32366a75c74748ff4c46a0e5e7ffbae544
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
 
@@ -365,9 +357,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 		char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 
-		pthread_mutex_lock(&semaforoDeTabla);
 		cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques); //poner nombre y de particion
-		pthread_mutex_unlock(&semaforoDeTabla);
+		//pthread_mutex_unlock(&semaforoDeTabla);
 		separarRegistrosYCargarALista(buffer, listaRegistros);
 		soloLoggear(socket,"Informacion de bloques cargada");
 
@@ -375,7 +366,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
 		//puts(buffer);
 		//y aca afuera haria la busqueda del registro.
-		pthread_mutex_lock(&mutexMemtable);
+		//pthread_mutex_lock(&mutexMemtable);
 
 		if (memtable->elements_count == 0){
 			soloLoggear(socket,"Memtable esta Vacia");
@@ -383,16 +374,14 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
 ///////////////SEMAFOROOOOO
-			pthread_mutex_lock(&semaforoDeTabla);
+			//pthread_mutex_lock(&semaforoDeTabla);
 			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
-			pthread_mutex_unlock(&semaforoDeTabla);
-
 			soloLoggear(socket,"El registro no se encuentra en la memtable");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket); //me pa que esto no va aca
 			}
 		}
-
-		pthread_mutex_unlock(&mutexMemtable);
+		pthread_mutex_unlock(&semaforoDeTabla);
+		//pthread_mutex_unlock(&mutexMemtable);
 
 		//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
 
@@ -466,7 +455,7 @@ void funcionInsert(char* argumentos,int socket) {
 
 
 	guardarRegistro(registroDePrueba, nombreTabla);
-	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
+	enviarOMostrarYLogearInfo(socket,"Se guardo el registro con value: %s", registroDePrueba->value, "y key igual a: %d",registroDePrueba->key);
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
@@ -714,7 +703,6 @@ void funcionDescribe(char* argumentos,int socket) {
 			enviarYLogearMensajeError(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
 			closedir(dir);
 			free(rutaDirectorioTablas);
-			liberarMetadata(metadataBuscado);
 			return;
 		}
 		soloLoggear(socket,"Se cargaron todas las tablas del directorio");
@@ -746,7 +734,7 @@ void funcionDescribe(char* argumentos,int socket) {
 					liberarMetadata(metadataBuscado);
 		}
 		else {
-			enviarOMostrarYLogearInfo(socket,"No se encontro el metadata buscado");
+			enviarYLogearMensajeError(socket,"No se encontro el metadata buscado");
 			return;
 		}
 	}
