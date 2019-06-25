@@ -2,7 +2,7 @@
 /*
  ============================================================================
  Name        : lisandra_file_system.c
- Author      : 
+ Author      :
  Version     :
  Copyright   : Your copyright notice
  Description :
@@ -20,35 +20,44 @@
 #include <pthread.h>
 #include <commons/config.h>
 #include <commons/log.h>
-#include "compactador.h"
-#include <semaphore.h>
+#include "dump.h"
+#include <sys/inotify.h>
+#include "configuraciones.h"
+
+//para el inotify
+#define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
+#define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG)
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
-			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT");
+			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT\n");
 				funcionInsert(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT\n");
 				funcionSelect(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DESCRIBE")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE\n");
 				funcionDescribe(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "CREATE")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE\n");
 				funcionCreate(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP");
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP\n");
+				funcionDrop(operacionAParsear->parametros,socket);
+			}
+			else if(string_equals_ignore_case(operacionAParsear->operacion, "DUMP")) {
+				enviarOMostrarYLogearInfo(-1,"Se recibio un DUMP");
+				dump();
 			}
 	else {
-		printf("no entendi xD");
+		printf("no entendi xD\n");
 	}
 	liberarOperacionLQL(operacionAParsear);
-	usleep(retardo*1000);
 }
 
 void realizarHandshake(int socket){
@@ -58,14 +67,17 @@ void realizarHandshake(int socket){
 		serializarYEnviarHandshake(socket, tamanioValue);
 	}
 	else {
-		log_error(logger, "no se pudo realizar Handshake");//poner semaforo
+		enviarOMostrarYLogearInfo(-1,"No se pudo realizar handshake");
 	}
 }
 
 int APIProtocolo(void* buffer, int socket) {
+		void operacionLQLSola(operacionLQL* unaOperacionLQL){
+			funcionInsert(unaOperacionLQL->parametros,socket);
+		}
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
-	switch(operacion) {
+	switch(operacion){
 	case OPERACIONLQL:
 		pthread_mutex_lock(&mutexLogger);
 		log_info(logger, "Recibi una operacion");
@@ -74,6 +86,12 @@ int APIProtocolo(void* buffer, int socket) {
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
+	case PAQUETEOPERACIONES:
+		pthread_mutex_lock(&mutexLogger);
+		log_info(logger, "Recibi un paquete de operaciones");
+		pthread_mutex_unlock(&mutexLogger);
+		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
+		return 1;
 	case DESCONEXION:
 		pthread_mutex_lock(&mutexLogger);
 		log_error(logger, "Se cierra la conexion");
@@ -81,6 +99,7 @@ int APIProtocolo(void* buffer, int socket) {
 		cerrarConexion(socket);
 		return 0;
 	}
+	return 0;
 	free(buffer);
 }
 
@@ -88,7 +107,10 @@ void trabajarConexion(void* socket){
 	int socketMemoria = *(int*) socket;
 	int hayMensaje = 1;
 	while(hayMensaje) {
-			void* bufferRecepcion = recibir(socketMemoria); //quizas vaya semaforo
+			void* bufferRecepcion = recibir(socketMemoria);
+			pthread_mutex_lock(&mutexRetardo);
+			usleep(retardo*1000);
+			pthread_mutex_unlock(&mutexRetardo);
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
 		}
 
@@ -109,46 +131,18 @@ void* servidorLisandra(){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
 		if(socketMemoria == -1) {
-			pthread_mutex_lock(&mutexLogger);
-			log_error(logger, "Socket Defectuoso"); //ver de hacer algun lock al logger
-			pthread_mutex_unlock(&mutexLogger);
+			enviarYLogearMensajeError(-1,"No se pudo crear socket para memoria");
 			continue;
 		}
-
-		//char* mensajeRecibido = recibir(socketMemoria);
+		enviarOMostrarYLogearInfo(-1,"Se conecto una nueva Memoria");
 		realizarHandshake(socketMemoria);
 
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
 			enviarYLogearMensajeError(socketMemoria,"No se pudo crear socket para memoria");
+			continue;
 		}
-		pthread_join(threadMemoria,NULL);
-		//else{
-			/*char* mensajeRecibido = recibir(socketMemoria);
-			operacionLQL* operacion = deserializarOperacionLQL((void*)mensajeRecibido); //hay que fijarse de hacer protocolo para esto y no mandarlo al parser
-			registroConNombreTabla* registroASerializar= funcionSelect(operacion->parametros);
-			char* nombreTabla = "TABLA1";
-			int tamanioBuffer;
-			void* registroMandar = serializarRegistro(registroASerializar,&tamanioBuffer);
-			enviar(socketMemoria,registroMandar, 98);*/
-
-		//}
-
-
-		//char* mensaje = "hola";
-
-		//int tamanio = strlen(mensaje) + 1;
-
-		//void* mensaje = serializarHandshake(tamanioValue);
-
-//		enviar(socketMemoria, mensaje, 2*sizeof(int));
-
-		//char* mensaje = pruebaDeRecepcion(buffer); // interface( deserializarOperacion( buffer , 1 ) )
-
-		//log_info(logger, "Recibi: %s", mensaje);
-
-		//free(mensaje);
-		//cerrarConexion(socketMemoria);
+		pthread_detach(threadMemoria);
 	}
 
 	cerrarConexion(socketServidorLisandra);
@@ -157,75 +151,112 @@ void* servidorLisandra(){
 
 void leerConsola() {
 		int socket = -1;
-		char *linea = NULL;  // forces getline to allocate with malloc
+		char *linea = NULL;
 
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
 	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
-	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]---------\n");
+	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
 
-	    while ((linea = readline(""))){  //hay que hacer CTRL + D para salir del while
-	    //guardiola con el describe all porque puede tirar basura
+	    while ((linea = readline(""))){
 	    	parserGeneral(splitear_operacion(linea),socket);
 	    }
 
-	    free (linea);  // free memory allocated by getline
+	    free (linea);
 }
+
+void* cambiosConfig() {
+	char buffer[BUF_LEN_CONFIG];
+	int fdConfig = inotify_init();
+	char* path = "lisandra.config";
+
+	if(fdConfig < 0) {
+		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
+	}
+
+	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+
+	while(1) {
+		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
+
+		if(size<0) {
+			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
+		}
+
+		t_config* configConNuevosDatos = config_create(path);
+
+		if(!configConNuevosDatos) {
+			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
+		}
+
+		int desplazamiento = 0;
+
+		while(desplazamiento < size) {
+			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
+
+			if (event->mask & IN_MODIFY) {
+				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
+
+				pthread_mutex_lock(&mutexTiempoDump);
+				tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
+				pthread_mutex_unlock(&mutexTiempoDump);
+				pthread_mutex_lock(&mutexRetardo);
+				retardo = config_get_int_value(archivoDeConfig,"RETARDO");
+				pthread_mutex_unlock(&mutexRetardo);
+			}
+
+			config_destroy(configConNuevosDatos);
+			desplazamiento += sizeof (struct inotify_event) + event->len;
+		}
+	}
+}
+
 
 int main(int argc, char* argv[]) {
 
 
-	leerConfig("../lisandra.config");
-	leerMetadataFS();
-	inicializarMemtable();
-	inicializarLog("lisandraConsola.log");
 
-	inicializarArchivoBitmap();
-	inicializarBitmap();
-	inicializarRegistroError();
+		//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
+		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		leerMetadataFS();
+		inicializarListas();
+		inicializarLog("lisandraConsola.log");
 
-	pthread_t threadConsola;
-	pthread_t threadServer ;
-	pthread_t threadDump;
+		log_info(loggerConsola,"Inicializando FS");
 
-	pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
-	pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-	pthread_create(&threadDump, NULL,(void*) dump, NULL);
+		inicializarBloques();
+		inicializarSemaforos();
+		inicializarArchivoBitmap(); //sacar esto despues
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+		inicializarArchivoBitmap(); //sacar despues
+		inicializarBitmap();
+		inicializarRegistroError();
 
-	pthread_join(threadConsola,NULL);
-	pthread_join(threadServer,NULL);
-	pthread_join(threadDump,NULL);
+		pthread_t threadConsola;
+		pthread_t threadServer;
+		pthread_t threadDump;
+		pthread_t threadCambiosConfig;
+
+		pthread_create(&threadServer, NULL, servidorLisandra, NULL);
+		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
+		pthread_create(&threadDump, NULL,(void*) dump, NULL);
+		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
+
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
+
+
+		//ver de liberar la memtable al final
 
 
 
-//	registro* registroParaMemoria = funcionSelect("TABLA1 56");
-
-	//funcionInsert("TABLA1 56 alo");
-
-	//funcionInsert("tablaA", 13, "alo", 8000);
-
-	//ver de liberar la memtable al final
-	/*obtenerMetadata("tablaA");
-	int particion=calcularParticion(1,3); esto funca, primero le pasas la key y despues la particion
-	pthread_mutex_init(&mutexLog,NULL);
-	pthread_t threadLeerConsola;
-    pthread_create(&threadLeerConsola, NULL,(void*) leerConsola, NULL); //haces el casteo para solucionar lo del void*
-    pthread_join(threadLeerConsola,NULL);
-
-    pthread_mutex_destroy(&mutexLog);
-    liberarConfigYLogs(archivosDeConfigYLog);*/
-
-	//pthread_t threadServer ; //habria que ver tambien thread dumping.
-	//pthread_create(&threadServer, NULL, servidorLisandra, NULL);
-	//pthread_join(threadServer,NULL);
-	//servidorLisandra(archivosDeConfigYLog);
-
-	liberarConfigYLogs();
-	return EXIT_SUCCESS;
+		liberarConfigYLogs();
+		return EXIT_SUCCESS;
 }
-
 
 
