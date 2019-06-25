@@ -24,6 +24,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	pthread_mutex_init(&mLog, NULL);
+	pthread_mutex_init(&mThread, NULL);
 	pthread_mutex_init(&mMemorias,NULL);
 	pthread_mutex_init(&quantum, NULL);
 	pthread_mutex_init(&sleepExec,NULL);
@@ -37,6 +38,7 @@ void kernel_crearListas(){
 	cola_proc_nuevos = list_create();
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
+	rrThreads = list_create();
 	criterios[HASH].unCriterio = SH;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;

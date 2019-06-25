@@ -26,6 +26,8 @@ void kernel_run(char* operacion);
 void kernel_pasar_a_ready();
 void kernel_consola();
 void kernel_roundRobin(int threadProcesador);
+void joinThreadRR();
+void crearThreadRR(int numero);
 /******************************IMPLEMENTACIONES******************************************/
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion){
@@ -119,6 +121,7 @@ bool kernel_describe(char* operacion){ //todo describe table
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
+	liberarOperacionSpliteada(operacionAux);
 	return true;
 }
 bool kernel_drop(char* operacion){
@@ -199,6 +202,21 @@ bool kernel_add(char* operacion){
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 // ---------------.: THREAD ROUND ROBIN :.---------------
+void crearThreadRR(int numero){
+	t_thread t = malloc(sizeof(t_thread));
+	t->thread = malloc(sizeof(pthread_t));
+	t->numero = numero;
+	pthread_create(t->thread, NULL,(void*) kernel_roundRobin, (void*)t->numero);
+	agregarALista(rrThreads,t,mThread);
+}
+void joinThreadRR(){
+	void realizarJoin(t_thread t){
+		pthread_join(t->thread,NULL);
+	}
+	pthread_mutex_lock(&mThread);
+	list_iterate(rrThreads, realizarJoin);
+	pthread_mutex_unlock(&mThread);
+}
 void kernel_roundRobin(int threadProcesador){
 	while(!destroy){
 		sem_wait(&hayReady);
