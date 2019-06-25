@@ -57,6 +57,20 @@ void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *));
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
 void soloLoggear(int socket,char* mensaje);
+void soloLoggearError(int socket,char* mensaje);
+
+void soloLoggearError(int socket,char* mensaje){
+	if(socket==-1){
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log_error(loggerConsola, mensaje);
+		pthread_mutex_unlock(&mutexLoggerConsola);
+	}
+	else{
+		pthread_mutex_lock(&mutexLogger);
+		log_error(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+	}
+}
 
 void soloLoggear(int socket,char* mensaje){
 	if(socket==-1){

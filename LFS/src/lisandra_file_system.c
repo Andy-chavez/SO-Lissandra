@@ -160,7 +160,7 @@ void leerConsola() {
 	    printf("------------------------API LISSANDRA FILE SYSTEM --------------------\n");
 	    printf("-------SELECT [NOMBRE_TABLA] [KEY]---------\n");
 	    printf("-------INSERT [NOMBRE_TABLA] [KEY] '[VALUE]'(entre comillas) [TIMESTAMP]---------\n");
-	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
+	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
@@ -259,11 +259,6 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadDump,NULL);
 		pthread_join(threadCambiosConfig,NULL);
 
-
-		//ver de liberar la memtable al final
-
-		leerConsola();
-
 		sem_init(&binarioLFS, 0, 1);
 
 		struct sigaction terminar;
@@ -281,10 +276,6 @@ int main(int argc, char* argv[]) {
 
 		//create y despues cancel y join
 		//enviar logear mensaje de error
-		liberarSemaforos();
-		liberarMemtable();
-		liberarListaDeTablas();
-
-		liberarConfigYLogs();
+		liberarVariablesGlobales();
 		return EXIT_SUCCESS;
 }

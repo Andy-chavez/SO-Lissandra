@@ -14,8 +14,6 @@
 pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
 pthread_mutex_t mutexLoggerConsola;
-//pthread_mutex_t mutexDump;
-//pthread_mutex_t mutexOperacion;
 pthread_mutex_t mutexListaDeTablas;
 pthread_mutex_t mutexBitarray;
 pthread_mutex_t mutexTiempoDump;

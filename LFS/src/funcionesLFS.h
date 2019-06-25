@@ -334,15 +334,16 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 	}
 	if(verificarExistenciaDirectorioTabla(nombreTabla) ==0)
 		{
-	//	enviarOMostrarYLogearInfo(socket,"No se encontro el directorio");
+		soloLoggearError(socket,"No se encontro el directorio");
+		//return
 		}
 	else{
-		enviarOMostrarYLogearInfo(-1,"Directorio de tabla valido");
+		soloLoggear(socket,"Directorio de tabla valido");
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
 
 
-		enviarOMostrarYLogearInfo(-1,"Metadata cargado");
+		soloLoggear(socket,"Metadata cargado");
 
 		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones)); //cant de particiones de la tabla
 		liberarMetadata(metadataTabla);
@@ -371,7 +372,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_lock(&mutexMemtable);
 
 		if (memtable->elements_count == 0){
-			soloLoggear(-1,"Memtable esta Vacia");
+			soloLoggear(socket,"Memtable esta Vacia");
 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
@@ -448,7 +449,7 @@ void funcionInsert(char* argumentos,int socket) {
 	registroDePrueba -> timestamp = timestamp;
 
 	guardarRegistro(registroDePrueba, nombreTabla);
-	enviarOMostrarYLogearInfo(-1,"Se guardo registro");
+	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
@@ -585,7 +586,7 @@ void funcionDrop(char* nombreTabla,int socket){
 		string_append(&ruta,"Tables/");
 		string_append(&ruta,nombreTabla);
 		DIR* dir=opendir(ruta);
-		enviarOMostrarYLogearInfo(-1,"Liberando Bloques de los tmp y las particiones");
+		soloLoggear(socket,"Liberando Bloques de los tmp y las particiones");
 		struct dirent *sd;
 		while((sd=readdir(dir))!=NULL){
 			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
@@ -623,7 +624,7 @@ metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
 	nuevoMetadata->tipoConsistencia = unMetadata->tipoConsistencia;
 	nuevoMetadata->semaforoTabla = mutexTabla;
-	liberarMetadata(unMetadata);
+	free(unMetadata->nombreTabla);
 	return nuevoMetadata;
 }
 
@@ -647,9 +648,9 @@ void agregarTablaALista(char* nombreTabla){
 	pthread_mutex_unlock(&mutexListaDeTablas);
 }
 void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){
-	metadata* metadataSinSemaforo; //ver si hay que hacer un malloc
+	metadata* metadataSinSemaforo = malloc (sizeof(metadata));
 	metadataSinSemaforo->cantParticiones = metadataATransformar->cantParticiones;
-	metadataSinSemaforo->nombreTabla = metadataATransformar->nombreTabla;
+	metadataSinSemaforo->nombreTabla = string_duplicate(metadataATransformar->nombreTabla);
 	metadataSinSemaforo->tiempoCompactacion = metadataATransformar->tiempoCompactacion;
 	metadataSinSemaforo->tipoConsistencia = metadataATransformar->tipoConsistencia;
 	return metadataSinSemaforo;
@@ -664,7 +665,7 @@ void serializarMetadataConSemaforo(int socket){
 void funcionDescribe(char* argumentos,int socket) {
 	void loggearYMostarTabla(metadata* unMetadata){
 		pthread_mutex_lock(&mutexLoggerConsola);
-		log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
+		log_info(loggerConsola,"La tabla: %s, tiene %d particion/es, consistencia= %d "
 				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
 				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
 		pthread_mutex_unlock(&mutexLoggerConsola);
@@ -676,9 +677,11 @@ void funcionDescribe(char* argumentos,int socket) {
 		char* rutaDirectorioTablas = string_new();
 		string_append(&rutaDirectorioTablas,puntoMontaje);
 		string_append(&rutaDirectorioTablas,"Tables");
-		if((dir = opendir(rutaDirectorioTablas))==NULL)
-				enviarOMostrarYLogearInfo(-1,"No se pudo abrir el directorio");
-
+		if((dir = opendir(rutaDirectorioTablas))==NULL){
+				enviarYLogearMensajeError(socket,"No se pudo abrir el directorio");
+				free(rutaDirectorioTablas);
+				return;
+		}
 		while((sd=readdir(dir))!=NULL){
 			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;} //no me lo ignoraba sino de otra manera
 			else{
@@ -688,13 +691,13 @@ void funcionDescribe(char* argumentos,int socket) {
 
 		}
 		if(list_size(listaDeTablas)==0){
-			enviarOMostrarYLogearInfo(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
+			enviarYLogearMensajeError(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
 			closedir(dir);
 			free(rutaDirectorioTablas);
-			//liberarMetadata(metadataBuscado);
+			liberarMetadata(metadataBuscado);
 			return;
 		}
-		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
+		soloLoggear(socket,"Se cargaron todas las tablas del directorio");
 		if(socket==-1){
 			pthread_mutex_lock(&mutexListaDeTablas);
 			list_iterate(listaDeTablas,(void*)loggearYMostarTabla);
@@ -709,14 +712,14 @@ void funcionDescribe(char* argumentos,int socket) {
 	else{ //este es el decribe de una tabla sola
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 			metadataBuscado = obtenerMetadata(argumentos);
-			enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
+			soloLoggear(socket,"Se encontro el metadata buscado");
 					if(socket!=-1){
 						serializarYEnviarMetadata(socket,metadataBuscado);
 						liberarMetadata(metadataBuscado);
 						return;
 					}
 					pthread_mutex_lock(&mutexLoggerConsola);
-					log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
+					log_info(loggerConsola,"La tabla: %s, tiene %d particion/es, consistencia= %d "
 									"y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,
 									metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 					pthread_mutex_unlock(&mutexLoggerConsola);

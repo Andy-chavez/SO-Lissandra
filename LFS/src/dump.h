@@ -117,7 +117,7 @@ void dump(){
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
 			tamanioTotalADumpear = strlen(buffer);
-			enviarOMostrarYLogearInfo(-1,"Creando tmp");
+			soloLoggear(-1,"Creando tmp");
 
 			int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
 			char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
