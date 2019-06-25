@@ -49,7 +49,6 @@ void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
 void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
 void inicializarRegistroError();
-pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
 void funcionDrop(char* nombreTabla,int socket);
 void agregarTablaALista(char* nombreTabla);
 void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDeParticion);
@@ -310,6 +309,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
 	registro* registroBuscado;
+	pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTabla(nombreTabla);
+
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
@@ -328,6 +329,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		return devolverMayor(primerElemento, segundoElemento);
 
 	}
+<<<<<<< HEAD
 	if(verificarExistenciaDirectorioTabla(nombreTabla) ==0)
 		{
 		soloLoggearError(socket,"No se encontro el directorio");
@@ -335,6 +337,15 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		}
 	else{
 		soloLoggear(socket,"Directorio de tabla valido");
+=======
+	pthread_mutex_lock(&semaforoDeTabla);
+	if(verificarExistenciaDirectorioTabla(nombreTabla) ==0){
+	pthread_mutex_unlock(&semaforoDeTabla);
+
+	//	enviarOMostrarYLogearInfo(socket,"No se encontro el directorio");
+		}else{
+		enviarOMostrarYLogearInfo(-1,"Directorio de tabla valido");
+>>>>>>> 405d5c32366a75c74748ff4c46a0e5e7ffbae544
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
 
@@ -352,9 +363,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		string_append(&ruta,".bin");
 		part = config_create(ruta);
 
-
 		char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
-		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTabla(nombreTabla);
+
 		pthread_mutex_lock(&semaforoDeTabla);
 		cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques); //poner nombre y de particion
 		pthread_mutex_unlock(&semaforoDeTabla);
@@ -372,11 +382,15 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
+///////////////SEMAFOROOOOO
+			pthread_mutex_lock(&semaforoDeTabla);
 			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
-				soloLoggear(socket,"El registro no se encuentra en la memtable");
+			pthread_mutex_unlock(&semaforoDeTabla);
+
+			soloLoggear(socket,"El registro no se encuentra en la memtable");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket); //me pa que esto no va aca
 			}
-			}
+		}
 
 		pthread_mutex_unlock(&mutexMemtable);
 
@@ -414,6 +428,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 
 void funcionInsert(char* argumentos,int socket) {
+	//la memtable, y si es que existe la tabla
+
+	//al liberar memtable mutex memtable
 
 	//verificar que no se exceda el tamaño del value, tamanioValue (var. global
 	char** argSeparados = string_n_split(argumentos,3,"\"");
@@ -422,9 +439,12 @@ void funcionInsert(char* argumentos,int socket) {
 	char* nombreTabla = *(separarNombreYKey + 0);
 	int key = atoi(*(separarNombreYKey + 1));
 	char* value = *(argSeparados + 1);
-
 	char* valorTimestamp = *(argSeparados + 2);
 	int timestamp;
+
+	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(nombreTabla);
+
+	pthread_mutex_lock(&semaforoDeTabla);
 
 	if (!verificarExistenciaDirectorioTabla(nombreTabla)){
 		liberarDoblePuntero(separarNombreYKey);
@@ -444,11 +464,14 @@ void funcionInsert(char* argumentos,int socket) {
 	registroDePrueba -> value= string_duplicate(value);
 	registroDePrueba -> timestamp = timestamp;
 
+
 	guardarRegistro(registroDePrueba, nombreTabla);
 	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
+
+	pthread_mutex_unlock(&semaforoDeTabla);
 
 }
 
@@ -570,12 +593,17 @@ int tamanioRegistros(char* nombreTabla){
 return tamanioTotal;
 }
 
-
-
 void funcionDrop(char* nombreTabla,int socket){
 	bool liberarTablaConEsteNombre(metadataConSemaforo* unMetadata){
 		return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
 }
+
+///////////////SEMAFOROOOOO
+
+	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(nombreTabla);
+
+	pthread_mutex_lock(&semaforoDeTabla);
+
 	if(verificarExistenciaDirectorioTabla(nombreTabla)){
 		char* ruta = string_new();
 		string_append(&ruta,puntoMontaje);
@@ -595,21 +623,17 @@ void funcionDrop(char* nombreTabla,int socket){
 		list_remove_and_destroy_by_condition(listaDeTablas,liberarTablaConEsteNombre,(void*) liberarMetadataConSemaforo);
 		pthread_mutex_unlock(&mutexListaDeTablas);
 		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
+
+	pthread_mutex_unlock(&semaforoDeTabla);
+
+
 		free(ruta);
 		return;
 	}
 	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
+
 }
-pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
-		bool seEncuentraTabla(void* elemento){
-			metadata* unMetadata = elemento;
-			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
-		}
-	pthread_mutex_lock(&mutexListaDeTablas);
-	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
-	pthread_mutex_unlock(&mutexListaDeTablas);
-	return metadataBuscado->semaforoTabla;
-}
+
 metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	pthread_mutex_t mutexTabla;
 	pthread_t threadCompactacion;

@@ -231,8 +231,6 @@ int main(int argc, char* argv[]) {
 		inicializarListas();
 		inicializarLog("lisandraConsola.log");
 
-		log_info(loggerConsola,"Inicializando FS");
-
 		inicializarBloques();
 		inicializarSemaforos();
 
@@ -241,6 +239,8 @@ int main(int argc, char* argv[]) {
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
+
+		log_info(loggerConsola,"Inicializando FS");
 
 		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
 
@@ -267,10 +267,7 @@ int main(int argc, char* argv[]) {
 			terminar.sa_flags = SA_RESTART;
 			sigaction(SIGINT, &terminar, NULL);
 
-
 		sem_wait(&binarioLFS);
-
-
 
 		//que mas quedaría liberar x aca?
 

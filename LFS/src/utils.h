@@ -58,6 +58,7 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
 void soloLoggear(int socket,char* mensaje);
 void soloLoggearError(int socket,char* mensaje);
+pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
 
 void soloLoggearError(int socket,char* mensaje){
 	if(socket==-1){
@@ -83,6 +84,16 @@ void soloLoggear(int socket,char* mensaje){
 		log_info(logger, mensaje);
 		pthread_mutex_unlock(&mutexLogger);
 	}
+}
+pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
+		bool seEncuentraTabla(void* elemento){
+			metadata* unMetadata = elemento;
+			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+		}
+	pthread_mutex_lock(&mutexListaDeTablas);
+	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
+	pthread_mutex_unlock(&mutexListaDeTablas);
+	return metadataBuscado->semaforoTabla;
 }
 
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){

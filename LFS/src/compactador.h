@@ -313,16 +313,23 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 void compactar(metadataConSemaforo* metadataDeTabla){
 
-	pthread_mutex_lock(&mutexLogger);
+	///////////////SEMAFOROOOOO
+	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(metadataDeTabla->nombreTabla);
+
+
+	pthread_mutex_lock(&mutexLoggerConsola);
 	log_info(loggerConsola,"Comenzando la compactacion");
-	pthread_mutex_unlock(&mutexLogger);
+	pthread_mutex_unlock(&mutexLoggerConsola);
+
 
 	while(1){
 	usleep(metadataDeTabla->tiempoCompactacion*1000);
 	int i;
+	pthread_mutex_lock(&semaforoDeTabla);
 	int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
 
 	if(numeroTmp == 0){
+		pthread_mutex_unlock(&semaforoDeTabla);
 		continue;
 	}
 
@@ -339,6 +346,8 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	string_append(&rutaTabla, "/");
 
 	enviarOMostrarYLogearInfo(-1, "Se leeran los bloques de los archivos temporales");
+
+
 
 	for (i = 0; i< numeroTmp; i++){
 
@@ -399,10 +408,15 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 
 	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporales);
 
+	pthread_mutex_unlock(&semaforoDeTabla);
 	list_destroy_and_destroy_elements(listaRegistrosTemporales,(void*)liberarRegistros);
 	free(rutaTabla);
 	free(bufferTemporales);
 
+	pthread_mutex_lock(&mutexLoggerConsola);
+	log_info(loggerConsola, "Compactacion finalizada de la tabla: %s", metadataDeTabla->nombreTabla);
+	pthread_mutex_unlock(&mutexLoggerConsola);
 }
+
 }
 //compactacion, drop, select poner semaforo
