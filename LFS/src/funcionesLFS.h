@@ -36,8 +36,6 @@ typedef struct {
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla);
 metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la ruta de la tabla y de ahi buscar el metadata
-int calcularParticion(int key,int cantidadParticiones);// Punto_Montaje/Tables/Nombre_tabla/Metadata
-char* infoEnBloque(char* numeroBloque);
 bool estaLaKey(int key,void* elemento);
 bool esIgualAlNombre(char* nombreTabla,void * elemento);
 bool agregarRegistro(char* nombreTabla, registro* unRegistro, tablaMem * tabla); //este es para memtable
@@ -45,12 +43,10 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 void liberarDoblePuntero(char** doblePuntero);
 void funcionSelect(char* argumentos,int socket);
 void funcionInsert(char* argumentos,int socket);
-//void guardarInfoEnArchivo(char* ruta, char* info);
 void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion);
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
 void funcionCreate(char* argumentos,int socket);
 int tamanioRegistros(char* nombreTabla);
-int obtenerCantTemporales(char* nombreTabla);
 void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
 void inicializarRegistroError();
 pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
