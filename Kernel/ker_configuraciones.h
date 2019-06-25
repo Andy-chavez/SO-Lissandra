@@ -123,7 +123,7 @@ void liberarTabla(tabla* t) {
 	free(t->nombreDeTabla);
 	free(t);
 }
-void liberarListas(){
+void liberarListas(){ //todo agregar RR
 	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
