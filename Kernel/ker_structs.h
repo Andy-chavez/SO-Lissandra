@@ -43,18 +43,22 @@ typedef struct {
 	t_config* config;
 	t_log* log;
 } configYLogs;
-
+typedef struct {
+	pthread_t* thread;
+	int numero;
+} t_thread;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;
 t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* memorias;
 t_list* tablas;
-
+t_list* rrThreads;
 criterio criterios[3];
 
 sem_t hayNew;
 sem_t hayReady;
+sem_t finalizar;
 sem_t modificables;
 
 pthread_mutex_t quantum;
@@ -66,6 +70,7 @@ pthread_mutex_t mTablas;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
 pthread_mutex_t mLog;
+pthread_mutex_t mThread;
 //char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 
 char* pathConfig;

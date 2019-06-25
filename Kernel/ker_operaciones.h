@@ -26,12 +26,14 @@ void kernel_run(char* operacion);
 void kernel_pasar_a_ready();
 void kernel_consola();
 void kernel_roundRobin(int threadProcesador);
+void joinThreadRR();
+void crearThreadRR(int numero);
 /******************************IMPLEMENTACIONES******************************************/
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
-	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	char** parametros = string_n_split(operacion,3," ");
+	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
 	if(consist == -1){
 		return false;
 	}
@@ -44,7 +46,7 @@ bool kernel_insert(char* operacion){
 }
 bool kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
+	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
 	if(consist == -1){
 		return false;
@@ -114,11 +116,17 @@ bool kernel_describe(char* operacion){ //todo describe table
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	int socket = obtenerSocketAlQueSeEnvio(operacionAux,index);
-	actualizarListaMetadata(deserializarMetadata(recibir(socket)));
+//todo
+	void* buffer =recibir(socket);
+	if(buffer == NULL){
+		return false;
+	}
+	actualizarListaMetadata(deserializarMetadata(buffer));
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
+	liberarOperacionLQL(operacionAux);
 	return true;
 }
 bool kernel_drop(char* operacion){
@@ -139,9 +147,9 @@ bool kernel_drop(char* operacion){
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 bool kernel_journal(){
-	journal_consistencia(STRONG);
-	journal_consistencia(EVENTUAL);
-	journal_consistencia(HASH);
+	journal_consistencia(0);
+	journal_consistencia(1);
+	//journal_consistencia(2); todo
 	return true;
 }
 bool kernel_metrics(){
@@ -151,6 +159,7 @@ bool kernel_metrics(){
 void journal_consistencia(int consistencia){
 	void realizarJournal(memoria * mem){
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
 		enviarJournal(socket);
 	}
 	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);
@@ -160,13 +169,13 @@ bool kernel_add(char* operacion){
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
-		if(string_equals_ignore_case(*(opAux+4),"HASH")){
+		if(string_contains(*(opAux+4),"HASH")){
 			list_add(criterios[HASH].memorias, mem );
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
-		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
+		else if(string_contains(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
 				list_add(criterios[STRONG].memorias, mem );
 				liberarParametrosSpliteados(opAux);
@@ -180,7 +189,7 @@ bool kernel_add(char* operacion){
 				return false;
 			}
 		}
-		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
+		else if(string_contains(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
 			liberarParametrosSpliteados(opAux);
 			return true;
@@ -192,15 +201,27 @@ bool kernel_add(char* operacion){
 		return false;
 	}
 	else{
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s.Memoria no conectada.", operacion);
-		pthread_mutex_unlock(&mLog);
 		liberarParametrosSpliteados(opAux);
 		return false;
 	}
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 // ---------------.: THREAD ROUND ROBIN :.---------------
+void crearThreadRR(int numero){
+	t_thread* t = malloc(sizeof(t_thread));
+	t->thread = malloc(sizeof(pthread_t*));
+	t->numero = numero;
+	pthread_create(t->thread, NULL,(void*) kernel_roundRobin, (void*)t->numero);
+	agregarALista(rrThreads,t,mThread);
+}
+void joinThreadRR(){
+	void realizarJoin(t_thread* t){
+		pthread_join(*(t->thread),NULL);
+	}
+	pthread_mutex_lock(&mThread);
+	list_iterate(rrThreads, (void*)realizarJoin);
+	pthread_mutex_unlock(&mThread);
+}
 void kernel_roundRobin(int threadProcesador){
 	while(!destroy){
 		sem_wait(&hayReady);
@@ -219,7 +240,9 @@ void kernel_roundRobin(int threadProcesador){
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(!kernel_api(pcb_auxiliar->operacion)){
-				thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+				usleep(sleep);
+				continue;
 			}
 			thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
@@ -228,13 +251,12 @@ void kernel_roundRobin(int threadProcesador){
 			continue;
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
-			int ERROR= 0;
-
+			int ERROR = 0;
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					if(!kernel_api(pcb_auxiliar->operacion)){
-						thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					if(kernel_api(pcb_auxiliar->operacion)==false){
+						thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -247,8 +269,8 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(!kernel_api(instruc->operacion)){
-					thread_loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				if(kernel_api(instruc->operacion)==false){
+					thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
@@ -300,7 +322,7 @@ void kernel_consola(){
 			">> Y siga su ejecucion mediante el archivo Kernel.log\n");
 	char* linea= NULL;
 	while(!destroy){
-		printf(">");
+		printf(" ");
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
 	}
@@ -352,7 +374,7 @@ void kernel_run(char* operacion){
 		free(*(opYArg+1));
 		free(*(opYArg));
 		free(opYArg);
-		exit(EXIT_FAILURE);
+		return;
 	}
 	char *lineaLeida;
 	size_t limite = 250;
@@ -406,9 +428,9 @@ bool kernel_api(char* operacionAParsear)
 		return kernel_metrics();
 	}
 	else {
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
-		pthread_mutex_unlock(&mLog);
+//		pthread_mutex_lock(&mLog);
+//		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
+//		pthread_mutex_unlock(&mLog);
 		return false;
 	}
 }

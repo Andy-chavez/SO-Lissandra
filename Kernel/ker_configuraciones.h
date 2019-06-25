@@ -24,18 +24,21 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	pthread_mutex_init(&mLog, NULL);
+	pthread_mutex_init(&mThread, NULL);
 	pthread_mutex_init(&mMemorias,NULL);
 	pthread_mutex_init(&quantum, NULL);
 	pthread_mutex_init(&sleepExec,NULL);
 	pthread_mutex_init(&mMetadataRefresh,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
+	sem_init(&finalizar,0,0);
 	sem_init(&modificables,0,0);
 }
 void kernel_crearListas(){
 	cola_proc_nuevos = list_create();
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
+	rrThreads = list_create();
 	criterios[HASH].unCriterio = SH;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;
@@ -86,6 +89,7 @@ void liberarConfigYLogs() {
 }
 void destruirSemaforos(){
 	sem_destroy(&hayNew);
+	sem_destroy(&finalizar);
 	sem_destroy(&hayReady);
 	sem_destroy(&modificables);
 	pthread_mutex_destroy(&colaNuevos);
@@ -119,7 +123,7 @@ void liberarTabla(tabla* t) {
 	free(t->nombreDeTabla);
 	free(t);
 }
-void liberarListas(){
+void liberarListas(){ //todo agregar RR
 	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
