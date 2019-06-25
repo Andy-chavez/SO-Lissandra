@@ -14,47 +14,64 @@
 #include "structsYVariablesGlobales.h"
 #include <sys/types.h>
 #include <sys/inotify.h>
+#include <signal.h>
 
 // Defines para el inotify del config
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG) // Lo dejo asi de grande porque sino segfaultea
 
-int APIProtocolo(void* buffer, int socket) {
+// DEFINICIONES //
+bool APIProtocolo(void* buffer, int socket);
+void APIMemoria(operacionLQL* operacionAParsear, int socketKernel);
+void* trabajarConConexion(void* socket);
+datosInicializacion* realizarHandshake();
+void liberarDatosDeInicializacion(datosInicializacion* datos);
+int crearSocketLFS();
+void* manejarConsola();
+void *servidorMemoria();
+void* cambiosConfig();
+void cambiarValor();
+
+
+bool APIProtocolo(void* buffer, int socket) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
 	case OPERACIONLQL:
 		enviarOMostrarYLogearInfo(-1, "Recibi una operacionLQL");
 		APIMemoria(deserializarOperacionLQL(buffer), socket);
-		return 1;
+		return true;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
 	case DESCONEXION:
 		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
 		cerrarConexion(socket);
-		return 0;
+		return false;
 	case TABLAGOSSIP:
-		enviarOMostrarYLogearInfo(-1, "llego una memoria. guardando en tabla de gossip y enviando lo que tengo...");
-		intercambiarTablasGossip(socket);
+		enviarOMostrarYLogearInfo(-1, "Una memoria o el kernel se comunico conmigo. Enviando mi tabla de gossip...");
+		sem_wait(&MUTEX_TABLA_GOSSIP);
+		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
+		sem_post(&MUTEX_TABLA_GOSSIP);
+		return true;
+	case PAQUETEOPERACIONES:
+	case UNREGISTRO:
+	case METADATA:
+	case PAQUETEMETADATAS:
+	case HANDSHAKE:
+	default:
+		enviarOMostrarYLogearInfo(-1, "Ha llegado una operacion que la memoria no puede operar en general, pero capaz si de una manera en particular.");
 		return 1;
 	}
-	free(buffer);
 }
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
-		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) {
-			insertLQL(operacionAParsear, socketKernel);
-		}
-		else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
-		}
+		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
-		if(esInsertOSelectEjecutable(operacionAParsear->parametros)) selectLQL(operacionAParsear, socketKernel);
-		else enviarYLogearMensajeError(socketKernel, "ERROR: La operacion no se pudo realizar porque no es un insert ejecutable.");
+		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
@@ -66,10 +83,12 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
+		dropLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un JOURNAL");
-		}
+		journalLQL(socketKernel);
+	}
 	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
@@ -79,16 +98,14 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	liberarOperacionLQL(operacionAParsear);
 
-	sem_wait(&MUTEX_RETARDO_MEMORIA);
-	int retardoMemoria = RETARDO_MEMORIA * 1000;
-	sem_post(&MUTEX_RETARDO_MEMORIA);
 
-	usleep(retardoMemoria);
 }
 
 //------------------------------------------------------------------------
 
 void* trabajarConConexion(void* socket) {
+	agregarHiloAListaDeHilos();
+
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
 	/*
@@ -100,11 +117,10 @@ void* trabajarConConexion(void* socket) {
 
 	while(hayMensaje) {
 		void* bufferRecepcion = recibir(socketKernel);
-		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
-		sem_post(&MUTEX_OPERACION);
 	}
 
+	eliminarHiloDeListaDeHilos();
 	pthread_exit(0);
 }
 
@@ -114,7 +130,6 @@ datosInicializacion* realizarHandshake() {
 		enviarYLogearMensajeError(-1, "No se pudo conectar con LFS");
 		return NULL;
 	}
-	operacionProtocolo operacionHandshake = HANDSHAKE;
 	serializarYEnviarHandshake(SOCKET_LFS, 0);
 
 	void* bufferHandshake = recibir(SOCKET_LFS);
@@ -140,16 +155,28 @@ int crearSocketLFS() {
 }
 
 void* manejarConsola() {
+	agregarHiloAListaDeHilos();
+
 	enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada.");
 	while(1) {
 		char* comando = NULL;
 		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
 		comando = readline(">");
-		sem_wait(&MUTEX_OPERACION); // Region critica GIGANTE, ver donde es donde se necesita este mutex.
+		if(!esOperacionEjecutable(comando)) {
+			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
+			free(comando);
+			continue;
+		}
+
+		sem_wait(&MUTEX_RETARDO_MEMORIA);
+		int retardoMemoria = RETARDO_MEMORIA * 1000;
+		sem_post(&MUTEX_RETARDO_MEMORIA);
+		usleep(retardoMemoria);
+
 		APIMemoria(splitear_operacion(comando), -1);
-		sem_post(&MUTEX_OPERACION);
 		free(comando);
 	}
+	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
 }
 
 void *servidorMemoria() {
@@ -165,7 +192,6 @@ void *servidorMemoria() {
 
 	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
 	while(1){
-
 		sem_wait(&BINARIO_SOCKET_KERNEL);
 		socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
@@ -192,7 +218,7 @@ void* cambiosConfig() {
 		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
 	}
 
-	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+	inotify_add_watch(fdConfig, path, IN_MODIFY);
 
 	while(1) {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
@@ -232,9 +258,12 @@ void* cambiosConfig() {
 	}
 }
 
+void cambiarValor() {
+	sem_post(&BINARIO_FINALIZACION_PROCESO);
+}
+
 int main() {
-	printf("%d %d\n", sizeof(time_t), sizeof(uint16_t));
-	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping; // threadTimedJournal,
+	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
@@ -244,25 +273,44 @@ int main() {
 		return -1;
 	};
 
-	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion, ARCHIVOS_DE_CONFIG_Y_LOG);
+	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion);
 	inicializarTablaMarcos();
 	liberarDatosDeInicializacion(datosDeInicializacion);
 
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
-	//pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
+	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
+
+	struct sigaction terminar;
+	terminar.sa_handler = cambiarValor;
+	sigemptyset(&terminar.sa_mask);
+	terminar.sa_flags = SA_RESTART;
+	sigaction(SIGINT, &terminar, NULL);
+
+	sem_wait(&BINARIO_FINALIZACION_PROCESO);
+
+	sem_wait(&MUTEX_LOG);
+	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
+	// no libero mutex ya que quiero que sea lo ultimo que se loguee.
+
+	pthread_cancel(threadServer);
+	pthread_cancel(threadConsola);
+	pthread_cancel(threadCambiosConfig);
+	pthread_cancel(threadTimedGossiping);
+	pthread_cancel(threadTimedJournal);
 
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadCambiosConfig, NULL);
-	//pthread_detach(threadTimedJournal);
+	pthread_join(threadTimedJournal, NULL);
 	pthread_join(threadTimedGossiping, NULL);
 
 	liberarMemoria();
 	liberarConfigYLogs();
 	liberarTablaMarcos();
+	liberarTablaGossip();
 	return 0;
 
 }

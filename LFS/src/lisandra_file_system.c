@@ -187,13 +187,13 @@ void* cambiosConfig() {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
 
 		if(size<0) {
-			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
+			soloLoggear(-1, "hubo un error al leer modificaciones del config");
 		}
 
 		t_config* configConNuevosDatos = config_create(path);
 
 		if(!configConNuevosDatos) {
-			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
+			soloLoggear(-1, "hubo un error al abrir el archivo de config");
 		}
 
 		int desplazamiento = 0;
@@ -202,7 +202,8 @@ void* cambiosConfig() {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
 			if (event->mask & IN_MODIFY) {
-				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
+
+				soloLoggear(-1,"hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos y tiempo de dump...");
 
 				pthread_mutex_lock(&mutexTiempoDump);
 				tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
@@ -234,11 +235,14 @@ int main(int argc, char* argv[]) {
 
 		inicializarBloques();
 		inicializarSemaforos();
-		inicializarArchivoBitmap(); //sacar esto despues
-		//funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 		inicializarRegistroError();
+
+		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
 
 		pthread_t threadConsola;
 		pthread_t threadServer;

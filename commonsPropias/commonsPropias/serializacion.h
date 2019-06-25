@@ -50,14 +50,14 @@ typedef enum {
 	PAQUETEMETADATAS,
 	HANDSHAKE,
 	DESCONEXION,
-	TABLAGOSSIP
+	TABLAGOSSIP,
+	ERROR
 } operacionProtocolo;
 
 typedef struct {
   char* operacion;
   char* parametros;
 } operacionLQL;
-
 
 typedef struct {
 	consistencia tipoConsistencia;
@@ -69,6 +69,7 @@ typedef struct {
 typedef struct {
 	char* ip;
 	char* puerto;
+	int numero;
 } seed;
 
 /*
@@ -145,7 +146,7 @@ int deserializarHandshake(void* bufferHandshake);
 // si bien no tiene nada que ver, nos va a servir a todos
 char* string_trim_quotation(char* string);
 
-void* liberarOperacionLQL(operacionLQL* operacion);
+void liberarOperacionLQL(operacionLQL* operacion);
 
 void serializarYEnviarHandshake(int socket, int tamanioValue);
 
@@ -155,7 +156,7 @@ registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* 
 
 void liberarRegistroConNombreTabla(registroConNombreTabla* registro);
 
-void* liberarMetadata(metadata* unaMetadata);
+void liberarMetadata(metadata* unaMetadata);
 
 void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio);
 
@@ -169,6 +170,32 @@ void serializarYEnviarPaqueteMetadatas(int socket, t_list* metadatas);
 
 void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*));
 
-void* liberarSeed(seed* unaSeed);
+void liberarSeed(seed* unaSeed);
+
+void liberarParametrosSpliteados(char** parametrosSpliteados);
+
+void recibirYDeserializarPaqueteDeAlgoRealizando(int socket, void(*accion)(void*), void*(funcionQueDeserializa)(void*, int*), void*(funcionQueLibera)(void*));
+
+metadata* _deserializarMetadataSinFree(void* bufferMetadata, int *tamanio);
+
+operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioTotal);
+
+seed* deserializarSeed(void* buffer, int* tamanioSeed);
+
+void* serializarSeed(seed* unaSeed, int* tamanioBuffer);
+
+void* serializarPaqueteDeAlgo(void* listaDeAlgo, int* tamanio, void*(funcionQueSerializa)(void*, int*), operacionProtocolo protocolo);
+
+void serializarYEnviarAlgo(int socket, void* algo, void*(funcionQueSerializa)(void*, int*));
+
+void recibirYDeserializarTablaDeGossipRealizando(int socket, void(*accion)(seed*));
+
+void* serializarTablaGossip(t_list* tablaGossip, int* tamanio);
+
+void serializarYEnviarTablaGossip(int socket, t_list* tablaGossip);
+
+int esOperacionEjecutable(char* unaOperacion);
+
+void enviarError(int socket);
 
 #endif /* SERIALIZACION_H_ */

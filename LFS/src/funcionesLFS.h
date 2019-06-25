@@ -179,15 +179,13 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
-		log_info(logger, "La key buscada no se encuentra la key en la memtable");
-		printf("No se encuentra la key en la memtable\n");
+		enviarOMostrarYLogearInfo(-1,"La key buscada no se encuentra en la memtable");
 		return NULL;
 	}
 
 	registro* registroDeMayorTimestamp= list_fold(registrosConLaKeyEnMemtable, list_get(registrosConLaKeyEnMemtable,0), cualEsElMayorTimestamp);
 
-	log_info(logger, "Registro encontrado en la memtable");
-
+	enviarOMostrarYLogearInfo(-1,"Registro encontrado en la memtable");
 
 //	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistro);
 
@@ -296,12 +294,12 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 
 		t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 					if (registrosConLaKeyEnListaRegistros->elements_count == 0){
-						printf("No se encuentra la key\n");
+						enviarYLogearMensajeError(socket,"No se encuentra la key\n");
 						return NULL;
 						}
 					else{
 				registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
-				enviarOMostrarYLogearInfo(socket,"Registro encontrado en bloques");
+				enviarOMostrarYLogearInfo(-1,"Registro encontrado en bloques");
 				}
 				return registroBuscado;
 }
@@ -362,9 +360,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTabla(nombreTabla);
 		pthread_mutex_lock(&semaforoDeTabla);
 		cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques); //poner nombre y de particion
-		separarRegistrosYCargarALista(buffer, listaRegistros);
 		pthread_mutex_unlock(&semaforoDeTabla);
-		enviarOMostrarYLogearInfo(-1,"Informacion de bloques cargada");
+		separarRegistrosYCargarALista(buffer, listaRegistros);
+		soloLoggear(socket,"Informacion de bloques cargada");
 
 
 		//habria que hacer el mismo while si hay temporales if(hayTemporales) habria que ver el tema de cuantos temporales hay, quizas convendria agregarlo en el metadata tipo array
@@ -373,14 +371,12 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_lock(&mutexMemtable);
 
 		if (memtable->elements_count == 0){
-			enviarOMostrarYLogearInfo(-1,"El registro no se encuentra en la memtable");
+			soloLoggear(-1,"Memtable esta Vacia");
 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
 			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
-				pthread_mutex_lock(&mutexLogger);
-				log_info(logger, "El registro no se encuentra en la memtable");
-				pthread_mutex_unlock(&mutexLogger);
+				soloLoggear(socket,"El registro no se encuentra en la memtable");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket); //me pa que esto no va aca
 			}
 			}
@@ -398,8 +394,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		free(buffer);
 		free(particion);
 
-		//ver si la funcion tiene que devolver el registro
-		//enviarOMostrarYLogearInfo(-1,"Se encontro el registro");
+		soloLoggear(socket,"Se encontro el registro buscado");
+
 		if(socket!=-1){
 			if(!registroBuscado) {
 				serializarYEnviarRegistro(socket, registroError);
@@ -438,7 +434,7 @@ void funcionInsert(char* argumentos,int socket) {
 		liberarDoblePuntero(argSeparados);
 		return;
 	}
-	enviarOMostrarYLogearInfo(-1,"Directorio de tabla valido");
+	soloLoggear(socket,"Directorio de tabla valido");
 
 	if (valorTimestamp == NULL) {
 		timestamp = (unsigned long)time(NULL);

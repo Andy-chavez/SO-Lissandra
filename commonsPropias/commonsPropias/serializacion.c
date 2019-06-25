@@ -82,7 +82,7 @@ void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
 	int desplazamiento = 0;
 	int tamanioIP = strlen(unaSeed->ip) + 1;
 	int tamanioPuerto = strlen(unaSeed->puerto) + 1;
-	void *buffer = malloc(2*sizeof(int) + tamanioIP + tamanioPuerto);
+	void *buffer = malloc(3*sizeof(int) + tamanioIP + tamanioPuerto);
 
 	memcpy(buffer + desplazamiento, &tamanioIP, sizeof(int));
 	desplazamiento += sizeof(int);
@@ -92,6 +92,8 @@ void* serializarSeed(seed* unaSeed, int* tamanioBuffer) {
 	desplazamiento += sizeof(int);
 	memcpy(buffer + desplazamiento, unaSeed->puerto, tamanioPuerto);
 	desplazamiento += tamanioPuerto;
+	memcpy(buffer+desplazamiento, &(unaSeed->numero), sizeof(int));
+	desplazamiento += sizeof(int);
 
 	*(tamanioBuffer) = desplazamiento;
 
@@ -116,6 +118,9 @@ seed* deserializarSeed(void* buffer, int* tamanioSeed) {
 
 	memcpy(unaSeed->puerto, buffer + desplazamiento, tamanioPuerto);
 	desplazamiento += tamanioPuerto;
+
+	memcpy(&(unaSeed->numero), buffer + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
 
 	*(tamanioSeed) = desplazamiento;
 
@@ -387,28 +392,16 @@ metadata* deserializarMetadata(void* bufferMetadata) {
 	return unMetadata;
 }
 
-char* string_trim_quotation(char* string) {
-	char* stringRespuesta = malloc(strlen(string) - 1);
-	char* aux = string + 1;
-	int i = 1;
-	while(*(string + i) != '"') {
-		i++;
-	}
-	i--;
-	size_t tamanioString = i;
-	strncpy(stringRespuesta, aux, tamanioString);
-	*(stringRespuesta + i) = '\0';
-	free(string);
-	return stringRespuesta;
-};
-
+void enviarError(int socket) {
+	operacionProtocolo protocoloError = ERROR;
+	enviar(socket, (void*) &protocoloError, sizeof(operacionProtocolo));
+}
 // ------------------------------------------------------------------------ //
 // 3) SERIALIZACIONES/DESERIALIZACIONES DE PAQUETES/TABLAS //
 
 void* serializarTablaGossip(t_list* tablaGossip, int* tamanio) {
 	serializarPaqueteDeAlgo((void*) tablaGossip, tamanio, serializarSeed, TABLAGOSSIP);
 }
-
 void* serializarPaqueteDeOperacionesLQL(t_list* operacionesLQL, int* tamanio) {
 	serializarPaqueteDeAlgo((void*) operacionesLQL, tamanio, serializarOperacionLQL, PAQUETEOPERACIONES);
 }
@@ -463,7 +456,185 @@ void serializarYEnviarMetadata(int socket, metadata* unaMetadata) {
 // ------------------------------------------------------------------------ //
 // 4) FUNCIONES QUE DEBERIAN DE ESTAR EN OTRO ARCHIVO DE LAS COMMONS PERO QUEDARON IGUAL ACA PARA NO HACER MUCHOS CAMBIOS YA FUE ESA DEUDA TECNICA //
 
-void* liberarOperacionLQL(operacionLQL* operacion) {
+int tieneTodosLosParametros(char* operacion, int cantidadParametros) {
+	char** parametrosSpliteados = string_split(operacion, " ");
+	int i = 0;
+
+	while(*(parametrosSpliteados + i) != NULL) {
+		i++;
+	}
+
+	string_iterate_lines(parametrosSpliteados, free);
+	free(parametrosSpliteados);
+	return i == cantidadParametros;
+}
+
+char* string_trim_quotation(char* string) {
+	char* stringRespuesta = malloc(strlen(string) - 1);
+	char* aux = string + 1;
+	int i = 1;
+	while(*(string + i) != '"') {
+		i++;
+	}
+	i--;
+	size_t tamanioString = i;
+	strncpy(stringRespuesta, aux, tamanioString);
+	*(stringRespuesta + i) = '\0';
+	free(string);
+	return stringRespuesta;
+}
+
+int esCero(char* key) {
+	int length = string_length(key);
+	int respuesta = 1;
+	int i = 0;
+
+	while(i < length) {
+		if(*(key + i) != '0') {
+			break;
+		}
+		i++;
+	}
+
+	if(i < length) {
+		respuesta = 0;
+	}
+
+	return respuesta;
+}
+
+int esNumeroParseable(char* key) {
+	return (atoi(key) > 0) || esCero(key);
+}
+
+int tieneValorParseable(char* value) {
+	if(string_starts_with(value, "\"") && string_ends_with(value, "\"")) {
+		char* valorTrimmeado = string_trim_quotation(value);
+		int respuesta = !string_equals_ignore_case(valorTrimmeado, "");
+		free(valorTrimmeado);
+		return respuesta;
+	}
+	else return 0;
+}
+
+int esConsistenciaParseable(char* consistencia) {
+	return string_equals_ignore_case(consistencia, "SC") || string_equals_ignore_case(consistencia, "EC") || string_equals_ignore_case(consistencia, "SHC");
+}
+
+int esInsertEjecutable(char* operacion) {
+	if(!tieneTodosLosParametros(operacion, 4) && !tieneTodosLosParametros(operacion, 5)) return 0;
+
+	char** parametrosSpliteados = string_split(operacion, " ");
+
+	if(esNumeroParseable(*(parametrosSpliteados + 2)) && tieneValorParseable(string_duplicate(*(parametrosSpliteados + 3)))){
+
+		if(*(parametrosSpliteados + 4) == NULL) {
+			string_iterate_lines(parametrosSpliteados, free);
+			free(parametrosSpliteados);
+			return 1;
+		}
+		else if(esNumeroParseable(*(parametrosSpliteados + 4))) {
+			string_iterate_lines(parametrosSpliteados, free);
+			free(parametrosSpliteados);
+			return 1;
+		}
+
+	}
+	string_iterate_lines(parametrosSpliteados, free);
+	free(parametrosSpliteados);
+	return 0;
+}
+
+int esSelectEjecutable(char* operacion) {
+	if(!tieneTodosLosParametros(operacion, 3)) return 0;
+
+	char** parametrosSpliteados = string_split(operacion, " ");
+	if(esNumeroParseable(*(parametrosSpliteados + 2))){
+		string_iterate_lines(parametrosSpliteados, free);
+		free(parametrosSpliteados);
+		return 1;
+	}
+	string_iterate_lines(parametrosSpliteados, free);
+	free(parametrosSpliteados);
+	return 0;
+}
+
+int esCreateEjecutable(char* operacion) {
+	if(!tieneTodosLosParametros(operacion, 5)) return 0;
+
+	char** parametrosSpliteados = string_split(operacion, " ");
+
+	if(esConsistenciaParseable(*(parametrosSpliteados + 2)) && esNumeroParseable(*(parametrosSpliteados + 3)) && esNumeroParseable(*(parametrosSpliteados + 4))) {
+		string_iterate_lines(parametrosSpliteados, free);
+		free(parametrosSpliteados);
+		return 1;
+	}
+
+	string_iterate_lines(parametrosSpliteados, free);
+	free(parametrosSpliteados);
+	return 0;
+}
+
+int esDropEjecutable(char* operacion) {
+	if(!tieneTodosLosParametros(operacion, 2)) return 0;
+
+	char** parametrosSpliteados = string_split(operacion, " ");
+	if(*(parametrosSpliteados + 1) != NULL) {
+		string_iterate_lines(parametrosSpliteados, free);
+		free(parametrosSpliteados);
+		return 1;
+	}
+	string_iterate_lines(parametrosSpliteados, free);
+	free(parametrosSpliteados);
+	return 0;
+}
+
+int esAddEjecutable(char* operacion) {
+	if(!tieneTodosLosParametros(operacion, 5)) return 0;
+
+	char** parametrosSpliteados = string_split(operacion, " ");
+
+	if(esNumeroParseable(*(parametrosSpliteados + 2)) && esConsistenciaParseable(*(parametrosSpliteados + 4))) {
+		string_iterate_lines(parametrosSpliteados, free);
+		free(parametrosSpliteados);
+		return 1;
+	}
+	string_iterate_lines(parametrosSpliteados, free);
+	free(parametrosSpliteados);
+	return 0;
+}
+
+int esOperacionEjecutable(char* unaOperacion) {
+	if(string_starts_with(unaOperacion, "INSERT")) {
+		return esInsertEjecutable(unaOperacion);
+	}
+	else if (string_starts_with(unaOperacion, "SELECT")) {
+		return esSelectEjecutable(unaOperacion);
+	}
+	else if (string_starts_with(unaOperacion, "DESCRIBE")) {
+		return 1; // no hace falta verificar el describe
+	}
+	else if (string_starts_with(unaOperacion, "CREATE")) {
+		return esCreateEjecutable(unaOperacion);
+	}
+	else if (string_starts_with(unaOperacion, "DROP")) {
+		return esDropEjecutable(unaOperacion);
+	}
+	else if (string_starts_with(unaOperacion, "JOURNAL")) {
+		return 1;
+	}
+	else if(string_starts_with(unaOperacion, "HEXDUMP")) {
+		return 1;
+	}
+	else if(string_starts_with(unaOperacion, "ADD")) {
+		return esAddEjecutable(unaOperacion);
+	}
+	else {
+		return 0;
+	}
+}
+
+void liberarOperacionLQL(operacionLQL* operacion) {
 	free(operacion->operacion);
 	if(operacion->parametros) {
 		free(operacion->parametros);
@@ -473,18 +644,16 @@ void* liberarOperacionLQL(operacionLQL* operacion) {
 
 operacionLQL* splitear_operacion(char* operacion){
 	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
-	char** opSpliteada;
 
 	if(string_equals_ignore_case(operacion, "JOURNAL") || string_equals_ignore_case(operacion, "DESCRIBE") || string_equals_ignore_case(operacion, "HEXDUMP")) {
-		operacionAux->operacion = operacion;
-		operacionAux->parametros = malloc(3);
-		strcpy(operacionAux->parametros, "ALL");
+		operacionAux->operacion = string_duplicate(operacion);
+		operacionAux->parametros = string_duplicate("ALL");
 	} else {
-		opSpliteada = string_n_split(operacion,2," ");
+		char** opSpliteada = string_n_split(operacion,2," ");
 		operacionAux->operacion=string_duplicate(*opSpliteada);
 		if(*(opSpliteada+1)){
 			operacionAux->parametros=string_duplicate(*(opSpliteada+1));
-			free(*(opSpliteada + 1));
+			free(*(opSpliteada+1));
 		} else {
 			operacionAux->parametros = NULL;
 		}
@@ -496,6 +665,14 @@ operacionLQL* splitear_operacion(char* operacion){
 	return operacionAux;
 }
 
+void liberarParametrosSpliteados(char** parametrosSpliteados) {
+	int i = 0;
+	while(*(parametrosSpliteados + i)) {
+		free(*(parametrosSpliteados + i));
+		i++;
+	}
+	free(parametrosSpliteados);
+}
 
 registroConNombreTabla* armarRegistroConNombreTabla(registro* unRegistro, char* nombreTabla) {
 	registroConNombreTabla* registroParaEnviar = malloc(sizeof(registroConNombreTabla));
@@ -514,12 +691,12 @@ void liberarRegistroConNombreTabla(registroConNombreTabla* registro) {
 	free(registro);
 }
 
-void* liberarMetadata(metadata* unaMetadata) {
+void liberarMetadata(metadata* unaMetadata) {
 	free(unaMetadata->nombreTabla);
 	free(unaMetadata);
 }
 
-void* liberarSeed(seed* unaSeed) {
+void liberarSeed(seed* unaSeed) {
 	free(unaSeed->ip);
 	free(unaSeed->puerto);
 	free(unaSeed);
