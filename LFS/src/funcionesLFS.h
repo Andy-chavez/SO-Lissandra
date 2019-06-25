@@ -452,7 +452,7 @@ void funcionInsert(char* argumentos,int socket) {
 	registroDePrueba -> timestamp = timestamp;
 
 	guardarRegistro(registroDePrueba, nombreTabla);
-	enviarOMostrarYLogearInfo(socket,"Se guardo registro");
+	enviarOMostrarYLogearInfo(-1,"Se guardo registro");
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
@@ -619,7 +619,9 @@ pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
 }
 metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	pthread_mutex_t mutexTabla;
+	pthread_t threadCompactacion;
 	metadataConSemaforo* nuevoMetadata=malloc (sizeof(metadataConSemaforo));
+	nuevoMetadata->hiloDeCompactacion = threadCompactacion;
 	nuevoMetadata->cantParticiones = unMetadata->cantParticiones;
 	nuevoMetadata->nombreTabla = string_duplicate(unMetadata->nombreTabla);
 	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
@@ -637,15 +639,14 @@ void agregarTablaALista(char* nombreTabla){
 		}
 	pthread_mutex_lock(&mutexListaDeTablas);
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
-		pthread_mutex_init(&metadataBuscado->semaforoTabla,NULL); //inicias el semaforo de la nueva tabla
+		pthread_mutex_init(&(metadataBuscado->semaforoTabla),NULL); //inicias el semaforo de la nueva tabla
+		pthread_create(&(metadataBuscado->hiloDeCompactacion),NULL,(void*) compactar,metadataBuscado);
 		list_add(listaDeTablas,metadataBuscado);
-
-		pthread_t threadCompactacion;
-		pthread_create(&threadCompactacion,NULL,(void*) compactar,metadataBuscado);
-		pthread_detach(&threadCompactacion);
+		//pthread_detach(&threadCompactacion);
 	}
 	else{
-		liberarMetadataConSemaforo(metadataBuscado);
+		free(metadataBuscado->nombreTabla);
+		free(metadataBuscado);
 	}
 	pthread_mutex_unlock(&mutexListaDeTablas);
 }
@@ -690,10 +691,14 @@ void funcionDescribe(char* argumentos,int socket) {
 			}
 
 		}
-		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
 		if(list_size(listaDeTablas)==0){
 			enviarOMostrarYLogearInfo(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
+			closedir(dir);
+			free(rutaDirectorioTablas);
+			//liberarMetadata(metadataBuscado);
+			return;
 		}
+		enviarOMostrarYLogearInfo(-1,"Se cargaron todas las tablas del directorio");
 		if(socket==-1){
 			pthread_mutex_lock(&mutexListaDeTablas);
 			list_iterate(listaDeTablas,(void*)loggearYMostarTabla);
@@ -705,17 +710,25 @@ void funcionDescribe(char* argumentos,int socket) {
 		closedir(dir);
 		free(rutaDirectorioTablas );
 	}
-	else{
+	else{ //este es el decribe de una tabla sola
 		if(verificarExistenciaDirectorioTabla(argumentos)){
 			metadataBuscado = obtenerMetadata(argumentos);
 			enviarOMostrarYLogearInfo(-1,"Se encontro el metadata buscado");
-		if(socket!=-1){
-			serializarYEnviarMetadata(socket,metadataBuscado);
-		}
-		liberarMetadata(metadataBuscado);
+					if(socket!=-1){
+						serializarYEnviarMetadata(socket,metadataBuscado);
+						liberarMetadata(metadataBuscado);
+						return;
+					}
+					pthread_mutex_lock(&mutexLoggerConsola);
+					log_info(loggerConsola,"La tabla: %s, tiene %d particiones, consistencia= %d "
+									"y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,
+									metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
+					pthread_mutex_unlock(&mutexLoggerConsola);
+					liberarMetadata(metadataBuscado);
 		}
 		else {
 			enviarOMostrarYLogearInfo(socket,"No se encontro el metadata buscado");
+			return;
 		}
 	}
 }
