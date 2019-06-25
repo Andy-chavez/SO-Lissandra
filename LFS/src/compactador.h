@@ -100,7 +100,8 @@ bool seEncuentraElRegistroYTieneLaMismaKey(registro* registroOriginal, registro*
 	return registroOriginal->key == registroTemporal->key;
 }
 
-void agregadoYReemplazoDeRegistros(t_list* listaRegistrosTemporalesDeParticionActual, t_list* listaRegistrosOriginalesDeParticionActual){
+
+void agregadoYReemplazoDeRegistros(t_list* listaAComparar, t_list* listaAActualizar){
 
 	registro* registroACorroborar;
 
@@ -113,7 +114,7 @@ void agregadoYReemplazoDeRegistros(t_list* listaRegistrosTemporalesDeParticionAc
 			if(seEncuentraElRegistroYTieneLaMismaKey(registroOriginal, registroTemporal)){
 				//registro que queda !!!!!!
 				registro* registroAReemplazar = devolverMayor(registroOriginal, registroTemporal);
-				list_replace(listaRegistrosOriginalesDeParticionActual, i, registroAReemplazar);
+				list_replace(listaAActualizar, i, registroAReemplazar);
 				return true;
 			}else{
 				i++;
@@ -121,14 +122,13 @@ void agregadoYReemplazoDeRegistros(t_list* listaRegistrosTemporalesDeParticionAc
 		}
 		}
 	i=0;
-	if(!(registroACorroborar = list_find(listaRegistrosOriginalesDeParticionActual, estaElRegistro))){
-		list_add(listaRegistrosOriginalesDeParticionActual, registroTemporal);
+	if(!(registroACorroborar = list_find(listaAActualizar, estaElRegistro))){
+		list_add(listaAActualizar, registroTemporal);
 	}
 	}
 
-	list_iterate(listaRegistrosTemporalesDeParticionActual,(void *) agregarOReemplazar);
+	list_iterate(listaAComparar,(void *) agregarOReemplazar);
 
-//	return listaRegistrosOriginalesDeParticionActual;
 }
 
 void cargarListaEnBuffer(t_list* listaDeRegistros, char** buffer){
@@ -162,6 +162,10 @@ bool perteneceAParticion(int suParticion,int particionActual){
 }
 //bloques de particion. reemplazar todo lo que dice original por particion.. actualizar particion
 void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
+
+	t_list* listaRegistrosTemporalesSinKeyRepetidas = list_create();
+
+	agregadoYReemplazoDeRegistros(listaRegistrosTemporales, listaRegistrosTemporalesSinKeyRepetidas);
 
 	char* rutaMetadata = string_new();
 
@@ -212,7 +216,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			free(key);
 			}
 
-		t_list* listaRegistrosTemporalesDeParticionActual = list_filter(listaRegistrosTemporales, tieneLaKey);
+		t_list* listaRegistrosTemporalesDeParticionActual = list_filter(listaRegistrosTemporalesSinKeyRepetidas, tieneLaKey);
 
 		if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
 								list_destroy(listaRegistrosTemporalesDeParticionActual);
@@ -237,6 +241,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			enviarOMostrarYLogearInfo(-1, "La particion esta vacia, se ingresara la nueva informacion");
 			//particion vacía y hay temporales
 			//meter una lista de registros temporales en un buffer
+
 			cargarListaEnBuffer(listaRegistrosTemporalesDeParticionActual, &bufferTemporales);
 			ingresarNuevaInfo(rutaParticion, bufferTemporales, arrayDeBloques );
 
@@ -306,6 +311,8 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 	free(bufferTemporales);
 	liberarDoblePuntero(arrayDeBloques);
 	}
+
+	list_destroy(listaRegistrosTemporalesSinKeyRepetidas);
 
 	config_destroy(configMetadata);
 	free(rutaMetadata);
@@ -417,6 +424,4 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	log_info(loggerConsola, "Compactacion finalizada de la tabla: %s", metadataDeTabla->nombreTabla);
 	pthread_mutex_unlock(&mutexLoggerConsola);
 }
-
 }
-//compactacion, drop, select poner semaforo

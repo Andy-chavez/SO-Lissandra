@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <dirent.h>
+#include <dirent.h>se
 #include "utils.h"
 #include "compactador.h"
 
@@ -373,7 +373,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
-///////////////SEMAFOROOOOO
+///////////////SEMAFOROOOOOse
 			//pthread_mutex_lock(&semaforoDeTabla);
 			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key))){
 			soloLoggear(socket,"El registro no se encuentra en la memtable");
