@@ -34,32 +34,33 @@
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
+
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
-			enviarOMostrarYLogearInfo(-1,"Se recibio un INSERT\n");
+				soloLoggear(socket,"Se recibio un INSERT\n");
 				funcionInsert(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "SELECT")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un SELECT\n");
+				soloLoggear(socket,"Se recibio un SELECT\n");
 				funcionSelect(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DESCRIBE")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DESCRIBE\n");
+				soloLoggear(socket,"Se recibio un DESCRIBE\n");
 				funcionDescribe(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "CREATE")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un CREATE\n");
+				soloLoggear(socket,"Se recibio un CREATE\n");
 				funcionCreate(operacionAParsear->parametros,socket);
 			}
 			else if (string_equals_ignore_case(operacionAParsear->operacion, "DROP")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DROP\n");
+				soloLoggear(socket,"Se recibio un DROP\n");
 				funcionDrop(operacionAParsear->parametros,socket);
 			}
 			else if(string_equals_ignore_case(operacionAParsear->operacion, "DUMP")) {
-				enviarOMostrarYLogearInfo(-1,"Se recibio un DUMP");
+				soloLoggear(socket,"Se recibio un DUMP");
 				dump();
 			}
 	else {
-		printf("no entendi xD\n");
+		soloLoggear(socket,"no entendi xD\n");
 	}
 	liberarOperacionLQL(operacionAParsear);
 }
@@ -71,7 +72,7 @@ void realizarHandshake(int socket){
 		serializarYEnviarHandshake(socket, tamanioValue);
 	}
 	else {
-		enviarOMostrarYLogearInfo(-1,"No se pudo realizar handshake");
+		soloLoggear(1,"No se pudo realizar handshake");
 	}
 }
 
@@ -83,23 +84,17 @@ int APIProtocolo(void* buffer, int socket) {
 
 	switch(operacion){
 	case OPERACIONLQL:
-		pthread_mutex_lock(&mutexLogger);
-		log_info(logger, "Recibi una operacion");
-		pthread_mutex_unlock(&mutexLogger);
+		soloLoggear(socket,"Recibi una operacion");
 		parserGeneral(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
 	case PAQUETEOPERACIONES:
-		pthread_mutex_lock(&mutexLogger);
-		log_info(logger, "Recibi un paquete de operaciones");
-		pthread_mutex_unlock(&mutexLogger);
+		soloLoggear(socket,"Recibi un paquete de operacion");
 		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
 		return 1;
 	case DESCONEXION:
-		pthread_mutex_lock(&mutexLogger);
-		log_error(logger, "Se cierra la conexion");
-		pthread_mutex_unlock(&mutexLogger);
+		soloLoggearError(1,"Se cierra la conexion");
 		cerrarConexion(socket);
 		return 0;
 	}
@@ -135,15 +130,15 @@ void* servidorLisandra(){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
 		if(socketMemoria == -1) {
-			enviarYLogearMensajeError(-1,"No se pudo crear socket para memoria");
+			soloLoggearError(1,"No se pudo crear socket para memoria");
 			continue;
 		}
-		enviarOMostrarYLogearInfo(-1,"Se conecto una nueva Memoria");
+		soloLoggear(socketMemoria,"Se conecto una nueva Memoria");
 		realizarHandshake(socketMemoria);
 
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
-			enviarYLogearMensajeError(socketMemoria,"No se pudo crear socket para memoria");
+			soloLoggearError(socketMemoria,"No se pudo crear socket para memoria");
 			continue;
 		}
 		pthread_detach(threadMemoria);

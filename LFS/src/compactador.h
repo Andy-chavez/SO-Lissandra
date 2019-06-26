@@ -316,11 +316,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	///////////////SEMAFOROOOOO
 	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(metadataDeTabla->nombreTabla);
 
-
-	pthread_mutex_lock(&mutexLoggerConsola);
-	log_info(loggerConsola,"Comenzando la compactacion");
-	pthread_mutex_unlock(&mutexLoggerConsola);
-
+	enviarOMostrarYLogearInfo(-1,"Comenzando compactacion de la tabla: %s\n",metadataDeTabla->nombreTabla);
 
 	while(1){
 	usleep(metadataDeTabla->tiempoCompactacion*1000);

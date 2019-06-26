@@ -56,11 +56,14 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje, ...);
 void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *), va_list parametrosAdicionales);
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
-void soloLoggear(int socket,char* mensaje);
-void soloLoggearError(int socket,char* mensaje);
+void soloLoggear(int socket,char* mensaje,...);
+void soloLoggearError(int socket,char* mensaje,...);
 pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
 
-void soloLoggearError(int socket,char* mensaje){
+void soloLoggearError(int socket,char* mensaje,...){
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket==-1){
 		pthread_mutex_lock(&mutexLoggerConsola);
 		log_error(loggerConsola, mensaje);
@@ -71,19 +74,26 @@ void soloLoggearError(int socket,char* mensaje){
 		log_error(logger, mensaje);
 		pthread_mutex_unlock(&mutexLogger);
 	}
+	free(mensajeTotal);
+	va_end(parametrosAdicionales);
 }
 
-void soloLoggear(int socket,char* mensaje){
+void soloLoggear(int socket, char *mensaje, ...){
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket==-1){
 		pthread_mutex_lock(&mutexLoggerConsola);
-		log_info(loggerConsola, mensaje);
+		log_info(loggerConsola, mensajeTotal);
 		pthread_mutex_unlock(&mutexLoggerConsola);
 	}
 	else{
 		pthread_mutex_lock(&mutexLogger);
-		log_info(logger, mensaje);
+		log_info(logger, mensajeTotal);
 		pthread_mutex_unlock(&mutexLogger);
 	}
+	free(mensajeTotal);
+	va_end(parametrosAdicionales);
 }
 pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
