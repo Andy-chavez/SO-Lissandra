@@ -62,7 +62,8 @@ typedef struct {
 
 typedef struct {
 	pthread_t thread;
-	sem_t semaforoThread;
+	sem_t semaforoOperacion;
+	sem_t cancelarThread;
 } hiloEnTabla;
 
 int SOCKET_LFS;
@@ -86,9 +87,14 @@ sem_t MUTEX_RETARDO_JOURNAL;
 sem_t MUTEX_TABLA_GOSSIP;
 sem_t MUTEX_TABLA_THREADS;
 sem_t MUTEX_JOURNAL_REALIZANDOSE;
-
 sem_t MUTEX_TABLA_MARCOS;
 sem_t MUTEX_MEMORIA_PRINCIPAL;
+
+int valorCleanUp = 0;
+sem_t BINARIO_CERRANDO_SERVIDOR;
+sem_t BINARIO_CERRANDO_JOURNALTIMEADO;
+sem_t BINARIO_CERRANDO_GOSSIPINGTIMEADO;
+sem_t BINARIO_CERRANDO_CONFIG;
 
 memoria* MEMORIA_PRINCIPAL;
 t_list* TABLA_MARCOS;
@@ -97,6 +103,8 @@ t_list* TABLA_THREADS;
 
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
 t_log* LOGGER_CONSOLA;
+
+pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 
 
 
