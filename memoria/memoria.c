@@ -70,7 +70,7 @@ bool APIProtocolo(void* buffer, int socket) {
 }
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
-	marcarHiloRealizandoSemaforo(pthread_self(),0); // De cancelacion
+	marcarHiloRealizandoSemaforo(pthread_self(),obtenerHiloEnTabla(pthread_self())->cancelarThread);
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT %s", operacionAParsear->parametros);
 		insertLQL(operacionAParsear, socketKernel);
@@ -102,9 +102,8 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
-	marcarHiloComoSemaforoRealizado(pthread_self(),0);
+	marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 	liberarOperacionLQL(operacionAParsear);
-
 
 }
 
@@ -173,8 +172,12 @@ void protocoloCancelar(){
 }
 
 void cancelarListaHilos(){
+		void cancelarHilo(hiloEnTabla* hilo){
+			pthread_cancel(hilo->thread);
+		}
+
 	esperarAHilosEjecutandose(esperarSemaforoDeCancelar);
-	list_iterate(TABLA_THREADS,pthread_cancel);
+	list_iterate(TABLA_THREADS,cancelarHilo);
 }
 
 void cancelarConsola(){
@@ -207,8 +210,7 @@ void* manejarConsola() {
 		char* comando = NULL;
 		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
 		comando = readline(">");
-		marcarHiloRealizandoSemaforo(pthread_self(),0); //De cancelacion
-
+		marcarHiloRealizandoSemaforo(pthread_self(),obtenerHiloEnTabla(pthread_self())->cancelarThread);
 		if(!esOperacionEjecutable(comando)) {
 			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
 			free(comando);
@@ -222,7 +224,7 @@ void* manejarConsola() {
 
 		APIMemoria(splitear_operacion(comando), -1);
 		free(comando);
-		marcarHiloComoSemaforoRealizado(pthread_self(),0);
+		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 	}
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
 	pthread_cleanup_pop(valorCleanUp);

@@ -61,8 +61,8 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel);
 operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEnTabla* unaPagina);
 void modificarValorJournalRealizandose(int valor);
 hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo);
-void marcarHiloRealizandoSemaforo(pthread_t hilo, int semaforoElegido); //    1 = Operacion, 0 = Cancelar
-void marcarHiloComoSemaforoRealizado(pthread_t hilo, int semaforoElegido); // 1 = Operacion, 0 = Cancelar
+void marcarHiloRealizandoSemaforo(pthread_t hilo,sem_t semaforoElegido);
+void marcarHiloComoSemaforoRealizado(sem_t semaforoElegido);
 void journalLQL(int socketKernel);
 void createLQL(operacionLQL* operacionCreate, int socketKernel);
 void describeLQL(operacionLQL* operacionDescribe, int socketKernel);
@@ -661,15 +661,8 @@ hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
 	return unHilo;
 }
 
-void marcarHiloRealizandoSemaforo(pthread_t hilo,int semaforoElegido) {
+void marcarHiloRealizandoSemaforo(pthread_t hilo,sem_t semaforo) {
 	hiloEnTabla* hiloPropio = obtenerHiloEnTabla(hilo);
-	sem_t* semaforo; // BOBOALDFNSMFNKHFSMLGFSK TODO
-			if(semaforoElegido==1){
-				semaforo = &hiloPropio->semaforoOperacion;
-			}
-			else{
-				semaforo = &hiloPropio->cancelarThread;
-			}
 
 	sem_wait(&semaforo); // este wait es para que el journal espere a este hilo que esta ejecutando.
 
@@ -683,19 +676,10 @@ void marcarHiloRealizandoSemaforo(pthread_t hilo,int semaforoElegido) {
 	} else {
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 	}
-	free(semaforo);
 }
 
-void marcarHiloComoSemaforoRealizado(pthread_t hilo, int semaforoElegido) {
-	hiloEnTabla* hiloPropio = obtenerHiloEnTabla(hilo);
-	// TODO arreglar este polimorfismo pls
-	int semaforo;
-			if(semaforoElegido==1){
-				sem_post(&hiloPropio->semaforoOperacion);
-			}
-			else{
-				sem_post(&hiloPropio->cancelarThread);
-			}
+void marcarHiloComoSemaforoRealizado(sem_t semaforo) {
+	sem_post(&semaforo);
 }
 
 void journalLQL(int socketKernel) {
@@ -743,7 +727,7 @@ void liberarRecursosSelectLQL(char* nombreTabla, char *key) {
 }
 
 void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
-	marcarHiloRealizandoSemaforo(pthread_self(),1);
+	marcarHiloRealizandoSemaforo(pthread_self(),obtenerHiloEnTabla(pthread_self())->semaforoOperacion);
 
 	char** parametrosSpliteados = string_split(operacionSelect->parametros, " ");
 	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
@@ -802,7 +786,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 	liberarRecursosSelectLQL(nombreTabla, keyString);
 	liberarParametrosSpliteados(parametrosSpliteados);
-	marcarHiloComoSemaforoRealizado(pthread_self(),1); //Operacion
+	marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->semaforoOperacion);
 }
 
 void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
@@ -811,7 +795,7 @@ void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
 }
 
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
-	marcarHiloRealizandoSemaforo(pthread_self(),1);
+	marcarHiloRealizandoSemaforo(pthread_self(),obtenerHiloEnTabla(pthread_self)->semaforoOperacion);
 
 	char** parametrosSpliteados = string_n_split(operacionInsert->parametros, 3, " ");
 	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
@@ -854,7 +838,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	// TODO else journal();
 	liberarParametrosSpliteados(parametrosSpliteados);
 	liberarRecursosInsertLQL(nombreTabla, registroNuevo);
-	marcarHiloComoSemaforoRealizado(pthread_self(),1); //Operacion
+	marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->semaforoOperacion);
 }
 
 void createLQL(operacionLQL* operacionCreate, int socketKernel) {
@@ -888,7 +872,7 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
-	marcarHiloRealizandoSemaforo(pthread_self(),1);
+	marcarHiloRealizandoSemaforo(pthread_self(),obtenerHiloEnTabla(pthread_self())->semaforoOperacion);
 
 	segmento* unSegmento = encontrarSegmentoPorNombre(operacionDrop->parametros);
 
@@ -913,7 +897,7 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 		free(mensaje);
 	}
 
-	marcarHiloComoSemaforoRealizado(pthread_self(),1); //Operacion
+	marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->semaforoOperacion);
 }
 // ------------------------------------------------------------------------ //
 // 7) TIMED OPERATIONS //
