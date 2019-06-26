@@ -469,7 +469,7 @@ bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int soc
 	sem_post(&unSegmento->mutexSegmento);
 
 	if(!paginaParaAgregar) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: No se pudo guardar el registro en la memoria");
+		enviarYLogearMensajeError(-1, "ERROR: No se pudo guardar el registro en la memoria");
 		return false;
 	}
 
@@ -767,8 +767,11 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 		}
-		if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel)){
+		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel)){
 			enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
+			free(registroLFS->value);
+			free(registroLFS->nombreTabla);
+			free(registroLFS);
 		}
 		else {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
