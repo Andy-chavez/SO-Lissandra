@@ -41,43 +41,6 @@ char* crearTemporal(int size ,int cantidadDeBloques,char* nombreTabla) {
 	return rutaTmp;
 }
 
-void  guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer) {
-
-	int desplazamiento=0;
-	int restante = tamanioTotalADumpear;
-	int i;
-	int j=0; //esto es para no desperdiciar espacio
-	for(i=0; i<cantBloquesNecesarios;i++){
-		j= i+1; //osea el proximo
-
-		if(*(bloquesAsignados+j) == NULL){ //osea si es el ultimo bloque
-
-			char* rutaBloque = string_new();
-			string_append(&rutaBloque,puntoMontaje);
-			string_append(&rutaBloque,"Bloques/");
-			string_append(&rutaBloque,*(bloquesAsignados+i));
-			string_append(&rutaBloque,".bin");
-			FILE* fd = fopen(rutaBloque,"w");
-			fwrite(buffer+desplazamiento,1,restante,fd);
-			fclose(fd);
-			free(rutaBloque);
-			break;
-		}
-
-		char* rutaBloque = string_new();
-		string_append(&rutaBloque,puntoMontaje);
-		string_append(&rutaBloque,"Bloques/");
-		string_append(&rutaBloque,*(bloquesAsignados+i)); //este es el numero de bloque donde escribo
-		string_append(&rutaBloque,".bin");
-		FILE* fd = fopen(rutaBloque,"w");
-		fwrite(buffer+desplazamiento,1,tamanioBloques,fd);
-		desplazamiento+= tamanioBloques;
-		restante-=tamanioBloques;
-		fclose(fd);
-		free(rutaBloque);
-	}
-}
-
 
 void dump(){
 
@@ -116,10 +79,11 @@ void dump(){
 		void dumpearTabla(tablaMem* unaTabla){
 		buffer = string_new();
 
-		pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(unaTabla->nombre);
+		pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
+		pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
 
 		///////////////SEMAFOROOOOO
-		pthread_mutex_lock(&semaforoDeTabla);
+		pthread_mutex_lock(&semaforoDeTablaMemtable);
 
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
@@ -127,7 +91,7 @@ void dump(){
 			soloLoggear(-1,"Creando tmp");
 
 			int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
-
+			pthread_mutex_lock(&semaforoDeTablaFS);
 			char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
 
 			pthread_mutex_lock(&mutexLoggerConsola);
@@ -140,7 +104,7 @@ void dump(){
 			free(rutaTmp);
 
 			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
-
+			pthread_mutex_unlock(&semaforoDeTablaFS);
 
 			free(buffer);
 			liberarDoblePuntero(bloquesAsignados);
@@ -151,7 +115,7 @@ void dump(){
 
 
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
-			pthread_mutex_unlock(&semaforoDeTabla);
+			pthread_mutex_unlock(&semaforoDeTablaMemtable);
 
 		}
 		list_iterate(memtable,(void*)dumpearTabla);

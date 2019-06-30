@@ -321,7 +321,7 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 void compactar(metadataConSemaforo* metadataDeTabla){
 
 	///////////////SEMAFOROOOOO
-	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(metadataDeTabla->nombreTabla);
+	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTablaFS(metadataDeTabla->nombreTabla);
 
 	enviarOMostrarYLogearInfo(-1,"Comenzando compactacion de la tabla: %s\n",metadataDeTabla->nombreTabla);
 
