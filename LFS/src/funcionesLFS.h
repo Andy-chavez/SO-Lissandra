@@ -1,3 +1,4 @@
+
 #include <commons/config.h>
 #include <commons/log.h>
 #include <stdio.h>
@@ -742,3 +743,4 @@ void funcionDrop(char* nombreTabla,int socket){
 	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
 
 }
+
