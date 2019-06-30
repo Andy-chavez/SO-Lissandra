@@ -5,7 +5,7 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-/* TODO describe, metrics, hash de criterio y eventual
+/* TODO metrics, hash de criterio y eventual
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
  */
@@ -74,22 +74,8 @@ bool kernel_create(char* operacion){
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
-void actualizarListaMetadata(metadata* met){
-	tabla* t = malloc(sizeof(tabla));
-	bool tablaYaGuardada(tabla* t){
-		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
-	}
-	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
-		liberarMetadata(met);
-		return;
-	}
-	t->nombreDeTabla = string_duplicate(met->nombreTabla);
-	t->consistenciaDeTabla = met->tipoConsistencia;
-	agregarALista(tablas,t,mTablas);
-	liberarMetadata(met);
-}
-bool kernel_describe(char* operacion){ //todo describe table
-	if(string_length(operacion) <= string_length("describe ")){ //describe all
+bool kernel_describe(char* operacion){
+	if(string_length(operacion) <= string_length("describe ")){
 		operacionLQL* opAux=splitear_operacion(operacion);
 		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
 		if(socket != -1){
@@ -116,7 +102,8 @@ bool kernel_describe(char* operacion){ //todo describe table
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	int socket = obtenerSocketAlQueSeEnvio(operacionAux,index);
-//todo
+	if(socket == -1)
+		return false;
 	void* buffer =recibir(socket);
 	if(buffer == NULL){
 		return false;

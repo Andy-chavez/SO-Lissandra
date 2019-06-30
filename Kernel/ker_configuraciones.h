@@ -29,6 +29,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&quantum, NULL);
 	pthread_mutex_init(&sleepExec,NULL);
 	pthread_mutex_init(&mMetadataRefresh,NULL);
+	pthread_mutex_init(&mEventual,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&finalizar,0,0);
@@ -47,13 +48,6 @@ void kernel_crearListas(){
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
 	memorias = list_create();
-}
-void guardarDatos(seed* unaSeed){
-	memoria* memAux = malloc(sizeof(memoria));
-	memAux->numero = unaSeed->numero;
-	memAux->puerto = string_duplicate(unaSeed->puerto);
-	memAux->ip = string_duplicate(unaSeed->ip);
-	agregarALista(memorias,memAux,mMemorias);
 }
 int kernel_inicializarMemoria(){
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
@@ -75,6 +69,7 @@ void kernel_inicializarVariables(){
 	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
 	metadataRefresh = config_get_int_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
+	timedGossip = config_get_int_value(kernel_configYLog->config,"TIMED_GOSSIP");
 	kernel_crearListas();
 }
 void kernel_inicializarEstructuras(){
@@ -95,6 +90,7 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&colaNuevos);
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
+	pthread_mutex_destroy(&mEventual);
 	pthread_mutex_destroy(&mLog);
 	pthread_mutex_destroy(&mMemorias);
 	pthread_mutex_destroy(&quantum);

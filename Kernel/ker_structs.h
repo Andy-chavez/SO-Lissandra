@@ -64,10 +64,11 @@ sem_t modificables;
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
 pthread_mutex_t mMetadataRefresh;
-pthread_mutex_t colaNuevos;
 pthread_mutex_t mMemorias;
 pthread_mutex_t mTablas;
+pthread_mutex_t mEventual;
 pthread_mutex_t colaListos;
+pthread_mutex_t colaNuevos;
 pthread_mutex_t colaTerminados;
 pthread_mutex_t mLog;
 pthread_mutex_t mThread;
@@ -81,6 +82,7 @@ configYLogs *kernel_configYLog;
 
 int destroy = 0;
 int multiprocesamiento;
+int timedGossip;
 // -------------------- CAMBIAN EN TIEMPO DE EXEC ------------------------
 int quantumMax;
 int metadataRefresh;
