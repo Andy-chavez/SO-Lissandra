@@ -34,7 +34,6 @@
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
-	if(esOperacionEjecutable);
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
 				soloLoggear(socket,"Se recibio un INSERT\n");
 				funcionInsert(operacionAParsear->parametros,socket);
