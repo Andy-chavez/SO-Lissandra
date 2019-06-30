@@ -121,7 +121,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 	bool buscarPorNombre(tablaMem* elemento){
 		return agregarRegistro(nombreTabla, unRegistro, elemento);
 	}
-	pthread_mutex_lock(&mutexMemtable);
+	//pthread_mutex_lock(&mutexMemtable);
 	if(!list_find(memtable, buscarPorNombre)){
 
 		tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
@@ -132,7 +132,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 
 						enviarOMostrarYLogearInfo(-1,"Se añadio la tabla %s ",nombreTabla ,"a la memtable");
 	}
-	pthread_mutex_unlock(&mutexMemtable);
+	//pthread_mutex_unlock(&mutexMemtable);
 }
 
 
@@ -301,7 +301,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
 	registro* registroBuscado;
-	pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTabla(nombreTabla);
+	pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
 
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
@@ -366,7 +366,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		} else{
 ///////////////SEMAFOROOOOOse
 			//pthread_mutex_lock(&semaforoDeTabla);
-			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,*(argSeparados+0), key,socket))){
+			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,nombreTabla, key,socket))){
 			soloLoggear(socket,"El registro no se encuentra en la memtable");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket); //me pa que esto no va aca
 			}
@@ -419,15 +419,17 @@ void funcionInsert(char* argumentos,int socket) {
 	char* valorTimestamp = *(argSeparados + 2);
 	int timestamp;
 
-	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(nombreTabla);
+	pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(nombreTabla);
+	pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
 
-	pthread_mutex_lock(&semaforoDeTabla);
-
+	pthread_mutex_lock(&semaforoDeTablaFS);
 	if (!verificarExistenciaDirectorioTabla(nombreTabla,socket)){
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
+		pthread_mutex_unlock(&semaforoDeTablaFS);
 		return;
 	}
+	pthread_mutex_unlock(&semaforoDeTablaFS);
 	soloLoggear(socket,"Directorio de tabla valido");
 
 	if (valorTimestamp == NULL) {
@@ -436,19 +438,20 @@ void funcionInsert(char* argumentos,int socket) {
 		timestamp = atoi(valorTimestamp);
 	}
 
-	registro* registroDePrueba = malloc(sizeof(registro));
-	registroDePrueba -> key = key;
-	registroDePrueba -> value= string_duplicate(value);
-	registroDePrueba -> timestamp = timestamp;
+	registro* registroAGuardar = malloc(sizeof(registro));
+	registroAGuardar -> key = key;
+	registroAGuardar -> value= string_duplicate(value);
+	registroAGuardar -> timestamp = timestamp;
 
 
-	guardarRegistro(registroDePrueba, nombreTabla);
-	soloLoggear(socket,"Se guardo el registro con value: %s", registroDePrueba->value, "y key igual a: %d",registroDePrueba->key);
+	pthread_mutex_lock(&semaforoDeTablaMemtable);
+	guardarRegistro(registroAGuardar, nombreTabla);
+	pthread_mutex_unlock(&semaforoDeTablaMemtable);
+	soloLoggear(socket,"Se guardo el registro con value: %s", registroAGuardar->value, "y key igual a: %d",registroAGuardar->key);
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
 
-	pthread_mutex_unlock(&semaforoDeTabla);
 
 }
 
@@ -577,7 +580,7 @@ void funcionDrop(char* nombreTabla,int socket){
 
 ///////////////SEMAFOROOOOO
 
-	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(nombreTabla);
+	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTablaFS(nombreTabla);
 
 	pthread_mutex_lock(&semaforoDeTabla);
 
@@ -612,7 +615,8 @@ void funcionDrop(char* nombreTabla,int socket){
 }
 
 metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
-	pthread_mutex_t mutexTabla;
+	pthread_mutex_t mutexFS;
+	pthread_mutex_t mutexMemtable;
 	pthread_t threadCompactacion;
 	metadataConSemaforo* nuevoMetadata=malloc (sizeof(metadataConSemaforo));
 	nuevoMetadata->hiloDeCompactacion = threadCompactacion;
@@ -620,7 +624,8 @@ metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	nuevoMetadata->nombreTabla = string_duplicate(unMetadata->nombreTabla);
 	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
 	nuevoMetadata->tipoConsistencia = unMetadata->tipoConsistencia;
-	nuevoMetadata->semaforoTabla = mutexTabla;
+	nuevoMetadata->semaforoFS = mutexFS;
+	nuevoMetadata->semaforoFS = mutexMemtable;
 	free(unMetadata->nombreTabla);
 	return nuevoMetadata;
 }
@@ -633,7 +638,8 @@ void agregarTablaALista(char* nombreTabla){
 		}
 	pthread_mutex_lock(&mutexListaDeTablas);
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
-		pthread_mutex_init(&(metadataBuscado->semaforoTabla),NULL); //inicias el semaforo de la nueva tabla
+		pthread_mutex_init(&(metadataBuscado->semaforoFS),NULL); //inicias el semaforo de la nueva tabla
+		pthread_mutex_init(&(metadataBuscado->semaforoMemtable),NULL);
 		pthread_create(&(metadataBuscado->hiloDeCompactacion),NULL,(void*) compactar,metadataBuscado);
 		list_add(listaDeTablas,metadataBuscado);
 		//pthread_detach(&threadCompactacion);
@@ -660,7 +666,7 @@ void serializarMetadataConSemaforo(int socket){
 }
 
 void funcionDescribe(char* argumentos,int socket) {
-	void loggearYMostarTabla(metadata* unMetadata){
+	void loggearYMostrarTabla(metadataConSemaforo* unMetadata){
 		soloLoggear(-1,"La tabla: %s, tiene %d particion/es, consistencia= %d "
 				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
 				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
@@ -694,7 +700,7 @@ void funcionDescribe(char* argumentos,int socket) {
 		soloLoggear(socket,"Se cargaron todas las tablas del directorio");
 		if(socket==-1){
 			pthread_mutex_lock(&mutexListaDeTablas);
-			list_iterate(listaDeTablas,(void*)loggearYMostarTabla);
+			list_iterate(listaDeTablas,(void*)loggearYMostrarTabla);
 			pthread_mutex_unlock(&mutexListaDeTablas);
 		}
 		else{
