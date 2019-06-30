@@ -290,7 +290,7 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			if(!kernel_api(pcb_auxiliar->operacion,threadProcesador)){
+			if(kernel_api(pcb_auxiliar->operacion,threadProcesador)== false){
 				thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
@@ -459,7 +459,6 @@ void kernel_run(char* operacion){
 	sem_post(&hayReady);
 }
 bool kernel_api(char* operacionAParsear, int thread){
-	if(esOperacionEjecutable(operacionAParsear)){
 		if(string_contains(operacionAParsear, "INSERT")) {
 			return kernel_insert(operacionAParsear,thread);
 		}
@@ -484,7 +483,6 @@ bool kernel_api(char* operacionAParsear, int thread){
 		else if (string_contains(operacionAParsear, "METRICS")) {
 			return kernel_metrics();
 		}
-	}
 	else
 		return false;
 }

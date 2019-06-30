@@ -186,7 +186,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 	}
 	else{
 		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log, "@ ERROR[%d]: %s %s",thread, opAux->operacion, opAux->parametros);
+		log_error(kernel_configYLog->log, "@ CONEXION[%d]: %s %s",thread, opAux->operacion, opAux->parametros);
 		pthread_mutex_unlock(&mLog);
 		liberarOperacionLQL(opAux);
 		return -1;
