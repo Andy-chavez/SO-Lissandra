@@ -18,6 +18,35 @@ void kernel_finalizar();
 int kernel_inicializarMemoria();
 /******************************IMPLEMENTACIONES******************************************/
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
+//-----------------RESETEAR VARIABLES-----------------------------
+void memoria_resetearMetricas(memoria* mem){
+		mem->cantidadIns = 0;
+		mem->cantidadSel = 0;
+}
+void metrics_resetVariables(){
+	pthread_mutex_lock(&mHash);
+	criterios[HASH].cantidadInserts = 0;
+	criterios[HASH].cantidadSelects = 0;
+	criterios[HASH].tiempoInserts = 0;
+	criterios[HASH].tiempoSelects = 0;
+	list_iterate(criterios[HASH].memorias, (void*) memoria_resetearMetricas);
+	pthread_mutex_unlock(&mHash);
+	pthread_mutex_lock(&mStrong);
+	criterios[STRONG].cantidadInserts = 0;
+	criterios[STRONG].cantidadSelects = 0;
+	criterios[STRONG].tiempoInserts = 0;
+	criterios[STRONG].tiempoSelects = 0;
+	list_iterate(criterios[STRONG].memorias, (void*) memoria_resetearMetricas);
+	pthread_mutex_unlock(&mStrong);
+	pthread_mutex_lock(&mEventual);
+	criterios[EVENTUAL].cantidadInserts = 0;
+	criterios[EVENTUAL].cantidadSelects = 0;
+	criterios[EVENTUAL].tiempoInserts = 0;
+	criterios[EVENTUAL].tiempoSelects = 0;
+	list_iterate(criterios[EVENTUAL].memorias, (void*) memoria_resetearMetricas);
+	pthread_mutex_unlock(&mEventual);
+
+}
 //-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
@@ -43,10 +72,22 @@ void kernel_crearListas(){
 	cola_proc_terminados = list_create();
 	rrThreads = list_create();
 	criterios[HASH].unCriterio = SH;
+	criterios[HASH].tiempoInserts = 0;
+	criterios[HASH].tiempoSelects = 0;
+	criterios[HASH].cantidadInserts = 0;
+	criterios[HASH].cantidadSelects = 0;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;
+	criterios[STRONG].tiempoInserts = 0;
+	criterios[STRONG].tiempoSelects = 0;
+	criterios[STRONG].cantidadInserts = 0;
+	criterios[STRONG].cantidadSelects = 0;
 	criterios[STRONG].memorias = list_create();
 	criterios[EVENTUAL].unCriterio = EC;
+	criterios[EVENTUAL].tiempoInserts = 0;
+	criterios[EVENTUAL].tiempoSelects = 0;
+	criterios[EVENTUAL].cantidadInserts = 0;
+	criterios[EVENTUAL].cantidadSelects = 0;
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
 	memorias = list_create();

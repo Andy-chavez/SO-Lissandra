@@ -28,12 +28,18 @@ typedef struct{
 }instruccion;
 typedef struct{
 	consistencia unCriterio;
+	int cantidadSelects;
+	int cantidadInserts;
+	clock_t tiempoSelects; //aca es el tiempo total, realizar division cuando loggee
+	clock_t tiempoInserts;
 	t_list* memorias;
 }criterio;
 typedef struct{
 	int numero;
 	char* puerto;
 	char* ip;
+	int cantidadIns;
+	int cantidadSel;
 }memoria;
 typedef struct{
 	char* nombreDeTabla;

@@ -45,6 +45,40 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
+void actualizarTiemposInsert(int index, clock_t tiempo){
+	if(index == STRONG){
+		pthread_mutex_lock(&mStrong);
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mStrong);
+	}
+	else if(index == HASH){
+		pthread_mutex_lock(&mHash);
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mHash);
+	}
+	else if(index == EVENTUAL){
+		pthread_mutex_lock(&mEventual);
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mEventual);
+	}
+}
+void actualizarTiemposSelect(int index, clock_t tiempo){
+	if(index == STRONG){
+		pthread_mutex_lock(&mStrong);
+		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mStrong);
+	}
+	else if(index == HASH){
+		pthread_mutex_lock(&mHash);
+		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mHash);
+	}
+	else if(index == EVENTUAL){
+		pthread_mutex_lock(&mEventual);
+		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mEventual);
+	}
+}
 void freeMemoria(memoria* mem3){
 	free(mem3->ip);
 	free(mem3->puerto);
@@ -59,6 +93,8 @@ void guardarDatos(seed* unaSeed){
 	memAux->numero = unaSeed->numero;
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
+	memAux->cantidadIns = 0;
+	memAux->cantidadSel = 0;
 	agregarALista(memorias,memAux,mMemorias);
 }
 void actualizarListaMetadata(metadata* met){

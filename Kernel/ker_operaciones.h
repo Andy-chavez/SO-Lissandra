@@ -5,9 +5,8 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-/* TODO metrics, hash de criterio y eventual
+/* TODO metrics
  * metrics -> variables globales con semaforos
- * journal -> pasarselo a memoria
  */
 bool kernel_create(char* operacion,int thread);
 bool kernel_describe(char* operacion,int thread);
@@ -28,9 +27,18 @@ void kernel_consola();
 void kernel_roundRobin(int threadProcesador);
 void joinThreadRR();
 void crearThreadRR(int numero);
+void metrics();
 /******************************IMPLEMENTACIONES******************************************/
+void metrics(){
+	while(!destroy){
+		kernel_metrics();
+		usleep(30000*1000);
+		metrics_resetVariables();
+	}
+}
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion, int thread){
+	clock_t tiempo =clock();
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
@@ -39,12 +47,17 @@ bool kernel_insert(char* operacion, int thread){
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
+		tiempo = clock() - tiempo;
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
 		return false;
 	}
+	tiempo = clock() - tiempo;
+	criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
 bool kernel_select(char* operacion, int thread){
+	clock_t tiempo =clock();
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
@@ -53,8 +66,12 @@ bool kernel_select(char* operacion, int thread){
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
+		tiempo = clock() - tiempo;
+		actualizarTiemposSelect(index,tiempo);
 		return false;
 	}
+	tiempo = clock() - tiempo;
+	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
@@ -136,11 +153,21 @@ bool kernel_drop(char* operacion, int thread){
 bool kernel_journal(){
 	journal_consistencia(0);
 	journal_consistencia(1);
-	//journal_consistencia(2); todo
+	journal_consistencia(2);
 	return true;
 }
 bool kernel_metrics(){
-	printf("Not yet -> metrics\n");
+	pthread_mutex_lock(&mLog);
+	pthread_mutex_lock(&mEventual);
+	pthread_mutex_lock(&mStrong);
+	pthread_mutex_lock(&mHash);
+	log_info(kernel_configYLog->log, "METRICS: \n  tiempo en selects de Hash: %d"
+			"\n  tiempo en selects de Strong: %d\n  tiempo en selects de Eventual: %d",
+			criterios[HASH].tiempoSelects, criterios[STRONG].tiempoSelects,criterios[EVENTUAL].tiempoSelects);
+	pthread_mutex_unlock(&mHash);
+	pthread_mutex_unlock(&mStrong);
+	pthread_mutex_unlock(&mEventual);
+	pthread_mutex_unlock(&mLog);
 	return 0;
 }
 void journal_consistencia(int consistencia){
@@ -394,37 +421,34 @@ void kernel_run(char* operacion){
 	fclose(archivoALeer);
 	sem_post(&hayReady);
 }
-bool kernel_api(char* operacionAParsear, int thread)
-{
-	if(string_contains(operacionAParsear, "INSERT")) {
-		return kernel_insert(operacionAParsear,thread);
+bool kernel_api(char* operacionAParsear, int thread){
+	if(esOperacionEjecutable(operacionAParsear)){
+		if(string_contains(operacionAParsear, "INSERT")) {
+			return kernel_insert(operacionAParsear,thread);
+		}
+		else if (string_contains(operacionAParsear, "SELECT")) {
+			return kernel_select(operacionAParsear,thread);
+		}
+		else if (string_contains(operacionAParsear, "DESCRIBE")) {
+			return kernel_describe(operacionAParsear,thread);
+		}
+		else if (string_contains(operacionAParsear, "CREATE")) {
+			return kernel_create(operacionAParsear,thread);
+		}
+		else if (string_contains(operacionAParsear, "DROP")) {
+			return kernel_drop(operacionAParsear,thread);
+		}
+		else if (string_contains(operacionAParsear, "ADD")){
+			return kernel_add(operacionAParsear);
+		}
+		else if (string_contains(operacionAParsear, "JOURNAL")) {
+			return kernel_journal();
+		}
+		else if (string_contains(operacionAParsear, "METRICS")) {
+			return kernel_metrics();
+		}
 	}
-	else if (string_contains(operacionAParsear, "SELECT")) {
-		return kernel_select(operacionAParsear,thread);
-	}
-	else if (string_contains(operacionAParsear, "DESCRIBE")) {
-		return kernel_describe(operacionAParsear,thread);
-	}
-	else if (string_contains(operacionAParsear, "CREATE")) {
-		return kernel_create(operacionAParsear,thread);
-	}
-	else if (string_contains(operacionAParsear, "DROP")) {
-		return kernel_drop(operacionAParsear,thread);
-	}
-	else if (string_contains(operacionAParsear, "ADD")){
-		return kernel_add(operacionAParsear);
-	}
-	else if (string_contains(operacionAParsear, "JOURNAL")) {
-		return kernel_journal();
-	}
-	else if (string_contains(operacionAParsear, "METRICS")) {
-		return kernel_metrics();
-	}
-	else {
-//		pthread_mutex_lock(&mLog);
-//		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
-//		pthread_mutex_unlock(&mLog);
+	else
 		return false;
-	}
 }
 #endif /* KER_OPERACIONES_H_ */
