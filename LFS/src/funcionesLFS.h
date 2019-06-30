@@ -602,7 +602,7 @@ void funcionDrop(char* nombreTabla,int socket){
 		pthread_mutex_lock(&mutexListaDeTablas);
 		list_remove_and_destroy_by_condition(listaDeTablas,liberarTablaConEsteNombre,(void*) liberarMetadataConSemaforo);
 		pthread_mutex_unlock(&mutexListaDeTablas);
-		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
+		soloLoggear(socket,"Se elimino la tabla");
 
 		pthread_mutex_unlock(&semaforoDeTabla);
 
