@@ -112,7 +112,7 @@ void actualizarListaMetadata(metadata* met){
 	liberarMetadata(met);
 }
 //------ TIMED ---------
-void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memoria o tiene que estar asignada a criterio
+void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memoria o tiene que estar asignada a criterio, o si tengo que hacer con TODAS la de la lista como memoria
 	int tamLista;
 	memoria* mem;
 	while(!destroy){
@@ -127,8 +127,8 @@ void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memori
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
 		pthread_mutex_unlock(&mConexion);
 		if(socket==-1){
-					continue;
-				}
+			continue;
+		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 		recibirYDeserializarTablaDeGossipRealizando(socket,guardarDatos);

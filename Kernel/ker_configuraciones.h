@@ -13,7 +13,7 @@
 void kernel_inicializarSemaforos();
 void kernel_crearListas();
 void liberarConfigYLogs();
-void kernel_inicializarVariables();
+void kernel_inicializarVariablesYListas();
 void kernel_finalizar();
 int kernel_inicializarMemoria();
 /******************************IMPLEMENTACIONES******************************************/
@@ -95,9 +95,9 @@ void kernel_crearListas(){
 	memorias = list_create();
 }
 int kernel_inicializarMemoria(){
-	pthread_mutex_lock(&mConexion);
+	//pthread_mutex_lock(&mConexion);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	pthread_mutex_unlock(&mConexion);
+	//pthread_mutex_unlock(&mConexion);
 	if(socketClienteKernel==-1){
 		return -1;
 	}
@@ -106,7 +106,7 @@ int kernel_inicializarMemoria(){
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
 	return 0;
 }
-void kernel_inicializarVariables(){
+void kernel_inicializarVariablesYListas(){
 	logMetrics = log_create("Metrics.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
@@ -121,7 +121,6 @@ void kernel_inicializarVariables(){
 	kernel_crearListas();
 }
 void kernel_inicializarEstructuras(){
-	//kernel_crearListas();
 	kernel_inicializarSemaforos();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
