@@ -402,7 +402,10 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 				return;
 			}
 		}
-
+		if(!registroBuscado){ //despues sacar estoo cuando arreglemos el tema de errores
+			soloLoggearError("No se encontro el registro");
+			return;
+		}
 		soloLoggear(socket,"El value del registro buscado es %d ",registroBuscado->value);
 	}
 }
