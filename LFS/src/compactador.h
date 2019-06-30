@@ -163,10 +163,6 @@ bool perteneceAParticion(int suParticion,int particionActual){
 //bloques de particion. reemplazar todo lo que dice original por particion.. actualizar particion
 void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
 
-	t_list* listaRegistrosTemporalesSinKeyRepetidas = list_create();
-
-	agregadoYReemplazoDeRegistros(listaRegistrosTemporales, listaRegistrosTemporalesSinKeyRepetidas);
-
 	char* rutaMetadata = string_new();
 
 	string_append(&rutaMetadata,rutaTabla);
@@ -216,7 +212,8 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			free(key);
 			}
 
-		t_list* listaRegistrosTemporalesDeParticionActual = list_filter(listaRegistrosTemporalesSinKeyRepetidas, tieneLaKey);
+		//DESTRUIR CABEZA DE LISTAREGTEMPORALESDEPARTICIONACTUAL
+		t_list* listaRegistrosTemporalesDeParticionActual = list_filter(listaRegistrosTemporales, tieneLaKey);
 
 		if (listaRegistrosTemporalesDeParticionActual->elements_count == 0){
 								list_destroy(listaRegistrosTemporalesDeParticionActual);
@@ -282,12 +279,14 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 			*/
 			}
 
+			//DESTRUIR CABEZA Y ELEMENTOS DE LISTAREGISTROSORIGINALESDEPARTICIONACTUAL
 			t_list* listaRegistrosOriginalesDeParticionActual = list_create();
 			separarRegistrosYCargarALista(bufferParticion, listaRegistrosOriginalesDeParticionActual);
-	//		t_list* listaRegistrosFinal = list_create();
+			t_list* listaRegistrosFinal = list_duplicate(listaRegistrosOriginalesDeParticionActual);
 
-			agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
-			list_iterate(listaRegistrosOriginalesDeParticionActual, (void *)guardarEnBuffer);
+
+			agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosFinal);
+			list_iterate(listaRegistrosFinal, (void *)guardarEnBuffer);
 
 			/*
 			t_list* listaRegistrosFinal = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
@@ -297,8 +296,11 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 			enviarOMostrarYLogearInfo(-1, "Se ha actualizado la informacion");
 
-			list_destroy_and_destroy_elements(listaRegistrosOriginalesDeParticionActual,(void*)liberarRegistrosNoTemporales);
-//			list_destroy(listaRegistrosFinal);
+			//liberar todos los registros
+			list_destroy_and_destroy_elements(listaRegistrosOriginalesDeParticionActual,(void*)liberarRegistros);
+			list_destroy(listaRegistrosFinal);
+
+			//			list_destroy(listaRegistrosFinal);
 		}
 	list_destroy(listaRegistrosTemporalesDeParticionActual);
 	//list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
@@ -311,8 +313,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 	free(bufferTemporales);
 	liberarDoblePuntero(arrayDeBloques);
 	}
-
-	list_destroy(listaRegistrosTemporalesSinKeyRepetidas);
 
 	config_destroy(configMetadata);
 	free(rutaMetadata);
@@ -409,10 +409,14 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	separarRegistrosYCargarALista(bufferTemporales, listaRegistrosTemporales);
 	enviarOMostrarYLogearInfo(-1, "Se insertara la informacion en los bloques de las particiones");
 
+	t_list* listaRegistrosTemporalesSinKeyRepetidas = list_create();
+	agregadoYReemplazoDeRegistros(listaRegistrosTemporales, listaRegistrosTemporalesSinKeyRepetidas);
 
-	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporales);
+	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporalesSinKeyRepetidas);
 
 	pthread_mutex_unlock(&semaforoDeTabla);
+		// LIBERAR Y DESTRUIR ELEMENTOS DE LISTAREGISTROSTEMPORALES
+	list_destroy(listaRegistrosTemporalesSinKeyRepetidas);
 	list_destroy_and_destroy_elements(listaRegistrosTemporales,(void*)liberarRegistros);
 	free(rutaTabla);
 	free(bufferTemporales);
