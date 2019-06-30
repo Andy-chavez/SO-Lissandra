@@ -5,19 +5,19 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-/* TODO describe, metrics, hash de criterio y eventual
+/* TODO metrics, hash de criterio y eventual
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
  */
-bool kernel_create(char* operacion);
-bool kernel_describe(char* operacion);
+bool kernel_create(char* operacion,int thread);
+bool kernel_describe(char* operacion,int thread);
 bool kernel_journal();
 bool kernel_metrics();
-bool kernel_api(char* operacionAParsear);
+bool kernel_api(char* operacionAParsear,int thread);
 bool kernel_add(char* operacion);
-bool kernel_drop(char* operacion);
-bool kernel_select(char* operacion);
-bool kernel_insert(char* operacion);
+bool kernel_drop(char* operacion,int thread);
+bool kernel_select(char* operacion,int thread);
+bool kernel_insert(char* operacion,int thread);
 
 void journal_consistencia(int consistencia);
 void kernel_almacenar_en_new(char*operacion);
@@ -30,7 +30,7 @@ void joinThreadRR();
 void crearThreadRR(int numero);
 /******************************IMPLEMENTACIONES******************************************/
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
-bool kernel_insert(char* operacion){
+bool kernel_insert(char* operacion, int thread){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
@@ -38,13 +38,13 @@ bool kernel_insert(char* operacion){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
-bool kernel_select(char* operacion){
+bool kernel_select(char* operacion, int thread){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
@@ -52,13 +52,13 @@ bool kernel_select(char* operacion){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
-bool kernel_create(char* operacion){
+bool kernel_create(char* operacion, int thread){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
 	char** parametros = string_n_split(opAux->parametros,2," ");
@@ -67,29 +67,15 @@ bool kernel_create(char* operacion){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		eliminarTablaCreada(*(parametros+1));
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
-void actualizarListaMetadata(metadata* met){
-	tabla* t = malloc(sizeof(tabla));
-	bool tablaYaGuardada(tabla* t){
-		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
-	}
-	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
-		liberarMetadata(met);
-		return;
-	}
-	t->nombreDeTabla = string_duplicate(met->nombreTabla);
-	t->consistenciaDeTabla = met->tipoConsistencia;
-	agregarALista(tablas,t,mTablas);
-	liberarMetadata(met);
-}
-bool kernel_describe(char* operacion){ //todo describe table
-	if(string_length(operacion) <= string_length("describe ")){ //describe all
+bool kernel_describe(char* operacion, int thread){
+	if(string_length(operacion) <= string_length("describe ")){
 		operacionLQL* opAux=splitear_operacion(operacion);
 		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
 		if(socket != -1){
@@ -116,7 +102,8 @@ bool kernel_describe(char* operacion){ //todo describe table
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	int socket = obtenerSocketAlQueSeEnvio(operacionAux,index);
-//todo
+	if(socket == -1)
+		return false;
 	void* buffer =recibir(socket);
 	if(buffer == NULL){
 		return false;
@@ -129,7 +116,7 @@ bool kernel_describe(char* operacion){ //todo describe table
 	liberarOperacionLQL(operacionAux);
 	return true;
 }
-bool kernel_drop(char* operacion){
+bool kernel_drop(char* operacion, int thread){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
 	consistencia consist =encontrarConsistenciaDe(opAux->parametros);
@@ -137,7 +124,7 @@ bool kernel_drop(char* operacion){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		guardarTablaCreada(opAux->parametros);
 		return false;
 	}
@@ -170,14 +157,14 @@ bool kernel_add(char* operacion){
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_contains(*(opAux+4),"HASH")){
-			list_add(criterios[HASH].memorias, mem );
+			agregarALista(criterios[HASH].memorias, mem, mHash);
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
 		else if(string_contains(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
-				list_add(criterios[STRONG].memorias, mem );
+				agregarALista(criterios[STRONG].memorias, mem, mStrong);
 				liberarParametrosSpliteados(opAux);
 				return true;
 			}
@@ -190,7 +177,7 @@ bool kernel_add(char* operacion){
 			}
 		}
 		else if(string_contains(*(opAux+4),"EVENTUAL")){
-			list_add(criterios[EVENTUAL].memorias, mem );
+			agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
@@ -239,14 +226,14 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			if(!kernel_api(pcb_auxiliar->operacion)){
-				thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+			if(!kernel_api(pcb_auxiliar->operacion,threadProcesador)){
+				thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
-			thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
@@ -255,12 +242,12 @@ void kernel_roundRobin(int threadProcesador){
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					if(kernel_api(pcb_auxiliar->operacion)==false){
-						thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+					if(kernel_api(pcb_auxiliar->operacion,threadProcesador)==false){
+						thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
-					thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					usleep(sleep);
 					continue;
 				}
@@ -269,22 +256,30 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(kernel_api(instruc->operacion)==false){
-					thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+				if(kernel_api(instruc->operacion, threadProcesador)==false){
+					thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
-				thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
-				thread_loggearInfoEXEC("NEW",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("NEW",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
+				usleep(sleep);
+				continue;
+			}
+			else if(ERROR ==-1){
+				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
+				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				usleep(sleep);
+				continue;
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -298,9 +293,7 @@ void kernel_almacenar_en_new(char*operacion){
 		void kernel_destroy();
 		return;
 	}
-	pthread_mutex_lock(&colaNuevos);
-	list_add(cola_proc_nuevos, operacion);
-	pthread_mutex_unlock(&colaNuevos);
+	agregarALista(cola_proc_nuevos,operacion,colaNuevos);
 	sem_post(&hayNew);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " NEW: %s", operacion);
@@ -401,22 +394,22 @@ void kernel_run(char* operacion){
 	fclose(archivoALeer);
 	sem_post(&hayReady);
 }
-bool kernel_api(char* operacionAParsear)
+bool kernel_api(char* operacionAParsear, int thread)
 {
 	if(string_contains(operacionAParsear, "INSERT")) {
-		return kernel_insert(operacionAParsear);
+		return kernel_insert(operacionAParsear,thread);
 	}
 	else if (string_contains(operacionAParsear, "SELECT")) {
-		return kernel_select(operacionAParsear);
+		return kernel_select(operacionAParsear,thread);
 	}
 	else if (string_contains(operacionAParsear, "DESCRIBE")) {
-		return kernel_describe(operacionAParsear);
+		return kernel_describe(operacionAParsear,thread);
 	}
 	else if (string_contains(operacionAParsear, "CREATE")) {
-		return kernel_create(operacionAParsear);
+		return kernel_create(operacionAParsear,thread);
 	}
 	else if (string_contains(operacionAParsear, "DROP")) {
-		return kernel_drop(operacionAParsear);
+		return kernel_drop(operacionAParsear,thread);
 	}
 	else if (string_contains(operacionAParsear, "ADD")){
 		return kernel_add(operacionAParsear);

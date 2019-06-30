@@ -26,11 +26,12 @@ int main(int argc, char *argv[]){
 	pthread_t threadConsola;
 	pthread_t threadNew_Ready;
 	pthread_t threadInotify;
+	pthread_t threadDescribe;
+	pthread_t threadGossip;
 //	if(argc==1){
 //		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.\n");
 //		return EXIT_FAILURE;
 //	}
-//  todo cambiar memorias eventual para que haga while(socket!=-1 and list_size(lista) con semaforo, sacar funcion de stack
 	pathConfig = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
 	//(char*) argv[1];
 	kernel_inicializarVariables();
@@ -40,6 +41,8 @@ int main(int argc, char *argv[]){
 	}
 	kernel_inicializarEstructuras();
 	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_create(&threadGossip, NULL,(void*)kernel_gossiping, NULL);
+	pthread_create(&threadDescribe, NULL,(void*)describeTimeado, NULL);
 	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
 	for(int i = 0; i<multiprocesamiento;i++){
@@ -47,6 +50,8 @@ int main(int argc, char *argv[]){
 	}
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
+	pthread_join(threadDescribe,NULL);
+	pthread_join(threadGossip, NULL);
 	for(int i = 0; i<multiprocesamiento;i++){
 		joinThreadRR();
 	}
