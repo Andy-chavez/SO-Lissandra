@@ -21,7 +21,7 @@ bool instruccion_no_ejecutada(instruccion* instruc);
 void describeTimeado();
 void kernel_destroy();
 void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux);
-void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion);
+void thread_loggearInfo(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
 void guardarTablaCreada(char* parametros);
 void eliminarTablaCreada(char* parametros);
@@ -126,7 +126,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 			return -1;
 		}
 		if(recibidoContiene(recibido, "ERROR")){
-			thread_loggearInfoEXEC("@ RECIBIDO",thread, recibido);
+			thread_loggearInfo("@ RECIBIDO",thread, recibido);
 			cerrarConexion(socket);
 			return -1;
 		}
@@ -136,7 +136,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 				serializarYEnviarOperacionLQL(socket, opAux);
 				recibido = (char*) recibir(socket);
 				if(recibidoContiene(recibido, "ERROR")){
-					thread_loggearInfoEXEC("@ RECIBIDO",thread, recibido);
+					thread_loggearInfo("@ RECIBIDO",thread, recibido);
 					cerrarConexion(socket);
 					return -1;
 				}
@@ -365,7 +365,7 @@ void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, ope
 	free(recibido);
 	liberarOperacionLQL(opAux);
 }
-void thread_loggearInfoEXEC(char* estado, int threadProcesador, char* operacion){
+void thread_loggearInfo(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);

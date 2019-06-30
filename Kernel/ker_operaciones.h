@@ -227,13 +227,13 @@ void kernel_roundRobin(int threadProcesador){
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
 			if(!kernel_api(pcb_auxiliar->operacion,threadProcesador)){
-				thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
-			thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
@@ -243,11 +243,11 @@ void kernel_roundRobin(int threadProcesador){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
 					if(kernel_api(pcb_auxiliar->operacion,threadProcesador)==false){
-						thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+						thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
-					thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					usleep(sleep);
 					continue;
 				}
@@ -257,15 +257,15 @@ void kernel_roundRobin(int threadProcesador){
 				}
 				instruc->ejecutado = 1;
 				if(kernel_api(instruc->operacion, threadProcesador)==false){
-					thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
-				thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
-				thread_loggearInfoEXEC("NEW",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("NEW",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
 				usleep(sleep);
@@ -273,13 +273,13 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			else if(ERROR ==-1){
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfoEXEC("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
