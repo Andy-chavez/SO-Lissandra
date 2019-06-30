@@ -176,37 +176,40 @@ bool kernel_metrics(){
 	int eventual_tiempoInsert = criterios[EVENTUAL].tiempoInserts;
 	pthread_mutex_unlock(&mEventual);
 
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "METRICS: \ntiempo en selects de HASH: %d,"
-												"tiempo en inserts de HASH: %d "
-												"cantidad inserts en HASH : %d,"
-												"cantidad selects en HASH : %d\n"
-												"tiempo en selects de STRONG: %d,"
-												"tiempo en inserts de STRONG: %d,"
-												"cantidad inserts en STRONG : %d,"
-												"cantidad selects en STRONG : %d\n"
-												"tiempo en selects de EVENTUAL: %d,"
-												"tiempo en inserts de EVENTUAL: %d "
-												"cantidad inserts en EVENTUAL : %d,"
-												"cantidad selects en EVENTUAL : %d",
-												hash_tiempoSelect,
-												hash_tiempoInsert,
-												hash_cantidadInsert,
-												hash_cantidadSelect,
-												strong_tiempoSelect,
-												strong_tiempoInsert,
-												strong_cantidadInsert,
-												strong_cantidadSelect,
-												eventual_tiempoSelect,
-												eventual_tiempoInsert,
-												eventual_cantidadInsert,
-												eventual_cantidadSelect);
-	pthread_mutex_unlock(&mLog);
+	pthread_mutex_lock(&mLogMetrics);
+	log_info(logMetrics, "METRICS: \n"
+			"tiempo en selects de HASH: %d,"
+			"tiempo en inserts de HASH: %d, "
+			"cantidad inserts en HASH : %d,"
+			"cantidad selects en HASH : %d\n"
+			"tiempo en selects de STRONG: %d,"
+			"tiempo en inserts de STRONG: %d,"
+			"cantidad inserts en STRONG : %d,"
+			"cantidad selects en STRONG : %d\n"
+			"tiempo en selects de EVENTUAL: %d,"
+			"tiempo en inserts de EVENTUAL: %d, "
+			"cantidad inserts en EVENTUAL : %d,"
+			"cantidad selects en EVENTUAL : %d",
+			hash_tiempoSelect,
+			hash_tiempoInsert,
+			hash_cantidadInsert,
+			hash_cantidadSelect,
+			strong_tiempoSelect,
+			strong_tiempoInsert,
+			strong_cantidadInsert,
+			strong_cantidadSelect,
+			eventual_tiempoSelect,
+			eventual_tiempoInsert,
+			eventual_cantidadInsert,
+			eventual_cantidadSelect);
+	pthread_mutex_unlock(&mLogMetrics);
 	return 0;
 }
 void journal_consistencia(int consistencia){
 	void realizarJournal(memoria * mem){
+		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
 		log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
 		enviarJournal(socket);
 	}
@@ -231,7 +234,7 @@ bool kernel_add(char* operacion){
 			}
 			else{
 				pthread_mutex_lock(&mLog);
-				log_error(kernel_configYLog->log,"EXEC: %s.Ya se posee una memoria del tipo STRONG.", operacion);
+				log_info(kernel_configYLog->log,"@ EXEC: %s.Ya se posee una memoria del tipo STRONG.", operacion);
 				pthread_mutex_unlock(&mLog);
 				liberarParametrosSpliteados(opAux);
 				return false;
@@ -243,7 +246,7 @@ bool kernel_add(char* operacion){
 			return true;
 		}
 		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s.Consistencia invalida.", operacion);
+		log_info(kernel_configYLog->log,"@ EXEC: %s.Consistencia invalida.", operacion);
 		pthread_mutex_unlock(&mLog);
 		liberarParametrosSpliteados(opAux);
 		return false;
@@ -411,7 +414,7 @@ void kernel_pasar_a_ready(){
 		}
 		else{
 			pthread_mutex_lock(&mLog);
-			log_error(kernel_configYLog->log,"NEW: %s", operacion);
+			log_info(kernel_configYLog->log,"@ NEW: %s", operacion);
 			pthread_mutex_unlock(&mLog);
 		}
 	}
@@ -423,7 +426,7 @@ void kernel_run(char* operacion){
 	FILE *archivoALeer;
 	if ((archivoALeer= fopen((*(opYArg+1)), "r")) == NULL){
 		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s %s. (Consejo: verifique existencia del archivo)", *opYArg, *(opYArg+1) ); //operacion);
+		log_info(kernel_configYLog->log,"@ EXEC: %s %s. (Consejo: verifique existencia del archivo)", *opYArg, *(opYArg+1) ); //operacion);
 		pthread_mutex_unlock(&mLog);
 		free(*(opYArg+1));
 		free(*(opYArg));

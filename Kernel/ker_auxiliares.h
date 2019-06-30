@@ -123,7 +123,9 @@ void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memori
 		pthread_mutex_lock(&mMemorias);
 		mem = list_get(memorias,memoria);
 		pthread_mutex_unlock(&mMemorias);
+		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
 		if(socket==-1){
 					continue;
 				}
@@ -193,7 +195,10 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	int socket = -1;
 	bool pudeConectarYEnviar(memoria* mem){
-		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
+		pthread_mutex_lock(&mConexion);
+		socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
+		if(socket){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
@@ -230,8 +235,10 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	pthread_mutex_lock(&mHash);
 	mem = list_get(criterios[HASH].memorias,indice);
 	pthread_mutex_unlock(&mHash);
-
-	if((socket = crearSocketCliente(mem->ip,mem->puerto))){
+	pthread_mutex_lock(&mConexion);
+	socket = crearSocketCliente(mem->ip,mem->puerto);
+	pthread_mutex_unlock(&mConexion);
+	if(socket){
 		serializarYEnviarOperacionLQL(socket, opAux);
 		pthread_mutex_lock(&mLog);
 		log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
@@ -262,7 +269,10 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){ //todo liberar spli
 		pthread_mutex_lock(&mEventual);
 		mem = list_get(criterios[EVENTUAL].memorias, rand);
 		pthread_mutex_unlock(&mEventual);
-		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
+		pthread_mutex_lock(&mConexion);
+		socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
+		if(socket){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);

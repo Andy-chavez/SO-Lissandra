@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
 //		return EXIT_FAILURE;
 //	}
 	pathConfig = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
-	//(char*) argv[1];
+//	(char*) argv[1];
 	kernel_inicializarVariables();
 	if(kernel_inicializarMemoria()==-1){
 		printf("No memory to initialize");
