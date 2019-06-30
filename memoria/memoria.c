@@ -28,9 +28,14 @@ datosInicializacion* realizarHandshake();
 void liberarDatosDeInicializacion(datosInicializacion* datos);
 int crearSocketLFS();
 void* manejarConsola();
-void *servidorMemoria();
+void* servidorMemoria();
 void* cambiosConfig();
 void cambiarValor();
+void protocoloCancelar();
+void cancelarListaHilos();
+void cancelarJournal();
+void cancelarGossiping();
+void cancelarConfig();
 
 
 bool APIProtocolo(void* buffer, int socket) {
@@ -65,24 +70,25 @@ bool APIProtocolo(void* buffer, int socket) {
 }
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
+	marcarHiloRealizandoSemaforo(pthread_self(),0); // De cancelacion
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT");
+		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT %s", operacionAParsear->parametros);
 		insertLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "SELECT")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT");
+		enviarOMostrarYLogearInfo(-1, "Recibi un SELECT %s", operacionAParsear->parametros);
 		selectLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DESCRIBE")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE");
+		enviarOMostrarYLogearInfo(-1, "Recibi un DESCRIBE %s", operacionAParsear->parametros);
 		describeLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "CREATE")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE");
+		enviarOMostrarYLogearInfo(-1, "Recibi un CREATE %s", operacionAParsear->parametros);
 		createLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "DROP")) {
-		enviarOMostrarYLogearInfo(-1, "Recibi un DROP");
+		enviarOMostrarYLogearInfo(-1, "Recibi un DROP %s", operacionAParsear->parametros);
 		dropLQL(operacionAParsear, socketKernel);
 	}
 	else if (string_starts_with(operacionAParsear->operacion, "JOURNAL")) {
@@ -96,6 +102,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
+	marcarHiloComoSemaforoRealizado(pthread_self(),0);
 	liberarOperacionLQL(operacionAParsear);
 
 
@@ -105,6 +112,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 
 void* trabajarConConexion(void* socket) {
 	agregarHiloAListaDeHilos();
+
 
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
@@ -153,15 +161,54 @@ int crearSocketLFS() {
 	int socketClienteLFS = crearSocketCliente(fileSystemIP,fileSystemPuerto);
 	return socketClienteLFS;
 }
+//----------------Cancelaciones---------------------------
+
+void protocoloCancelar(){
+	sem_wait(&BINARIO_CERRANDO_SERVIDOR);
+	pthread_cancel(threadConsola);
+	pthread_cancel(threadTimedJournal);
+	pthread_cancel(threadTimedGossiping);
+	pthread_cancel(threadCambiosConfig);
+	cancelarListaHilos();
+}
+
+void cancelarListaHilos(){
+	esperarAHilosEjecutandose(esperarSemaforoDeCancelar);
+	list_iterate(TABLA_THREADS,pthread_cancel);
+}
+
+void cancelarConsola(){
+	hiloEnTabla* hilo = obtenerHiloEnTabla(pthread_self());
+	sem_wait(&hilo->cancelarThread);
+}
+
+void cancelarJournal(){
+	sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
+}
+
+void cancelarGossiping(){
+	sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
+}
+
+void cancelarCambiosConfig(){
+	sem_wait(&BINARIO_CERRANDO_CONFIG);
+}
+
+//--------------------------------------------------------
 
 void* manejarConsola() {
 	agregarHiloAListaDeHilos();
 
+	pthread_cleanup_push(cancelarConsola,NULL);
+
 	enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada.");
 	while(1) {
+
 		char* comando = NULL;
 		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
 		comando = readline(">");
+		marcarHiloRealizandoSemaforo(pthread_self(),0); //De cancelacion
+
 		if(!esOperacionEjecutable(comando)) {
 			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
 			free(comando);
@@ -175,8 +222,10 @@ void* manejarConsola() {
 
 		APIMemoria(splitear_operacion(comando), -1);
 		free(comando);
+		marcarHiloComoSemaforoRealizado(pthread_self(),0);
 	}
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
+	pthread_cleanup_pop(valorCleanUp);
 }
 
 void *servidorMemoria() {
@@ -192,16 +241,18 @@ void *servidorMemoria() {
 
 	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
 	while(1){
+		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		sem_wait(&BINARIO_SOCKET_KERNEL);
 		socketKernel = aceptarCliente(socketServidorMemoria);
 		if(socketKernel == -1) {
 			enviarYLogearMensajeError(-1, "ERROR: Socket Defectuoso");
+			sem_wait(&BINARIO_CERRANDO_SERVIDOR);
 			continue;
 		}
 		if(pthread_create(&threadConexion, NULL, trabajarConConexion, &socketKernel) < 0) {
 			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
 		}
-		pthread_detach(threadConexion);
+		sem_wait(&BINARIO_CERRANDO_SERVIDOR);
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -212,24 +263,23 @@ void *servidorMemoria() {
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
-	char* path = "memoria.config";
 
 	if(fdConfig < 0) {
 		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
 	}
 
-	inotify_add_watch(fdConfig, path, IN_MODIFY);
+	inotify_add_watch(fdConfig, "memoria.config", IN_MODIFY);
 
 	while(1) {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
-
+		sem_post(&BINARIO_CERRANDO_CONFIG);
 		if(size<0) {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
 		}
 
-		t_config* configConNuevosDatos = config_create(path);
+		t_config* configConNuevosDatos = config_create("memoria.config");
 
-		if(!configConNuevosDatos) {
+		if(!configConNuevosDatos->path) {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al abrir el archivo de config");
 		}
 
@@ -255,6 +305,7 @@ void* cambiosConfig() {
 			config_destroy(configConNuevosDatos);
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
+		sem_wait(&BINARIO_CERRANDO_CONFIG);
 	}
 }
 
@@ -262,16 +313,18 @@ void cambiarValor() {
 	sem_post(&BINARIO_FINALIZACION_PROCESO);
 }
 
-int main() {
-	pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
+ int main() {
 	inicializarProcesoMemoria();
+
+	int valorCleanUp = 0;
+	pthread_cleanup_push(cancelarConsola,NULL);
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {
 
 		liberarConfigYLogs();
 		return -1;
-	};
+	}
 
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion);
 	inicializarTablaMarcos();
@@ -300,6 +353,9 @@ int main() {
 	pthread_cancel(threadCambiosConfig);
 	pthread_cancel(threadTimedGossiping);
 	pthread_cancel(threadTimedJournal);
+
+	pthread_cleanup_pop(valorCleanUp);
+
 
 	pthread_join(threadServer, NULL);
 	pthread_join(threadConsola, NULL);

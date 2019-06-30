@@ -22,20 +22,17 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
 		pthread_mutex_init(&mutexLoggerConsola, NULL);
-		//pthread_mutex_init(&mutexOperacion,NULL);
 		pthread_mutex_init(&mutexListaDeTablas,NULL);
-//		pthread_mutex_init(&mutexDump,NULL);
 		pthread_mutex_init(&mutexBitarray,NULL);
 		pthread_mutex_init(&mutexTiempoDump,NULL);
 		pthread_mutex_init(&mutexRetardo,NULL);
 
 }
-
+//*  liberar lista de tablas
 void liberarSemaforos(){
 	pthread_mutex_destroy(&mutexMemtable);
 	pthread_mutex_destroy(&mutexLogger);
 	pthread_mutex_destroy(&mutexLoggerConsola);
-	//pthread_mutex_destroy(&mutexOperacion);
 	pthread_mutex_destroy(&mutexListaDeTablas);
 
 	pthread_mutex_destroy(&mutexBitarray);
@@ -76,10 +73,12 @@ void inicializarArchivoBitmap(){
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");
+	//DESCOMENTARLO MAS ALEDANTE, PONERLO AL FINAL
+	/*
 	if(existeArchivo(ruta)){
 		free(ruta);
 		return;
-	}
+	}*/
 	f = fopen(ruta, "wb");
 
 	for(i=0; i < cantDeBloques/8; i++){
@@ -137,5 +136,16 @@ void liberarConfigYLogs() {
 	log_destroy(loggerConsola);
 	config_destroy(archivoDeConfig);
 }
+void liberarVariablesGlobales(){
+	free(puntoMontaje);
+	free(puertoLisandra);
+	free(ipLisandra);
+	free(magicNumber);
+	liberarSemaforos();
+	liberarMemtable();
+	liberarListaDeTablas();
+	liberarConfigYLogs();
+}
+
 
 #endif /* SRC_CONFIGURACIONES_H_ */
