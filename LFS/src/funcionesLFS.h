@@ -1,4 +1,3 @@
-
 #include <commons/config.h>
 #include <commons/log.h>
 #include <stdio.h>
@@ -13,6 +12,7 @@
 #include <dirent.h>se
 #include "utils.h"
 #include "compactador.h"
+
 
 // DECLARACIONES Y ESTRUCTURAS //
 
@@ -52,7 +52,6 @@ void funcionDrop(char* nombreTabla,int socket);
 void agregarTablaALista(char* nombreTabla);
 void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDeParticion);
 
-
 // ------------------------------------------------------------------------ //
 // 1) INICIALIZACIONES Y FINALIZACIONES //
 
@@ -66,7 +65,6 @@ void inicializarRegistroError(){
 
 // ------------------------------------------------------------------------ //
 // 2) CREACION DE ELEMENTOS //
-
 
 void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion) {
 
@@ -122,11 +120,11 @@ void crearParticiones(char* ruta, int numeroParticiones) {
 		free(numeroParticion);
 		free(bloqueLibre);
 	}
-
 }
 
 metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
-	pthread_mutex_t mutexTabla;
+	pthread_mutex_t mutexFS;
+	pthread_mutex_t mutexMemtable;
 	pthread_t threadCompactacion;
 	metadataConSemaforo* nuevoMetadata=malloc (sizeof(metadataConSemaforo));
 	nuevoMetadata->hiloDeCompactacion = threadCompactacion;
@@ -134,7 +132,8 @@ metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	nuevoMetadata->nombreTabla = string_duplicate(unMetadata->nombreTabla);
 	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
 	nuevoMetadata->tipoConsistencia = unMetadata->tipoConsistencia;
-	nuevoMetadata->semaforoTabla = mutexTabla;
+	nuevoMetadata->semaforoFS = mutexFS;
+	nuevoMetadata->semaforoFS = mutexMemtable;
 	free(unMetadata->nombreTabla);
 	return nuevoMetadata;
 }
@@ -190,7 +189,8 @@ void agregarTablaALista(char* nombreTabla){
 		}
 	pthread_mutex_lock(&mutexListaDeTablas);
 	if(!list_find(listaDeTablas, seEncuentraTabla)){
-		pthread_mutex_init(&(metadataBuscado->semaforoTabla),NULL); //inicias el semaforo de la nueva tabla
+		pthread_mutex_init(&(metadataBuscado->semaforoFS),NULL); //inicias el semaforo de la nueva tabla
+		pthread_mutex_init(&(metadataBuscado->semaforoMemtable),NULL);
 		pthread_create(&(metadataBuscado->hiloDeCompactacion),NULL,(void*) compactar,metadataBuscado);
 		list_add(listaDeTablas,metadataBuscado);
 		//pthread_detach(&threadCompactacion);
@@ -202,6 +202,7 @@ void agregarTablaALista(char* nombreTabla){
 	pthread_mutex_unlock(&mutexListaDeTablas);
 }
 
+//Guarda un registro en la memtable
 void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 
 	bool buscarPorNombre(tablaMem* elemento){
@@ -220,6 +221,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 	}
 	//pthread_mutex_unlock(&mutexMemtable);
 }
+
 
 registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key,int socket){
 
@@ -263,7 +265,6 @@ return registroDeMayorTimestamp;
 
 }
 
-
 metadata* obtenerMetadata(char* nombreTabla){
 	string_to_upper(nombreTabla);
 	t_config* configMetadata;
@@ -297,17 +298,23 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 
 }
+// ------------------------------------------------------------------------ //
+// 4) FUNCIONES USADAS POR ORDEN SUPERIOR//
 
-void cargarInfoDeBloque(char** arrayDeBloques, int sizeParticion, t_list* listaRegistros, char* buffer){
+bool estaLaKey(int key,void* elemento){
+	registro* unRegistro = (registro*) elemento;
+//guarda basura en el value
+	return (unRegistro->key == key);
 
-	int i = 0;
+}
 
-	while(*(arrayDeBloques+i)!= NULL){
-			char* informacion = infoEnBloque(*(arrayDeBloques+i));
-			string_append(&buffer, informacion);
-			i++;
-		}
+//encontrar el nombre de la tabla, la tabla
+//find y encontras la key
 
+bool esIgualAlNombre(char* nombreTabla,void * elemento){
+		tablaMem* tabla = elemento;
+
+		return string_equals_ignore_case(tabla->nombre, nombreTabla);
 }
 
 registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, int socket ){
@@ -335,42 +342,9 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 				return registroBuscado;
 }
 
-int tamanioRegistros(char* nombreTabla){
-
-	int tamanioTotal = 0;
-
-	bool tieneElNombre(void *elemento){
-		return esIgualAlNombre(nombreTabla, elemento);
-	}
-
-	void* sumarRegistros(int valor , registro* registro ){
-		tamanioTotal = tamanioTotal + sizeof(registro->key)  + sizeof(registro->timestamp) + (strlen(registro->value) + 1);
-	}
-
-	pthread_mutex_lock(&mutexMemtable);
-	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
-	pthread_mutex_unlock(&mutexMemtable);
-
-	list_fold(encuentraTabla->listaRegistros, 0, sumarRegistros);
-
-return tamanioTotal;
-}
-
-// ------------------------------------------------------------------------ //
-// 4) FUNCIONES USADAS POR ORDEN SUPERIOR //
-
-bool estaLaKey(int key,void* elemento){
-	registro* unRegistro = (registro*) elemento;
-	return (unRegistro->key == key);
-}
-
-bool esIgualAlNombre(char* nombreTabla,void * elemento){
-		tablaMem* tabla = elemento;
-		return string_equals_ignore_case(tabla->nombre, nombreTabla);
-}
-
 // ------------------------------------------------------------------------ //
 // 5) CARGAR COSAS//
+
 
 void cargarInfoDeBloques(char*** buffer, char**arrayDeBloques){
 	int i = 0;
@@ -411,22 +385,16 @@ void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDePa
 
 }
 
-// ------------------------------------------------------------------------ //
-// 6) SERIALIZAR INFORMACION //
+void cargarInfoDeBloque(char** arrayDeBloques, int sizeParticion, t_list* listaRegistros, char* buffer){
 
-void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){
-	metadata* metadataSinSemaforo = malloc (sizeof(metadata));
-	metadataSinSemaforo->cantParticiones = metadataATransformar->cantParticiones;
-	metadataSinSemaforo->nombreTabla = string_duplicate(metadataATransformar->nombreTabla);
-	metadataSinSemaforo->tiempoCompactacion = metadataATransformar->tiempoCompactacion;
-	metadataSinSemaforo->tipoConsistencia = metadataATransformar->tipoConsistencia;
-	return metadataSinSemaforo;
-}
+	int i = 0;
 
-void serializarMetadataConSemaforo(int socket){
-	pthread_mutex_lock(&mutexListaDeTablas);
-	serializarYEnviarPaqueteMetadatas(socket,list_map(listaDeTablas,tranformarMetadataSinSemaforo));
-	pthread_mutex_unlock(&mutexListaDeTablas);
+	while(*(arrayDeBloques+i)!= NULL){
+			char* informacion = infoEnBloque(*(arrayDeBloques+i));
+			string_append(&buffer, informacion);
+			i++;
+		}
+
 }
 
 
@@ -505,7 +473,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
-
+///////////////SEMAFOROOOOOse
 			//pthread_mutex_lock(&semaforoDeTabla);
 			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,nombreTabla, key,socket))){
 			soloLoggear(socket,"El registro no se encuentra en la memtable");
@@ -540,7 +508,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			}
 		}
 		if(!registroBuscado){ //despues sacar estoo cuando arreglemos el tema de errores
-			soloLoggearError("No se encontro el registro");
+			soloLoggearError(socket,"No se encontro el registro");
 			return;
 		}
 		soloLoggear(socket,"El value del registro buscado es %d ",registroBuscado->value);
@@ -600,6 +568,9 @@ void funcionInsert(char* argumentos,int socket) {
 }
 
 
+
+
+
 void funcionCreate(char* argumentos,int socket) {
 
 
@@ -639,6 +610,82 @@ void funcionCreate(char* argumentos,int socket) {
 
 }
 
+//hacerlo por tabla!! y que reciba el nombre de la tabla
+int tamanioRegistros(char* nombreTabla){
+
+	int tamanioTotal = 0;
+
+	bool tieneElNombre(void *elemento){
+		return esIgualAlNombre(nombreTabla, elemento);
+	}
+
+	void* sumarRegistros(int valor , registro* registro ){
+		tamanioTotal = tamanioTotal + sizeof(registro->key)  + sizeof(registro->timestamp) + (strlen(registro->value) + 1);
+	}
+
+	pthread_mutex_lock(&mutexMemtable);
+	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
+	pthread_mutex_unlock(&mutexMemtable);
+
+	list_fold(encuentraTabla->listaRegistros, 0, sumarRegistros);
+
+return tamanioTotal;
+}
+
+void funcionDrop(char* nombreTabla,int socket){
+	bool liberarTablaConEsteNombre(metadataConSemaforo* unMetadata){
+		return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+}
+
+	if(verificarExistenciaDirectorioTabla(nombreTabla,socket)){
+		pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTablaFS(nombreTabla);
+		pthread_mutex_lock(&semaforoDeTabla);
+		char* ruta = string_new();
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Tables/");
+		string_append(&ruta,nombreTabla);
+		DIR* dir=opendir(ruta);
+		soloLoggear(socket,"Liberando Bloques de los tmp y las particiones");
+		struct dirent *sd;
+		while((sd=readdir(dir))!=NULL){
+			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
+			liberarBloquesDeTmpYPart(sd->d_name,ruta);
+		}
+		rmdir(ruta);
+		closedir(dir);
+		//ver tema de un semaforo aca pero de la tabla
+		pthread_mutex_lock(&mutexListaDeTablas);
+		list_remove_and_destroy_by_condition(listaDeTablas,liberarTablaConEsteNombre,(void*) liberarMetadataConSemaforo);
+		pthread_mutex_unlock(&mutexListaDeTablas);
+		soloLoggear(socket,"Se elimino la tabla");
+
+		pthread_mutex_unlock(&semaforoDeTabla);
+
+
+		free(ruta);
+		return;
+	}
+	soloLoggearError(socket,"No se encontro la tabla");
+
+}
+
+
+
+
+void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){
+	metadata* metadataSinSemaforo = malloc (sizeof(metadata));
+	metadataSinSemaforo->cantParticiones = metadataATransformar->cantParticiones;
+	metadataSinSemaforo->nombreTabla = string_duplicate(metadataATransformar->nombreTabla);
+	metadataSinSemaforo->tiempoCompactacion = metadataATransformar->tiempoCompactacion;
+	metadataSinSemaforo->tipoConsistencia = metadataATransformar->tipoConsistencia;
+	return metadataSinSemaforo;
+}
+
+void serializarMetadataConSemaforo(int socket){
+	pthread_mutex_lock(&mutexListaDeTablas);
+	serializarYEnviarPaqueteMetadatas(socket,list_map(listaDeTablas,tranformarMetadataSinSemaforo));
+	pthread_mutex_unlock(&mutexListaDeTablas);
+}
 
 void funcionDescribe(char* argumentos,int socket) {
 	void loggearYMostrarTabla(metadataConSemaforo* unMetadata){
@@ -704,43 +751,3 @@ void funcionDescribe(char* argumentos,int socket) {
 		}
 	}
 }
-
-void funcionDrop(char* nombreTabla,int socket){
-	bool liberarTablaConEsteNombre(metadataConSemaforo* unMetadata){
-		return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
-}
-
-	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTabla(nombreTabla);
-
-	pthread_mutex_lock(&semaforoDeTabla);
-
-	if(verificarExistenciaDirectorioTabla(nombreTabla,socket)){
-		char* ruta = string_new();
-		string_append(&ruta,puntoMontaje);
-		string_append(&ruta,"Tables/");
-		string_append(&ruta,nombreTabla);
-		DIR* dir=opendir(ruta);
-		soloLoggear(socket,"Liberando Bloques de los tmp y las particiones");
-		struct dirent *sd;
-		while((sd=readdir(dir))!=NULL){
-			if (string_equals_ignore_case(sd->d_name, ".") || string_equals_ignore_case(sd->d_name, "..") ){continue;}
-			liberarBloquesDeTmpYPart(sd->d_name,ruta);
-		}
-		rmdir(ruta);
-		closedir(dir);
-		//ver tema de un semaforo aca pero de la tabla
-		pthread_mutex_lock(&mutexListaDeTablas);
-		list_remove_and_destroy_by_condition(listaDeTablas,liberarTablaConEsteNombre,(void*) liberarMetadataConSemaforo);
-		pthread_mutex_unlock(&mutexListaDeTablas);
-		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
-
-	pthread_mutex_unlock(&semaforoDeTabla);
-
-
-		free(ruta);
-		return;
-	}
-	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
-
-}
-
