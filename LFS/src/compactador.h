@@ -409,6 +409,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	separarRegistrosYCargarALista(bufferTemporales, listaRegistrosTemporales);
 	enviarOMostrarYLogearInfo(-1, "Se insertara la informacion en los bloques de las particiones");
 
+
 	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporales);
 
 	pthread_mutex_unlock(&semaforoDeTabla);

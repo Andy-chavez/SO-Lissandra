@@ -63,17 +63,20 @@ void inicializarRegistroError(){
 
 
 int verificarExistenciaDirectorioTabla(char* nombreTabla,int socket){
+	bool seEncuentraTabla(metadataConSemaforo* unMetadata){
+		return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+	}
 	int validacion;
 	string_to_upper(nombreTabla);
 	char* rutaDirectorio= string_new();
 	string_append(&rutaDirectorio,puntoMontaje); //OJO ACA HAY QUE VER QUE EN EL CONFIG NO TE VENGA CON "" EL PUNTO DE MONTAJE
 	string_append(&rutaDirectorio,"Tables/");
 	string_append(&rutaDirectorio,nombreTabla);
-	struct stat sb;
+	//struct stat sb;
 	soloLoggear(socket,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
-	if (stat(rutaDirectorio, &sb) == 0 && S_ISDIR(sb.st_mode))
+	pthread_mutex_lock(&mutexListaDeTablas);
+	if (list_find(listaDeTablas,seEncuentraTabla))
 	    {
-
 			soloLoggear(socket,"La tabla %s ",nombreTabla, "existe en el FS");
 	    	validacion=1;
 	    }
@@ -82,6 +85,7 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,int socket){
 	    	soloLoggear(socket,"No existe tabla en ruta indicada %s \n",rutaDirectorio);
 	    	validacion=0;
 	    }
+	pthread_mutex_unlock(&mutexListaDeTablas);
 	free(rutaDirectorio);
 	return validacion;
 }
@@ -301,7 +305,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 	t_list* listaRegistros = list_create();
 	int key = atoi(*(argSeparados+1));
 	registro* registroBuscado;
-	pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
+	//pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
 
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
@@ -321,14 +325,14 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		return devolverMayor(primerElemento, segundoElemento);
 
 	}
-	pthread_mutex_lock(&semaforoDeTabla);
 	if(verificarExistenciaDirectorioTabla(nombreTabla,socket) ==0){
-		pthread_mutex_unlock(&semaforoDeTabla);
+		//pthread_mutex_unlock(&semaforoDeTabla);
 		soloLoggearError(socket,"No se encontro el directorio");
-		//return
+		//return hay que ver errores
 		}
 	else{
-		
+		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
+		pthread_mutex_lock(&semaforoDeTabla);
 		soloLoggear(socket,"Directorio de tabla valido");
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
@@ -419,17 +423,16 @@ void funcionInsert(char* argumentos,int socket) {
 	char* valorTimestamp = *(argSeparados + 2);
 	int timestamp;
 
-	pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(nombreTabla);
-	pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
+	//pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(nombreTabla);
 
-	pthread_mutex_lock(&semaforoDeTablaFS);
+	//pthread_mutex_lock(&semaforoDeTablaFS);
 	if (!verificarExistenciaDirectorioTabla(nombreTabla,socket)){
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
-		pthread_mutex_unlock(&semaforoDeTablaFS);
+		//pthread_mutex_unlock(&semaforoDeTablaFS);
 		return;
 	}
-	pthread_mutex_unlock(&semaforoDeTablaFS);
+	//pthread_mutex_unlock(&semaforoDeTablaFS);
 	soloLoggear(socket,"Directorio de tabla valido");
 
 	if (valorTimestamp == NULL) {
@@ -438,6 +441,7 @@ void funcionInsert(char* argumentos,int socket) {
 		timestamp = atoi(valorTimestamp);
 	}
 
+	pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
 	registro* registroAGuardar = malloc(sizeof(registro));
 	registroAGuardar -> key = key;
 	registroAGuardar -> value= string_duplicate(value);
@@ -578,13 +582,9 @@ void funcionDrop(char* nombreTabla,int socket){
 		return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
 }
 
-///////////////SEMAFOROOOOO
-
-	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTablaFS(nombreTabla);
-
-	pthread_mutex_lock(&semaforoDeTabla);
-
 	if(verificarExistenciaDirectorioTabla(nombreTabla,socket)){
+		pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTablaFS(nombreTabla);
+		pthread_mutex_lock(&semaforoDeTabla);
 		char* ruta = string_new();
 		string_append(&ruta,puntoMontaje);
 		string_append(&ruta,"Tables/");
@@ -604,13 +604,13 @@ void funcionDrop(char* nombreTabla,int socket){
 		pthread_mutex_unlock(&mutexListaDeTablas);
 		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
 
-	pthread_mutex_unlock(&semaforoDeTabla);
+		pthread_mutex_unlock(&semaforoDeTabla);
 
 
 		free(ruta);
 		return;
 	}
-	enviarOMostrarYLogearInfo(socket,"No se encontro la tabla");
+	soloLoggearError(socket,"No se encontro la tabla");
 
 }
 
