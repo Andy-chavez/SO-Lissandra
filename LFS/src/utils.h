@@ -51,11 +51,60 @@ void liberarListaDeTablas();
 void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros);
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata);
 int obtenerCantTemporales(char* nombreTabla);
-void enviarYLogearMensajeError(int socket, char* mensaje); //ta
-void enviarOMostrarYLogearInfo(int socket, char* mensaje);
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)); //ta
+void enviarYLogearMensajeError(int socket, char* mensaje, ...);
+void enviarOMostrarYLogearInfo(int socket, char* mensaje, ...);
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *), va_list parametrosAdicionales);
 void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
+void soloLoggear(int socket,char* mensaje,...);
+void soloLoggearError(int socket,char* mensaje,...);
+pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
+
+void soloLoggearError(int socket,char* mensaje,...){
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
+	if(socket==-1){
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log_error(loggerConsola, mensaje);
+		pthread_mutex_unlock(&mutexLoggerConsola);
+	}
+	else{
+		pthread_mutex_lock(&mutexLogger);
+		log_error(logger, mensaje);
+		pthread_mutex_unlock(&mutexLogger);
+	}
+	free(mensajeTotal);
+	va_end(parametrosAdicionales);
+}
+
+void soloLoggear(int socket, char *mensaje, ...){
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
+	if(socket==-1){
+		pthread_mutex_lock(&mutexLoggerConsola);
+		log_info(loggerConsola, mensajeTotal);
+		pthread_mutex_unlock(&mutexLoggerConsola);
+	}
+	else{
+		pthread_mutex_lock(&mutexLogger);
+		log_info(logger, mensajeTotal);
+		pthread_mutex_unlock(&mutexLogger);
+	}
+	free(mensajeTotal);
+	va_end(parametrosAdicionales);
+}
+pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
+		bool seEncuentraTabla(void* elemento){
+			metadata* unMetadata = elemento;
+			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+		}
+	pthread_mutex_lock(&mutexListaDeTablas);
+	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
+	pthread_mutex_unlock(&mutexListaDeTablas);
+	return metadataBuscado->semaforoTabla;
+}
 
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
 	registro* guardarRegistro= malloc (sizeof(registro));
@@ -101,25 +150,33 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 }
 
 
-void enviarOMostrarYLogearInfo(int socket, char* mensaje) {
-	enviarYOLogearAlgo(socket, mensaje, (void*) log_info);
+void enviarOMostrarYLogearInfo(int socket, char* mensaje, ...) {
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_info, parametrosAdicionales);
+	va_end(parametrosAdicionales);
 }
 
-void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *)){
+void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *), va_list parametrosAdicionales){
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket != -1) {
 		pthread_mutex_lock(&mutexLogger);
-		log(logger, mensaje);
+		log(logger, mensajeTotal);
 		pthread_mutex_unlock(&mutexLogger);
-		enviar(socket, mensaje, strlen(mensaje) + 1);
+		enviar(socket, mensajeTotal, strlen(mensajeTotal) + 1);
 	} else {
 		pthread_mutex_lock(&mutexLoggerConsola);
-		log(loggerConsola, mensaje);
+		log(loggerConsola, mensajeTotal);
 		pthread_mutex_unlock(&mutexLoggerConsola);
 	}
+	free(mensajeTotal);
 }
 
-void enviarYLogearMensajeError(int socket, char* mensaje) {
-	enviarYOLogearAlgo(socket, mensaje, (void*) log_error);
+void enviarYLogearMensajeError(int socket, char* mensaje, ...) {
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	enviarYOLogearAlgo(socket, mensaje, (void*) log_error, parametrosAdicionales);
+	va_end(parametrosAdicionales);
 }
 
 
@@ -200,7 +257,9 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 		//fwrite(info , 1 , largo , fp );
 		fputs(info, fp);
 		fclose(fp);
+		return;
 	}
+	fclose(fp);
 }
 
 void marcarBloquesComoLibre(char** arrayDeBloques){
