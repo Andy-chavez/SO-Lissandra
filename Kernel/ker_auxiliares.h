@@ -199,6 +199,12 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		socket = crearSocketCliente(mem->ip,mem->puerto);
 		pthread_mutex_unlock(&mConexion);
 		if(socket){
+			if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadIns += 1;
+			}
+			else if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadSel += 1;
+			}
 			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
@@ -220,6 +226,12 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	}
 	pthread_mutex_lock(&mStrong);
 	list_find(criterios[STRONG].memorias,(void*)pudeConectarYEnviar);
+	if(string_contains(opAux->operacion,"INSERT")){
+		criterios[STRONG].cantidadInserts +=1;
+	}
+	else if(string_contains(opAux->operacion,"INSERT")){
+		criterios[STRONG].cantidadSelects += 1;
+	}
 	pthread_mutex_unlock(&mStrong);
 	return socket;
 }
@@ -234,11 +246,23 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	int indice = atoi(*operacion) % tamLista;
 	pthread_mutex_lock(&mHash);
 	mem = list_get(criterios[HASH].memorias,indice);
+	if(string_contains(opAux->operacion,"INSERT")){
+		criterios[HASH].cantidadInserts +=1;
+	}
+	else if(string_contains(opAux->operacion,"INSERT")){
+		criterios[HASH].cantidadSelects += 1;
+	}
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mConexion);
 	socket = crearSocketCliente(mem->ip,mem->puerto);
 	pthread_mutex_unlock(&mConexion);
 	if(socket){
+		if(string_contains(opAux->operacion,"INSERT")){
+			mem->cantidadIns += 1;
+		}
+		else if(string_contains(opAux->operacion,"INSERT")){
+			mem->cantidadSel += 1;
+		}
 		serializarYEnviarOperacionLQL(socket, opAux);
 		pthread_mutex_lock(&mLog);
 		log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
@@ -263,6 +287,12 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){ //todo liberar spli
 	memoria* mem;
 	pthread_mutex_lock(&mEventual);
 	tamLista = list_size(criterios[EVENTUAL].memorias);
+	if(string_contains(opAux->operacion,"INSERT")){
+		criterios[EVENTUAL].cantidadInserts +=1;
+	}
+	else if(string_contains(opAux->operacion,"INSERT")){
+		criterios[EVENTUAL].cantidadSelects += 1;
+	}
 	pthread_mutex_unlock(&mEventual);
 	while(socket==-1 && tamLista >0){
 		int rand = random_int(0,tamLista);
@@ -273,7 +303,13 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){ //todo liberar spli
 		socket = crearSocketCliente(mem->ip,mem->puerto);
 		pthread_mutex_unlock(&mConexion);
 		if(socket){
-			serializarYEnviarOperacionLQL(socket, opAux);
+			if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadIns += 1;
+			}
+			else if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadSel += 1;
+			}
+			serializarYEnviarOperacionLQL(socket, opAux); //todo ponerle aca el mas uno si es insert o select
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLog);
