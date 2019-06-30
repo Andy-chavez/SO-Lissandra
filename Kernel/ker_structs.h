@@ -67,6 +67,8 @@ pthread_mutex_t mMetadataRefresh;
 pthread_mutex_t mMemorias;
 pthread_mutex_t mTablas;
 pthread_mutex_t mEventual;
+pthread_mutex_t mStrong;
+pthread_mutex_t mHash;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t colaTerminados;
