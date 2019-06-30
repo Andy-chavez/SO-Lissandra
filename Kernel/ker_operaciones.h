@@ -9,15 +9,15 @@
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
  */
-bool kernel_create(char* operacion);
-bool kernel_describe(char* operacion);
+bool kernel_create(char* operacion,int thread);
+bool kernel_describe(char* operacion,int thread);
 bool kernel_journal();
 bool kernel_metrics();
-bool kernel_api(char* operacionAParsear);
+bool kernel_api(char* operacionAParsear,int thread);
 bool kernel_add(char* operacion);
-bool kernel_drop(char* operacion);
-bool kernel_select(char* operacion);
-bool kernel_insert(char* operacion);
+bool kernel_drop(char* operacion,int thread);
+bool kernel_select(char* operacion,int thread);
+bool kernel_insert(char* operacion,int thread);
 
 void journal_consistencia(int consistencia);
 void kernel_almacenar_en_new(char*operacion);
@@ -38,7 +38,7 @@ bool kernel_insert(char* operacion, int thread){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
@@ -52,7 +52,7 @@ bool kernel_select(char* operacion, int thread){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
@@ -67,7 +67,7 @@ bool kernel_create(char* operacion, int thread){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		eliminarTablaCreada(*(parametros+1));
 		return false;
 	}
@@ -124,7 +124,7 @@ bool kernel_drop(char* operacion, int thread){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
-	if((enviarOperacion(opAux,index))== -1){
+	if((enviarOperacion(opAux,index,thread))== -1){
 		guardarTablaCreada(opAux->parametros);
 		return false;
 	}
@@ -226,7 +226,7 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			if(!kernel_api(pcb_auxiliar->operacion)){
+			if(!kernel_api(pcb_auxiliar->operacion,threadProcesador)){
 				thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
@@ -242,7 +242,7 @@ void kernel_roundRobin(int threadProcesador){
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					if(kernel_api(pcb_auxiliar->operacion)==false){
+					if(kernel_api(pcb_auxiliar->operacion,threadProcesador)==false){
 						thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
@@ -256,7 +256,7 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(kernel_api(instruc->operacion)==false){
+				if(kernel_api(instruc->operacion, threadProcesador)==false){
 					thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
@@ -264,7 +264,7 @@ void kernel_roundRobin(int threadProcesador){
 				thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 			}
-			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada && ERROR !=-1)){
+			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
 				thread_loggearInfoEXEC("NEW",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
@@ -412,7 +412,7 @@ bool kernel_api(char* operacionAParsear, int thread)
 		return kernel_drop(operacionAParsear,thread);
 	}
 	else if (string_contains(operacionAParsear, "ADD")){
-		return kernel_add(operacionAParsear,thread);
+		return kernel_add(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "JOURNAL")) {
 		return kernel_journal();
