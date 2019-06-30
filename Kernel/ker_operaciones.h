@@ -157,16 +157,50 @@ bool kernel_journal(){
 	return true;
 }
 bool kernel_metrics(){
-	pthread_mutex_lock(&mLog);
-	pthread_mutex_lock(&mEventual);
-	pthread_mutex_lock(&mStrong);
 	pthread_mutex_lock(&mHash);
-	log_info(kernel_configYLog->log, "METRICS: \n  tiempo en selects de Hash: %d"
-			"\n  tiempo en selects de Strong: %d\n  tiempo en selects de Eventual: %d",
-			criterios[HASH].tiempoSelects, criterios[STRONG].tiempoSelects,criterios[EVENTUAL].tiempoSelects);
+	int hash_cantidadSelect = criterios[HASH].cantidadSelects;
+	int hash_cantidadInsert = criterios[HASH].cantidadInserts;
+	int hash_tiempoSelect = criterios[HASH].tiempoSelects;
+	int hash_tiempoInsert = criterios[HASH].tiempoInserts;
 	pthread_mutex_unlock(&mHash);
+	pthread_mutex_lock(&mStrong);
+	int strong_cantidadSelect = criterios[STRONG].cantidadSelects;
+	int strong_cantidadInsert = criterios[STRONG].cantidadInserts;
+	int strong_tiempoSelect = criterios[STRONG].tiempoSelects;
+	int strong_tiempoInsert = criterios[STRONG].tiempoInserts;
 	pthread_mutex_unlock(&mStrong);
+	pthread_mutex_lock(&mEventual);
+	int eventual_cantidadSelect = criterios[EVENTUAL].cantidadSelects;
+	int eventual_cantidadInsert = criterios[EVENTUAL].cantidadInserts;
+	int eventual_tiempoSelect = criterios[EVENTUAL].tiempoSelects;
+	int eventual_tiempoInsert = criterios[EVENTUAL].tiempoInserts;
 	pthread_mutex_unlock(&mEventual);
+
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, "METRICS: \ntiempo en selects de HASH: %d,"
+												"tiempo en inserts de HASH: %d "
+												"cantidad inserts en HASH : %d,"
+												"cantidad selects en HASH : %d\n"
+												"tiempo en selects de STRONG: %d,"
+												"tiempo en inserts de STRONG: %d,"
+												"cantidad inserts en STRONG : %d,"
+												"cantidad selects en STRONG : %d\n"
+												"tiempo en selects de EVENTUAL: %d,"
+												"tiempo en inserts de EVENTUAL: %d "
+												"cantidad inserts en EVENTUAL : %d,"
+												"cantidad selects en EVENTUAL : %d",
+												hash_tiempoSelect,
+												hash_tiempoInsert,
+												hash_cantidadInsert,
+												hash_cantidadSelect,
+												strong_tiempoSelect,
+												strong_tiempoInsert,
+												strong_cantidadInsert,
+												strong_cantidadSelect,
+												eventual_tiempoSelect,
+												eventual_tiempoInsert,
+												eventual_cantidadInsert,
+												eventual_cantidadSelect);
 	pthread_mutex_unlock(&mLog);
 	return 0;
 }
