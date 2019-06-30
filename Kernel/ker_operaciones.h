@@ -5,188 +5,225 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-/* TODO describe, metrics y journal(a cada una de las memorias asociadas a los criterios), hash de criterio y eventual
- * los primeros 5 pasarlos a la memoria elegida por el criterio de la tabla
+/* TODO describe, metrics, hash de criterio y eventual
  * metrics -> variables globales con semaforos
  * journal -> pasarselo a memoria
  */
-int kernel_create(char* operacion);
-int kernel_describe(char* operacion);
-int kernel_journal();
-int kernel_metrics();
-int kernel_api(char* operacionAParsear);
-int kernel_add(char* operacion);
-int enviarJournal(int socket);
-int kernel_drop(char* operacion);
-int kernel_select(char* operacion);
-int kernel_insert(char* operacion);
+bool kernel_create(char* operacion);
+bool kernel_describe(char* operacion);
+bool kernel_journal();
+bool kernel_metrics();
+bool kernel_api(char* operacionAParsear);
+bool kernel_add(char* operacion);
+bool kernel_drop(char* operacion);
+bool kernel_select(char* operacion);
+bool kernel_insert(char* operacion);
 
-void journal_strong();
-void journal_hash();
-void journal_eventual();
+void journal_consistencia(int consistencia);
 void kernel_almacenar_en_new(char*operacion);
 void kernel_crearPCB(char* operacion);
 void kernel_run(char* operacion);
 void kernel_pasar_a_ready();
 void kernel_consola();
 void kernel_roundRobin(int threadProcesador);
+void joinThreadRR();
+void crearThreadRR(int numero);
 /******************************IMPLEMENTACIONES******************************************/
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
-int kernel_insert(char* operacion){ //todo, ver lo de seleccionar la memoria a la cual mandarle esto
+bool kernel_insert(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(*(parametros));
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
-	pthread_mutex_unlock(&mLog);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		liberarParametrosSpliteados(parametros);
-		return -1;
+	char** parametros = string_n_split(operacion,3," ");
+	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
+	if(consist == -1){
+		return false;
 	}
-	else if(recibidoContiene(recibido, "FULL")){
-		enviarJournal(socket);
+	int index =  obtenerIndiceDeConsistencia(consist);
+	if((enviarOperacion(opAux,index))== -1){
+		return false;
 	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
 	liberarParametrosSpliteados(parametros);
-	return 0;
+	return true;
 }
-int kernel_select(char* operacion){
+bool kernel_select(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
-	char** parametros = string_n_split(operacion,2," ");
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(*(parametros));
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
-	pthread_mutex_unlock(&mLog);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		liberarParametrosSpliteados(parametros);
-		return -1;
+	char** parametros = string_n_split(opAux->parametros,2," ");
+	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	if(consist == -1){
+		return false;
 	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	int index =  obtenerIndiceDeConsistencia(consist);
+	if((enviarOperacion(opAux,index))== -1){
+		return false;
+	}
 	liberarParametrosSpliteados(parametros);
-	return 0;
+	return true;
 }
-int kernel_create(char* operacion){
+bool kernel_create(char* operacion){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	guardarTablaCreada(opAux->parametros);
-	char** parametros = string_n_split(operacion,2," ");
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(*(parametros));
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		liberarParametrosSpliteados(parametros);
-		return -1;
+	char** parametros = string_n_split(opAux->parametros,2," ");
+	consistencia consist =encontrarConsistenciaDe(*(parametros));
+	if(consist == -1){
+		return false;
 	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	int index =  obtenerIndiceDeConsistencia(consist);
+	if((enviarOperacion(opAux,index))== -1){
+		eliminarTablaCreada(*(parametros+1));
+		return false;
+	}
 	liberarParametrosSpliteados(parametros);
-	return 0;
+	return true;
 }
-int kernel_describe(char* operacion){
-	operacionLQL* opAux=splitear_operacion(operacion);
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "ENVIADO: %s", operacion);
-	pthread_mutex_unlock(&mLog);
-	metadata* met = deserializarMetadata(recibir(socket));
-	//TODO ACTUALIZAR ESTRUCTURAS y arreglar esto
-	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "RECIBIDO: %s %d", met->nombreTabla, met->tipoConsistencia);
-	pthread_mutex_unlock(&mLog);
-	liberarMetadata(met);
-	liberarOperacionLQL(opAux);
-	return 0;
-}
-int kernel_drop(char* operacion){
-	operacionLQL* opAux=splitear_operacion(operacion);
-	consistencia consistenciaSolicitada = encontrarConsistenciaDe(opAux->parametros);
-	int socket = socketMemoriaSolicitada(consistenciaSolicitada);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		return -1;
+void actualizarListaMetadata(metadata* met){
+	tabla* t = malloc(sizeof(tabla));
+	bool tablaYaGuardada(tabla* t){
+		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
 	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
+	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
+		liberarMetadata(met);
+		return;
+	}
+	t->nombreDeTabla = string_duplicate(met->nombreTabla);
+	t->consistenciaDeTabla = met->tipoConsistencia;
+	agregarALista(tablas,t,mTablas);
+	liberarMetadata(met);
+}
+bool kernel_describe(char* operacion){ //todo describe table
+	if(string_length(operacion) <= string_length("describe ")){ //describe all
+		operacionLQL* opAux=splitear_operacion(operacion);
+		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
+		if(socket != -1){
+			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
+			pthread_mutex_unlock(&mLog);
+			cerrarConexion(socket);
+			return true;
+		}
+		return false;
+	}
+	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
+	char** opSpliteada = string_n_split(operacion,2," ");
+	operacionAux->operacion=string_duplicate(*opSpliteada);
+	if(*(opSpliteada+1))
+		operacionAux->parametros=string_duplicate(*(opSpliteada+1));
+	free(*(opSpliteada+1));
+	free(*opSpliteada);
+	free(opSpliteada);
+	consistencia consist =encontrarConsistenciaDe(operacionAux->parametros);
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
+	int socket = obtenerSocketAlQueSeEnvio(operacionAux,index);
+//todo
+	void* buffer =recibir(socket);
+	if(buffer == NULL){
+		return false;
+	}
+	actualizarListaMetadata(deserializarMetadata(buffer));
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
+	pthread_mutex_unlock(&mLog);
+	cerrarConexion(socket);
+	liberarOperacionLQL(operacionAux);
+	return true;
+}
+bool kernel_drop(char* operacion){
+	operacionLQL* opAux=splitear_operacion(operacion);
+	char** parametros = string_n_split(operacion,2," ");
+	consistencia consist =encontrarConsistenciaDe(opAux->parametros);
+	if(consist == -1){
+		return false;
+	}
+	int index =  obtenerIndiceDeConsistencia(consist);
+	if((enviarOperacion(opAux,index))== -1){
+		guardarTablaCreada(opAux->parametros);
+		return false;
+	}
+	eliminarTablaCreada(*(parametros+1));
+	liberarParametrosSpliteados(parametros);
 	return 0;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
-int kernel_journal(){
-	operacionLQL* opAux=splitear_operacion("JOURNAL");
-	int socket = socketMemoriaSolicitada(SC);
-	serializarYEnviarOperacionLQL(socket, opAux);
-	char* recibido = (char*) recibir(socket);
-	if(recibidoContiene(recibido, "ERROR")){
-		loggearErrorYLiberarParametrosEXEC(recibido,opAux);
-		return -1;
-	}
-	loggearInfoYLiberarParametrosEXEC(recibido,opAux);
-	return 0;
+bool kernel_journal(){
+	journal_consistencia(0);
+	journal_consistencia(1);
+	//journal_consistencia(2); todo
+	return true;
 }
-int kernel_metrics(){
+bool kernel_metrics(){
 	printf("Not yet -> metrics\n");
 	return 0;
 }
-void journal_strong(){
-	enviarJournal(socketMemoriaSolicitada(SC));
+void journal_consistencia(int consistencia){
+	void realizarJournal(memoria * mem){
+		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
+		enviarJournal(socket);
+	}
+	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);
 }
-void journal_hash(){
-
-}
-void journal_eventual(){
-
-}
-int kernel_add(char* operacion){ //TODO preguntar si mem full cuado
+bool kernel_add(char* operacion){
 	char** opAux = string_n_split(operacion,5," ");
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
-		if(string_equals_ignore_case(*(opAux+4),"HASH")){
-			mem->socket = realizarConexion(mem);
+		if(string_contains(*(opAux+4),"HASH")){
 			list_add(criterios[HASH].memorias, mem );
-			kernel_journal();
-			//todo journal cada vez que se agregue una aca a TODAS las memorias de este criterio
+			journal_consistencia(HASH);
+			liberarParametrosSpliteados(opAux);
+			return true;
 		}
-		else if(string_equals_ignore_case(*(opAux+4),"STRONG")){
+		else if(string_contains(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
-				mem->socket = realizarConexion(mem);
 				list_add(criterios[STRONG].memorias, mem );
+				liberarParametrosSpliteados(opAux);
+				return true;
 			}
 			else{
 				pthread_mutex_lock(&mLog);
 				log_error(kernel_configYLog->log,"EXEC: %s.Ya se posee una memoria del tipo STRONG.", operacion);
 				pthread_mutex_unlock(&mLog);
+				liberarParametrosSpliteados(opAux);
+				return false;
 			}
-
 		}
-		else if(string_equals_ignore_case(*(opAux+4),"EVENTUAL")){
-			mem->socket = realizarConexion(mem);
+		else if(string_contains(*(opAux+4),"EVENTUAL")){
 			list_add(criterios[EVENTUAL].memorias, mem );
+			liberarParametrosSpliteados(opAux);
+			return true;
 		}
-		return 0;
+		pthread_mutex_lock(&mLog);
+		log_error(kernel_configYLog->log,"EXEC: %s.Consistencia invalida.", operacion);
+		pthread_mutex_unlock(&mLog);
+		liberarParametrosSpliteados(opAux);
+		return false;
 	}
 	else{
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s.Memmoria no conectada.", operacion);
-		pthread_mutex_unlock(&mLog);
-		return -1;
+		liberarParametrosSpliteados(opAux);
+		return false;
 	}
-	liberarParametrosSpliteados(opAux);
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 // ---------------.: THREAD ROUND ROBIN :.---------------
+void crearThreadRR(int numero){
+	t_thread* t = malloc(sizeof(t_thread));
+	t->thread = malloc(sizeof(pthread_t*));
+	t->numero = numero;
+	pthread_create(t->thread, NULL,(void*) kernel_roundRobin, (void*)t->numero);
+	agregarALista(rrThreads,t,mThread);
+}
+void joinThreadRR(){
+	void realizarJoin(t_thread* t){
+		pthread_join(*(t->thread),NULL);
+	}
+	pthread_mutex_lock(&mThread);
+	list_iterate(rrThreads, (void*)realizarJoin);
+	pthread_mutex_unlock(&mThread);
+}
 void kernel_roundRobin(int threadProcesador){
-	while(1){
+	while(!destroy){
 		sem_wait(&hayReady);
 		pcb* pcb_auxiliar;
 		pthread_mutex_lock(&colaListos);
@@ -202,45 +239,52 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			if(kernel_api(pcb_auxiliar->operacion)==-1){
-				loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+			if(!kernel_api(pcb_auxiliar->operacion)){
+				thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+				usleep(sleep);
+				continue;
 			}
+			thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
 		else if(pcb_auxiliar->instruccion !=NULL){
-			int ERROR= 0;
-
+			int ERROR = 0;
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					if(kernel_api(pcb_auxiliar->operacion)==-1){
-						loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					if(kernel_api(pcb_auxiliar->operacion)==false){
+						thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
+					thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					usleep(sleep);
+					continue;
 				}
 				instruccion* instruc = list_find(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada);
 				if (instruc == NULL){
 					break;
 				}
 				instruc->ejecutado = 1;
-				if(kernel_api(instruc->operacion)==-1){
-					loggearErrorEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				if(kernel_api(instruc->operacion)==false){
+					thread_loggearInfoEXEC("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
+				thread_loggearInfoEXEC("EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
+				thread_loggearInfoEXEC("NEW",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfoEXEC("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -250,21 +294,39 @@ void kernel_roundRobin(int threadProcesador){
 }
 // ---------------.: THREAD CONSOLA A NEW :.---------------
 void kernel_almacenar_en_new(char*operacion){
+	if (string_contains( operacion, "x")||string_contains( operacion, "X")) {
+		void kernel_destroy();
+		return;
+	}
 	pthread_mutex_lock(&colaNuevos);
 	list_add(cola_proc_nuevos, operacion);
 	pthread_mutex_unlock(&colaNuevos);
 	sem_post(&hayNew);
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log, "NEW: %s", operacion);
+	log_info(kernel_configYLog->log, " NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
 }
 void kernel_consola(){
-	printf("Proceso Kernel:\n	Ingrese la operacion que desea ejecutar y siga su ejecución mediante el archivo KERNEL.log\n");
+	printf(">> Welcome to Kernel <<\n"
+			">> Ingrese alguna de las siguientes operaciones:\n"
+			">> SELECT [NOMBRE_TABLA] [KEY]\n"
+			">> INSERT [NOMBRE_TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] <timestamp opcional>\n"
+			">> CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]\n"
+			">> DESCRIBE [NOMBRE_TABLA] <nombre de tabla opcional>\n"
+			">> DROP [NOMBRE_TABLA]\n"
+			">> METRICS\n"
+			">> JOURNAL\n"
+			">> ADD MEMORY [NUMERO] TO [STRONG/HASH/EVENTUAL]\n"
+			">> DROP [NOMBRE_TABLA]\n"
+			">> RUN [PATH_ARCHIVO]\n"
+			">> Y siga su ejecucion mediante el archivo Kernel.log\n");
 	char* linea= NULL;
-	while(1){
+	while(!destroy){
+		printf(" ");
 		linea = readline("");
 		kernel_almacenar_en_new(linea);
 	}
+	free(linea);
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){
@@ -276,7 +338,7 @@ void kernel_crearPCB(char* operacion){
 	sem_post(&hayReady);
 }
 void kernel_pasar_a_ready(){
-	while(1){
+	while(!destroy){
 		sem_wait(&hayNew);
 		pthread_mutex_lock(&colaNuevos);
 		char* operacion = NULL;
@@ -312,7 +374,7 @@ void kernel_run(char* operacion){
 		free(*(opYArg+1));
 		free(*(opYArg));
 		free(opYArg);
-		exit(EXIT_FAILURE);
+		return;
 	}
 	char *lineaLeida;
 	size_t limite = 250;
@@ -339,7 +401,7 @@ void kernel_run(char* operacion){
 	fclose(archivoALeer);
 	sem_post(&hayReady);
 }
-int kernel_api(char* operacionAParsear)
+bool kernel_api(char* operacionAParsear)
 {
 	if(string_contains(operacionAParsear, "INSERT")) {
 		return kernel_insert(operacionAParsear);
@@ -360,19 +422,16 @@ int kernel_api(char* operacionAParsear)
 		return kernel_add(operacionAParsear);
 	}
 	else if (string_contains(operacionAParsear, "JOURNAL")) {
-		free(operacionAParsear);
 		return kernel_journal();
 	}
 	else if (string_contains(operacionAParsear, "METRICS")) {
-		free(operacionAParsear);
 		return kernel_metrics();
 	}
 	else {
-		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
-		pthread_mutex_unlock(&mLog);
-		free(operacionAParsear);
-		return 0;
+//		pthread_mutex_lock(&mLog);
+//		log_error(kernel_configYLog->log,"EXEC: %s", operacionAParsear );
+//		pthread_mutex_unlock(&mLog);
+		return false;
 	}
 }
 #endif /* KER_OPERACIONES_H_ */

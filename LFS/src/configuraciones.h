@@ -15,38 +15,32 @@
 #include <sys/types.h>
 #include <sys/io.h>
 #include <fcntl.h>
-#include <semaphore.h>
-
-pthread_mutex_t mutexMemtable;
-pthread_mutex_t mutexLogger;
-pthread_mutex_t mutexDump;
-//sem_t mutexOperacion;
-t_log* logger;
-t_log* loggerConsola;
-
-int tamanioBloques;
-int cantDeBloques;
-char* magicNumber;
-t_config* archivoMetadata;
-//hasta aca todo se saca del metadata
-
-char* ipLisandra;
-char* puertoLisandra;
-char* puntoMontaje;
-int tiempoDump;
-
-int tamanioValue;
-int retardo;
-t_config* archivoDeConfig;
-//hasta aca del archivo de config
-t_list* memtable;
-t_bitarray* bitarray;
+#include "utils.h"
+#include "variablesGlobales.h"
 
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
-//		sem_init(&mutexOperacion,0,1); //el 1 porque es mutex
+		pthread_mutex_init(&mutexLoggerConsola, NULL);
+		//pthread_mutex_init(&mutexOperacion,NULL);
+		pthread_mutex_init(&mutexListaDeTablas,NULL);
+//		pthread_mutex_init(&mutexDump,NULL);
+		pthread_mutex_init(&mutexBitarray,NULL);
+		pthread_mutex_init(&mutexTiempoDump,NULL);
+		pthread_mutex_init(&mutexRetardo,NULL);
 
+}
+
+void liberarSemaforos(){
+	pthread_mutex_destroy(&mutexMemtable);
+	pthread_mutex_destroy(&mutexLogger);
+	pthread_mutex_destroy(&mutexLoggerConsola);
+	//pthread_mutex_destroy(&mutexOperacion);
+	pthread_mutex_destroy(&mutexListaDeTablas);
+
+	pthread_mutex_destroy(&mutexBitarray);
+	pthread_mutex_destroy(&mutexTiempoDump);
+	pthread_mutex_destroy(&mutexRetardo);
 }
 
 void leerConfig(char* ruta){
@@ -57,20 +51,38 @@ void leerConfig(char* ruta){
 	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
 	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
 	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
-
 }
 
+void inicializarBloques(){
+	for(int i=0;i<cantDeBloques;i++){
+		char* ruta= string_new();
+		char* numeroDeBloque =string_itoa(i);
+		string_append(&ruta,puntoMontaje);
+		string_append(&ruta,"Bloques/");
+		string_append(&ruta,numeroDeBloque);
+		string_append(&ruta,".bin");
+		FILE *bloque = fopen(ruta,"w"); //cambiarlo por una 'a' cuando sea entrega
+		free(numeroDeBloque);
+		free(ruta);
+		fclose(bloque);
+
+	}
+}
 
 void inicializarArchivoBitmap(){
 	FILE *f;
 	int i;
-	
+
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");
+	if(existeArchivo(ruta)){
+		free(ruta);
+		return;
+	}
 	f = fopen(ruta, "wb");
 
-	for(i=0; i < 64; i++){
+	for(i=0; i < cantDeBloques/8; i++){
 		fputc(0,f);
 	}
 	free(ruta);
@@ -107,13 +119,12 @@ void leerMetadataFS (){
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+	config_destroy(archivoMetadata);
 	free(rutaMetadata);
 }
-void inicializarMemtable(){
-
-	pthread_mutex_lock(&mutexMemtable);
+void inicializarListas(){
 	memtable = list_create();
-	pthread_mutex_unlock(&mutexMemtable);
+	listaDeTablas = list_create();
 }
 
 void inicializarLog(char* ruta){
@@ -123,6 +134,7 @@ void inicializarLog(char* ruta){
 
 void liberarConfigYLogs() {
 	log_destroy(logger);
+	log_destroy(loggerConsola);
 	config_destroy(archivoDeConfig);
 }
 

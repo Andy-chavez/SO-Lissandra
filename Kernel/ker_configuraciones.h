@@ -24,18 +24,21 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	pthread_mutex_init(&mLog, NULL);
+	pthread_mutex_init(&mThread, NULL);
 	pthread_mutex_init(&mMemorias,NULL);
 	pthread_mutex_init(&quantum, NULL);
 	pthread_mutex_init(&sleepExec,NULL);
 	pthread_mutex_init(&mMetadataRefresh,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
+	sem_init(&finalizar,0,0);
 	sem_init(&modificables,0,0);
 }
 void kernel_crearListas(){
 	cola_proc_nuevos = list_create();
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
+	rrThreads = list_create();
 	criterios[HASH].unCriterio = SH;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;
@@ -43,37 +46,39 @@ void kernel_crearListas(){
 	criterios[EVENTUAL].unCriterio = EC;
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
-	conexionesMemoria = list_create();
+	memorias = list_create();
 }
-void guardarDatos(seed* unaSeed){ //todo ver conexiones
+void guardarDatos(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
-	memAux->puerto = unaSeed->puerto;
-	memAux->ip = unaSeed->ip;
+	memAux->puerto = string_duplicate(unaSeed->puerto);
+	memAux->ip = string_duplicate(unaSeed->ip);
 	agregarALista(memorias,memAux,mMemorias);
 }
-int kernel_inicializarMemoria(){ //TODO conectar a memoria y tener lista de conexiones hechas
+int kernel_inicializarMemoria(){
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
 	if(socketClienteKernel==-1){
 		return -1;
 	}
-	serializarYEnviarHandshake(socketClienteKernel,0);
+	operacionProtocolo protocoloGossip = TABLAGOSSIP;
+	enviar(socketClienteKernel,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
 	return 0;
 }
 void kernel_inicializarVariables(){
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
-	kernel_configYLog->log = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
+	kernel_configYLog->log = log_create("Kernel.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 	multiprocesamiento =config_get_int_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
 	quantumMax = config_get_int_value(kernel_configYLog->config,"QUANTUM");
 	metadataRefresh = config_get_int_value(kernel_configYLog->config,"METADATA_REFRESH");
 	sleepEjecucion = config_get_int_value(kernel_configYLog->config,"SLEEP_EJECUCION");
+	kernel_crearListas();
 }
 void kernel_inicializarEstructuras(){
-	kernel_crearListas();
+	//kernel_crearListas();
 	kernel_inicializarSemaforos();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
@@ -84,6 +89,7 @@ void liberarConfigYLogs() {
 }
 void destruirSemaforos(){
 	sem_destroy(&hayNew);
+	sem_destroy(&finalizar);
 	sem_destroy(&hayReady);
 	sem_destroy(&modificables);
 	pthread_mutex_destroy(&colaNuevos);
@@ -100,18 +106,32 @@ void liberarColas(pcb* element){
 	free(element);
 }
 void liberarPCB(pcb* elemento) {
-	void liberarInstrucciones(instruccion* listaIns) {
-		free(listaIns->operacion);
-		free(listaIns);
+	void liberarInstrucciones(instruccion* instrucc) {
+		free(instrucc->operacion);
+		free(instrucc);
 	}
-	//list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
+	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 	free(elemento->operacion);
 	free(elemento);
 }
-void liberarListas(){ //todo agregar memorias, tablas,conexiones[3]
+void liberarMemoria(memoria* elemento) {
+	free(elemento->ip);
+	free(elemento->puerto);
+	free(elemento);
+}
+void liberarTabla(tabla* t) {
+	free(t->nombreDeTabla);
+	free(t);
+}
+void liberarListas(){ //todo agregar RR
 	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
+	 list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(criterios[STRONG].memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
+	 list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);
 }
 void kernel_finalizar(){
 	liberarConfigYLogs();
@@ -130,7 +150,7 @@ void* cambiosConfig(){
 		pthread_mutex_unlock(&mLog);
 	}
 
- 	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
+ 	inotify_add_watch(fdConfig, path, IN_MODIFY);
 
  	while(1) {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);

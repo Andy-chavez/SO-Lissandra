@@ -231,7 +231,7 @@ void* serializarUnRegistro(registroConNombreTabla* unRegistro, int* tamanioBuffe
 	return bufferRegistro;
 }
 
-operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioTotal) {
+operacionLQL* deserializarOperacionSinFree(void* bufferOperacion, int* tamanioTotal) {
 	int desplazamiento = 4;
 	int tamanioOperacion,largoDeParametros;
 	operacionLQL* unaOperacion = malloc(sizeof(operacionLQL));
@@ -257,7 +257,7 @@ operacionLQL* _deserializarOperacionSinFree(void* bufferOperacion, int* tamanioT
 
 operacionLQL* deserializarOperacionLQL(void* bufferOperacion){
 	int yeahIWontUseThis; // i hate C
-	operacionLQL *unaOperacion = _deserializarOperacionSinFree(bufferOperacion, &yeahIWontUseThis);
+	operacionLQL *unaOperacion = deserializarOperacionSinFree(bufferOperacion, &yeahIWontUseThis);
 	free(bufferOperacion);
 	return unaOperacion;
 }
@@ -350,7 +350,7 @@ void* serializarMetadata(metadata* unMetadata, int *tamanioBuffer) {
 	return bufferMetadata;
 }
 
-metadata* _deserializarMetadataSinFree(void* bufferMetadata, int *tamanio) {
+metadata* deserializarMetadataSinFree(void* bufferMetadata, int *tamanio) {
 	int desplazamiento = 8;
 	metadata* unMetadata = malloc(sizeof(metadata));
 	int tamanioDelTipoDeConsistencia,tamanioDeCantidadDeParticiones,tamanioDelTiempoDeCompactacion, tamanioNombreTabla;
@@ -387,7 +387,7 @@ metadata* _deserializarMetadataSinFree(void* bufferMetadata, int *tamanio) {
 
 metadata* deserializarMetadata(void* bufferMetadata) {
 	int yeahIWontUseThis; // I still hate C
-	metadata* unMetadata = _deserializarMetadataSinFree(bufferMetadata, &yeahIWontUseThis);
+	metadata* unMetadata = deserializarMetadataSinFree(bufferMetadata, &yeahIWontUseThis);
 	free(bufferMetadata);
 	return unMetadata;
 }
@@ -411,11 +411,11 @@ void* serializarPaqueteDeMetadatas(t_list* metadatas, int* tamanio) {
 }
 
 void recibirYDeserializarPaqueteDeOperacionesLQLRealizando(int socket, void(*accion)(operacionLQL*)) {
-	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, (void*) _deserializarOperacionSinFree, liberarOperacionLQL);
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, (void*) deserializarOperacionSinFree, liberarOperacionLQL);
 }
 
 void recibirYDeserializarPaqueteDeMetadatasRealizando(int socket, void(*accion)(metadata*)) {
-	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, _deserializarMetadataSinFree, liberarMetadata);
+	recibirYDeserializarPaqueteDeAlgoRealizando(socket, accion, deserializarMetadataSinFree, liberarMetadata);
 }
 
 void recibirYDeserializarTablaDeGossipRealizando(int socket, void(*accion)(seed*)) {

@@ -1,5 +1,6 @@
 #ifndef KER_STRUCTS_H_
 #define KER_STRUCTS_H_
+
 #include <commons/log.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
@@ -30,7 +31,6 @@ typedef struct{
 	t_list* memorias;
 }criterio;
 typedef struct{
-	int socket;
 	int numero;
 	char* puerto;
 	char* ip;
@@ -43,31 +43,43 @@ typedef struct {
 	t_config* config;
 	t_log* log;
 } configYLogs;
-
+typedef struct {
+	pthread_t* thread;
+	int numero;
+} t_thread;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;
 t_list* cola_proc_listos;
 t_list* cola_proc_terminados;
 t_list* memorias;
 t_list* tablas;
-t_list* conexionesMemoria;
+t_list* rrThreads;
 criterio criterios[3];
+
 sem_t hayNew;
 sem_t hayReady;
+sem_t finalizar;
 sem_t modificables;
+
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
 pthread_mutex_t mMetadataRefresh;
 pthread_mutex_t colaNuevos;
 pthread_mutex_t mMemorias;
+pthread_mutex_t mTablas;
 pthread_mutex_t colaListos;
 pthread_mutex_t colaTerminados;
 pthread_mutex_t mLog;
+pthread_mutex_t mThread;
 //char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
+
 char* pathConfig;
 char* ipMemoria;
 char* puertoMemoria;
+
 configYLogs *kernel_configYLog;
+
+int destroy = 0;
 int multiprocesamiento;
 // -------------------- CAMBIAN EN TIEMPO DE EXEC ------------------------
 int quantumMax;

@@ -41,7 +41,7 @@ typedef struct {
 typedef struct {
 	char *nombreTabla;
 	t_list* tablaPaginas;
-	sem_t MUTEX_SEGMENTO;
+	sem_t mutexSegmento;
 } segmento;
 
 typedef struct {
@@ -62,7 +62,8 @@ typedef struct {
 
 typedef struct {
 	pthread_t thread;
-	sem_t semaforoThread;
+	sem_t *semaforoOperacion;
+	sem_t *cancelarThread;
 } hiloEnTabla;
 
 int SOCKET_LFS;
@@ -71,8 +72,8 @@ int TAMANIO_UN_REGISTRO_EN_MEMORIA;
 int RETARDO_GOSSIP;
 int RETARDO_JOURNAL;
 int RETARDO_MEMORIA;
-int RETARDO_FIN_PROCESO;
 int JOURNAL_REALIZANDOSE = 0;
+int CERRANDO_MEMORIA = 0;
 
 sem_t MUTEX_LOG;
 sem_t MUTEX_LOG_CONSOLA;
@@ -82,13 +83,18 @@ sem_t MUTEX_SOCKET_LFS;
 sem_t MUTEX_RETARDO_MEMORIA;
 sem_t MUTEX_RETARDO_GOSSIP;
 sem_t MUTEX_RETARDO_JOURNAL;
+sem_t MUTEX_CERRANDO_MEMORIA;
 
 sem_t MUTEX_TABLA_GOSSIP;
 sem_t MUTEX_TABLA_THREADS;
 sem_t MUTEX_JOURNAL_REALIZANDOSE;
-
 sem_t MUTEX_TABLA_MARCOS;
-sem_t MUTEX_MEMORIA_PRINCIPAL;
+sem_t MUTEX_TABLA_SEGMENTOS;
+
+sem_t BINARIO_CERRANDO_SERVIDOR;
+sem_t BINARIO_CERRANDO_JOURNALTIMEADO;
+sem_t BINARIO_CERRANDO_GOSSIPINGTIMEADO;
+sem_t BINARIO_CERRANDO_CONFIG;
 
 memoria* MEMORIA_PRINCIPAL;
 t_list* TABLA_MARCOS;
@@ -97,6 +103,8 @@ t_list* TABLA_THREADS;
 
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
 t_log* LOGGER_CONSOLA;
+
+pthread_t threadServer, threadConsola, threadCambiosConfig, threadTimedGossiping, threadTimedJournal;
 
 
 
