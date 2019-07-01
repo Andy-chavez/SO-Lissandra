@@ -399,7 +399,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	} else if(empezarDeserializacion(&buffer) == -2) return NULL;
+	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
