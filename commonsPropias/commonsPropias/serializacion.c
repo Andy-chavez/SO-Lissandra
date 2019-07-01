@@ -519,29 +519,39 @@ int tieneValorParseable(char* value) {
 
 int esConsistenciaParseable(char* consistencia) {
 	return string_equals_ignore_case(consistencia, "SC") || string_equals_ignore_case(consistencia, "EC") || string_equals_ignore_case(consistencia, "SHC");
+	// TODO es STRONG-EVENTUAL-nosefijateenelenunciado
 }
 
 int esInsertEjecutable(char* operacion) {
 	if(!tieneTodosLosParametros(operacion, 4) && !tieneTodosLosParametros(operacion, 5)) return 0;
 
-	char** parametrosSpliteados = string_split(operacion, " ");
+	char** parametrosSpliteadosPorComillas = string_split(operacion, "\"");
+	char* value = *(parametrosSpliteadosPorComillas + 1);
+	char** insertTablaYKey = string_split(*(parametrosSpliteadosPorComillas + 0), " ");
+	char* timestamp = *(parametrosSpliteadosPorComillas + 2);
 
-	if(esNumeroParseable(*(parametrosSpliteados + 2)) && tieneValorParseable(string_duplicate(*(parametrosSpliteados + 3)))){
+	if(esNumeroParseable(*(insertTablaYKey + 2)) && tieneValorParseable(string_duplicate(value))){
 
-		if(*(parametrosSpliteados + 4) == NULL) {
-			string_iterate_lines(parametrosSpliteados, free);
-			free(parametrosSpliteados);
+		if(timestamp == NULL) {
+			string_iterate_lines(parametrosSpliteadosPorComillas, free);
+			string_iterate_lines(insertTablaYKey, free);
+			free(parametrosSpliteadosPorComillas);
+			free(insertTablaYKey);
 			return 1;
 		}
-		else if(esNumeroParseable(*(parametrosSpliteados + 4))) {
-			string_iterate_lines(parametrosSpliteados, free);
-			free(parametrosSpliteados);
+		else if(esNumeroParseable(timestamp)) {
+			string_iterate_lines(parametrosSpliteadosPorComillas, free);
+			string_iterate_lines(insertTablaYKey, free);
+			free(parametrosSpliteadosPorComillas);
+			free(insertTablaYKey);
 			return 1;
 		}
 
 	}
-	string_iterate_lines(parametrosSpliteados, free);
-	free(parametrosSpliteados);
+	string_iterate_lines(parametrosSpliteadosPorComillas, free);
+	string_iterate_lines(insertTablaYKey, free);
+	free(parametrosSpliteadosPorComillas);
+	free(insertTablaYKey);
 	return 0;
 }
 

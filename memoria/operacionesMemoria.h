@@ -399,7 +399,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	}
+	} else if(empezarDeserializacion(&buffer) == -2) return NULL;
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -1110,9 +1110,9 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
-		pthread_t hiloQueEspera;
-		pthread_create(&hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
-		list_add(listaHilosEsperandoSemaforos, &hiloQueEspera);
+		pthread_t *hiloQueEspera = malloc(sizeof(pthread_t));
+		pthread_create(hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
+		list_add(listaHilosEsperandoSemaforos, hiloQueEspera);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
@@ -1120,7 +1120,7 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
-	list_destroy(listaHilosEsperandoSemaforos);
+	list_destroy_and_destroy_elements(listaHilosEsperandoSemaforos, free);
 }
 
 void dejarEjecutarOperacionesDeNuevo() {
