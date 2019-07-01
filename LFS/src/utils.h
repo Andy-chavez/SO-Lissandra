@@ -186,6 +186,7 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 	string_append(&rutaCompleta,nombreArchivo);
 	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
 		remove(rutaCompleta);
+		free(rutaCompleta);
 		return;
 	}
 

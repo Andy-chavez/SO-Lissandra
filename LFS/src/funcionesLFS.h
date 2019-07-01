@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <dirent.h>se
+#include <dirent.h>
 #include "utils.h"
 #include "compactador.h"
 
@@ -25,7 +25,6 @@ typedef enum {
 	JOURNAL,
 	SELECT
 } operacion;
-registroConNombreTabla* registroError;
 
 typedef struct {
 	char* nombre;
@@ -51,17 +50,6 @@ void inicializarRegistroError();
 void funcionDrop(char* nombreTabla,int socket);
 void agregarTablaALista(char* nombreTabla);
 void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDeParticion);
-
-// ------------------------------------------------------------------------ //
-// 1) INICIALIZACIONES Y FINALIZACIONES //
-
-void inicializarRegistroError(){
-	registroError = malloc(sizeof(registro));
-	registroError->timestamp = 1;
-	registroError->key = 1;
-	registroError->value = string_duplicate("Error");
-	registroError->nombreTabla = string_duplicate("1");
-}
 
 // ------------------------------------------------------------------------ //
 // 2) CREACION DE ELEMENTOS //
@@ -239,10 +227,6 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	bool tieneElNombre(void *elemento){
 	return esIgualAlNombre(nombreTabla, elemento);
 	}
-
-	void* liberarRegistro(registro* registro) {
-		free(registro);
-	}
 	if(memtable->elements_count== 0){
 		soloLoggearError(socket,"Error la memtable esta vacia");
 	}
@@ -295,7 +279,6 @@ metadata* obtenerMetadata(char* nombreTabla){
 	free(ruta);
 
 	return unaMetadata;
-
 
 }
 // ------------------------------------------------------------------------ //
@@ -416,13 +399,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			return estaLaKey(key, elemento);
 		}
 
-
-	void liberarRegistro(registro* registro) {
-			free(registro);
-		}
-
-
-
 	void* cualEsElMayorTimestamp(void *elemento1, void *elemento2){
 		registro* primerElemento = elemento1;
 		registro* segundoElemento = elemento2;
@@ -431,9 +407,11 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 	}
 	if(verificarExistenciaDirectorioTabla(nombreTabla,socket) ==0){
-		//pthread_mutex_unlock(&semaforoDeTabla);
 		soloLoggearError(socket,"No se encontro el directorio");
-		//return hay que ver errores
+		if(socket!=-1) {
+			enviarError(socket);
+		}
+		return;
 		}
 	else{
 		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
@@ -490,27 +468,28 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 		config_destroy(part);
 		free (ruta);
-		list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistro);
+		list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 		free(buffer);
 		free(particion);
 
-		soloLoggear(socket,"Se encontro el registro buscado");
 
 		if(socket!=-1){
 			if(!registroBuscado) {
-				serializarYEnviarRegistro(socket, registroError);
+				enviarError(socket);
 				return;
 			}
 			else {
+				soloLoggear(socket,"Se encontro el registro buscado");
 				soloLoggear(socket,"El value del registro buscado es",registroBuscado->value);
 				serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,nombreTabla));
 				return;
 			}
 		}
-		if(!registroBuscado){ //despues sacar estoo cuando arreglemos el tema de errores
+		if(!registroBuscado){
 			soloLoggearError(socket,"No se encontro el registro");
 			return;
 		}
+		soloLoggear(socket,"Se encontro el registro buscado");
 		soloLoggear(socket,"El value del registro buscado es %d ",registroBuscado->value);
 	}
 }
@@ -537,6 +516,7 @@ void funcionInsert(char* argumentos,int socket) {
 	if (!verificarExistenciaDirectorioTabla(nombreTabla,socket)){
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
+		//if(socket!=-1) enviarError(socket);
 		//pthread_mutex_unlock(&semaforoDeTablaFS);
 		return;
 	}
@@ -599,7 +579,8 @@ void funcionCreate(char* argumentos,int socket) {
 		agregarTablaALista(nombreTabla);
 
 	}else{
-		enviarOMostrarYLogearInfo(socket,"Error ya existe la tabla en FS");
+		soloLoggearError(socket,"Error ya existe la tabla en FS");
+		if (socket!=-1) enviarError(socket);
 		liberarDoblePuntero(argSeparados);
 		free(directorioTabla);
 		return;
@@ -657,7 +638,7 @@ void funcionDrop(char* nombreTabla,int socket){
 		pthread_mutex_lock(&mutexListaDeTablas);
 		list_remove_and_destroy_by_condition(listaDeTablas,liberarTablaConEsteNombre,(void*) liberarMetadataConSemaforo);
 		pthread_mutex_unlock(&mutexListaDeTablas);
-		soloLoggear(socket,"Se elimino la tabla");
+		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
 
 		pthread_mutex_unlock(&semaforoDeTabla);
 
@@ -666,6 +647,7 @@ void funcionDrop(char* nombreTabla,int socket){
 		return;
 	}
 	soloLoggearError(socket,"No se encontro la tabla");
+	if(socket!=-1) enviarError(socket);
 
 }
 
@@ -702,6 +684,7 @@ void funcionDescribe(char* argumentos,int socket) {
 		string_append(&rutaDirectorioTablas,"Tables");
 		if((dir = opendir(rutaDirectorioTablas))==NULL){
 				soloLoggearError(socket,"No se pudo abrir el directorio"); //ver en realidad de mandar error
+				if(socket!=-1) enviarError(socket);
 				free(rutaDirectorioTablas);
 				return;
 		}
@@ -715,6 +698,7 @@ void funcionDescribe(char* argumentos,int socket) {
 		}
 		if(list_size(listaDeTablas)==0){
 			soloLoggearError(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
+			if(socket!=-1) enviarError(socket);
 			closedir(dir);
 			free(rutaDirectorioTablas);
 			return;
@@ -746,7 +730,8 @@ void funcionDescribe(char* argumentos,int socket) {
 					liberarMetadata(metadataBuscado);
 		}
 		else {
-			enviarYLogearMensajeError(socket,"No se encontro el metadata buscado");
+			soloLoggearError(socket,"No se encontro el metadata buscado");
+			if(socket!=-1) enviarError(socket);
 			return;
 		}
 	}

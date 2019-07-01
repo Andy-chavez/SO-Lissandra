@@ -237,58 +237,8 @@ int main(int argc, char* argv[]) {
 
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
-		inicializarRegistroError();
 
 		log_info(loggerConsola,"Inicializando FS");
-/*
-		funcionCreate("PELICULAS SC 5 10000", -1);
-
-		funcionInsert("PELICULAS 10 \"Toy story\"", -1);
-		funcionInsert("PELICULAS 100 \"quieroqocupe2blocks\"", -1);
-
-				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
-				funcionInsert("PELICULAS 1110 \"harryPuter\"", -1);
-				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
-				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
-				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
-				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatarrrrrrr\"", -1);
-
-
-
-		funcionCreate("PELICULAS2 SC 5 10000", -1);
-						funcionInsert("PELICULAS2 10 \"Toy story\"", -1);
-						funcionInsert("PELICULAS2 163 \"Nemo\"", -1);
-						funcionInsert("PELICULAS2 1110 \"harryPuter\"", -1);
-						funcionInsert("PELICULAS2 13535 \"Titanic\"", -1);
-						funcionInsert("PELICULAS2 922 \"RATATOULI\"", -1);
-						funcionInsert("PELICULAS2 4829 \"Aladdin\"", -1);
-						funcionInsert("PELICULAS2 2516 \"Godzilla\"", -1);
-						funcionInsert("PELICULAS2 3671 \"Avatarrrrrrr\"", -1);
-
-		dump();
-		compactar("PELICULAS");
-		compactar("PELICULAS2");
-
-
-		funcionInsert("PELICULAS 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS 1110 \"Harryyy2\"", -1);
-
-		funcionInsert("PELICULAS2 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS2 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS2 1110 \"Harryyy2\"", -1);
-
-		dump();
-
-		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
-		funcionInsert("PELICULAS2 2516 \"MORCILLA\"", -1);
-
-		dump();
-
-		compactar("PELICULAS");
-		compactar("PELICULAS2");
-*/
 
 		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
 
