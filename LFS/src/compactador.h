@@ -9,6 +9,10 @@
 #include <stdio.h>
 //hacer logs para compactacion
 
+
+// ------------------------------------------------------------------------ //
+// 1) FUNCIONES USADAS DURANTE LA COMPACTACION//
+
 bool cargarInfoDeBloquesParaCompactacion(char** buffer, char**arrayDeBloques){
 	int i = 0;
 		while(*(arrayDeBloques+i)!= NULL){
@@ -160,7 +164,12 @@ void cargarListaEnBuffer(t_list* listaDeRegistros, char** buffer){
 bool perteneceAParticion(int suParticion,int particionActual){
 	return (suParticion == particionActual);
 }
-//bloques de particion. reemplazar todo lo que dice original por particion.. actualizar particion
+
+
+// ------------------------------------------------------------------------ //
+// 2) REALIZACION DE LA COMPACTACION//
+
+
 void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
 
 	char* rutaMetadata = string_new();

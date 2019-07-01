@@ -540,6 +540,7 @@ int esInsertEjecutable(char* operacion) {
 		}
 
 	}
+
 	string_iterate_lines(parametrosSpliteados, free);
 	free(parametrosSpliteados);
 	return 0;

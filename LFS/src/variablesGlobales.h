@@ -41,7 +41,7 @@ t_config* archivoDeConfig;
 t_list* memtable;
 t_list* listaDeTablas;
 t_bitarray* bitarray;
-sem_t* binarioLFS;
+sem_t binarioLFS;
 
 
 

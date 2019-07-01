@@ -159,17 +159,23 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
 
+    	//ESTA ROMPIENDO EL INSERT POR EL FREE DE PARAMETROS SPLITEADOS, COMENTO POR AHORA PA PROBAR
+
+
 	    while ((linea = readline(""))){
-	    	if(esOperacionEjecutable(linea)){
-	    		parserGeneral(splitear_operacion(linea),socket);
-	    	}
-	    	else{
-	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola");
-	    	}
-	    }
+
+	    //	    	if(esOperacionEjecutable(linea)){
+	    	    		parserGeneral(splitear_operacion(linea),socket);
+	    	//    		}
+	    	  //  		else{
+	    	    //		soloLoggearError(-1,"No es una operacion valida la ingresada por consola");
+	    	    	//	}
+	    	    }
+
 
 	    free (linea);
 }
+
 
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
@@ -240,55 +246,6 @@ int main(int argc, char* argv[]) {
 		inicializarRegistroError();
 
 		log_info(loggerConsola,"Inicializando FS");
-/*
-		funcionCreate("PELICULAS SC 5 10000", -1);
-
-		funcionInsert("PELICULAS 10 \"Toy story\"", -1);
-		funcionInsert("PELICULAS 100 \"quieroqocupe2blocks\"", -1);
-
-				funcionInsert("PELICULAS 163 \"Nemo\"", -1);
-				funcionInsert("PELICULAS 1110 \"harryPuter\"", -1);
-				funcionInsert("PELICULAS 13535 \"Titanic\"", -1);
-				funcionInsert("PELICULAS 922 \"RATATOULI\"", -1);
-				funcionInsert("PELICULAS 4829 \"Aladdin\"", -1);
-				funcionInsert("PELICULAS 2516 \"Godzilla\"", -1);
-				funcionInsert("PELICULAS 3671 \"Avatarrrrrrr\"", -1);
-
-
-
-		funcionCreate("PELICULAS2 SC 5 10000", -1);
-						funcionInsert("PELICULAS2 10 \"Toy story\"", -1);
-						funcionInsert("PELICULAS2 163 \"Nemo\"", -1);
-						funcionInsert("PELICULAS2 1110 \"harryPuter\"", -1);
-						funcionInsert("PELICULAS2 13535 \"Titanic\"", -1);
-						funcionInsert("PELICULAS2 922 \"RATATOULI\"", -1);
-						funcionInsert("PELICULAS2 4829 \"Aladdin\"", -1);
-						funcionInsert("PELICULAS2 2516 \"Godzilla\"", -1);
-						funcionInsert("PELICULAS2 3671 \"Avatarrrrrrr\"", -1);
-
-		dump();
-		compactar("PELICULAS");
-		compactar("PELICULAS2");
-
-
-		funcionInsert("PELICULAS 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS 1110 \"Harryyy2\"", -1);
-
-		funcionInsert("PELICULAS2 10 \"Story2\"", -1);
-		funcionInsert("PELICULAS2 10 \"Story3\"", -1);
-		funcionInsert("PELICULAS2 1110 \"Harryyy2\"", -1);
-
-		dump();
-
-		funcionInsert("PELICULAS 2516 \"MORCILLA\"", -1);
-		funcionInsert("PELICULAS2 2516 \"MORCILLA\"", -1);
-
-		dump();
-
-		compactar("PELICULAS");
-		compactar("PELICULAS2");
-*/
 
 		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
 
@@ -303,12 +260,8 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);
+		sem_init(&binarioLFS, 0, 0);
 
-		sem_init(&binarioLFS, 0, 1);
 
 		struct sigaction terminar;
 			terminar.sa_handler = terminarTodo;
@@ -318,7 +271,15 @@ int main(int argc, char* argv[]) {
 
 		sem_wait(&binarioLFS);
 
-		//que mas quedaría liberar x aca?
+		pthread_cancel(threadServer);
+		pthread_cancel(threadConsola);
+		pthread_cancel(threadDump);
+		pthread_cancel(threadCambiosConfig);
+
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
 
 		//create y despues cancel y join
 		//enviar logear mensaje de error
