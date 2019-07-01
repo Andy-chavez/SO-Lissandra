@@ -144,7 +144,7 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,int socket){
 	pthread_mutex_lock(&mutexListaDeTablas);
 	if (list_find(listaDeTablas,seEncuentraTabla))
 	    {
-			soloLoggear(socket,"La tabla %s ",nombreTabla, "existe en el FS");
+			soloLoggear(socket,"Existe en el FS la tabla: %s ", nombreTabla);
 	    	validacion=1;
 	    }
 	    else
