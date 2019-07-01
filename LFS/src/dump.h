@@ -87,6 +87,8 @@ void dump(){
 
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
+			soloLoggear(-1,"Dumpeando tabla: %s", unaTabla->nombre);
+
 			tamanioTotalADumpear = strlen(buffer);
 			soloLoggear(-1,"Creando tmp");
 
@@ -104,6 +106,9 @@ void dump(){
 			free(rutaTmp);
 
 			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
+
+			soloLoggear(-1,"Finalizado dumpeo de: %s", unaTabla->nombre);
+
 			pthread_mutex_unlock(&semaforoDeTablaFS);
 
 			free(buffer);
@@ -116,6 +121,7 @@ void dump(){
 
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
 			pthread_mutex_unlock(&semaforoDeTablaMemtable);
+
 
 		}
 		list_iterate(memtable,(void*)dumpearTabla);
