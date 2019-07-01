@@ -159,17 +159,23 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
 
+    	//ESTA ROMPIENDO EL INSERT POR EL FREE DE PARAMETROS SPLITEADOS, COMENTO POR AHORA PA PROBAR
+
+
 	    while ((linea = readline(""))){
-	    	if(esOperacionEjecutable(linea)){
-	    		parserGeneral(splitear_operacion(linea),socket);
-	    	}
-	    	else{
-	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola");
-	    	}
-	    }
+
+	    //	    	if(esOperacionEjecutable(linea)){
+	    	    		parserGeneral(splitear_operacion(linea),socket);
+	    	//    		}
+	    	  //  		else{
+	    	    //		soloLoggearError(-1,"No es una operacion valida la ingresada por consola");
+	    	    	//	}
+	    	    }
+
 
 	    free (linea);
 }
+
 
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
@@ -253,12 +259,8 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);
+		sem_init(&binarioLFS, 0, 0);
 
-		sem_init(&binarioLFS, 0, 1);
 
 		struct sigaction terminar;
 			terminar.sa_handler = terminarTodo;
@@ -268,7 +270,15 @@ int main(int argc, char* argv[]) {
 
 		sem_wait(&binarioLFS);
 
-		//que mas quedaría liberar x aca?
+		pthread_cancel(threadServer);
+		pthread_cancel(threadConsola);
+		pthread_cancel(threadDump);
+		pthread_cancel(threadCambiosConfig);
+
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
 
 		//create y despues cancel y join
 		//enviar logear mensaje de error
