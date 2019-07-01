@@ -94,7 +94,7 @@ bool kernel_create(char* operacion, int thread){
 bool kernel_describe(char* operacion, int thread){
 	if(string_length(operacion) <= string_length("describe ")){
 		operacionLQL* opAux=splitear_operacion(operacion);
-		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
+		int socket = obtenerSocketAlQueSeEnvio(opAux,STRONG);
 		if(socket != -1){
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
@@ -180,18 +180,18 @@ bool kernel_metrics(){ // todo int consolaOLog){ //0 consola 1 log
 //	}
 	pthread_mutex_lock(&mLogMetrics);
 	log_info(logMetrics, "METRICS: \n"
-			"tiempo en selects de HASH: %d,"
-			"tiempo en inserts de HASH: %d, "
-			"cantidad inserts en HASH : %d,"
+			"tiempo en selects de HASH: %d,\n"
+			"tiempo en inserts de HASH: %d,\n"
+			"cantidad inserts en HASH : %d,\n"
 			"cantidad selects en HASH : %d\n"
-			"tiempo en selects de STRONG: %d,"
-			"tiempo en inserts de STRONG: %d,"
-			"cantidad inserts en STRONG : %d,"
+			"tiempo en selects de STRONG: %d,\n"
+			"tiempo en inserts de STRONG: %d,\n"
+			"cantidad inserts en STRONG : %d,\n"
 			"cantidad selects en STRONG : %d\n"
-			"tiempo en selects de EVENTUAL: %d,"
-			"tiempo en inserts de EVENTUAL: %d, "
-			"cantidad inserts en EVENTUAL : %d,"
-			"cantidad selects en EVENTUAL : %d",
+			"tiempo en selects de EVENTUAL: %d,\n"
+			"tiempo en inserts de EVENTUAL: %d,\n"
+			"cantidad inserts en EVENTUAL : %d,\n"
+			"cantidad selects en EVENTUAL : %d\n",
 			hash_tiempoSelect,
 			hash_tiempoInsert,
 			hash_cantidadInsert,

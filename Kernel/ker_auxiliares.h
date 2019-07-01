@@ -15,7 +15,7 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-bool recibidoContiene(char* recibido, char* contiene);
+bool recibidoEmpiezaCon(char* recibido, char* contiene);
 bool instruccion_no_ejecutada(instruccion* instruc);
 
 void describeTimeado();
@@ -132,17 +132,24 @@ void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memori
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 		recibirYDeserializarTablaDeGossipRealizando(socket,guardarDatos);
+		cerrarConexion(socket);
 		usleep(timedGossip*1000);
 	}
 
 }
 void describeTimeado(){
 	operacionLQL* opAux = malloc(sizeof(operacionLQL));
-	opAux ->operacion = malloc(sizeof("DESCRIBE"));
+	//opAux ->operacion = malloc(sizeof("DESCRIBE"));
 	opAux ->operacion = "DESCRIBE";
 	opAux->parametros = "ALL";
 	while(!destroy){
-		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
+		pthread_mutex_lock(&mMemorias);
+		memoria* mem = list_get(memorias,0);
+		pthread_mutex_unlock(&mMemorias);
+
+		pthread_mutex_lock(&mConexion);
+		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
 		if(socket != -1){
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
@@ -163,17 +170,17 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		if(recibido == NULL){
 			return -1;
 		}
-		if(recibidoContiene(recibido, "ERROR")){
+		if(recibidoEmpiezaCon(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
 			cerrarConexion(socket);
 			return -1;
 		}
 		else{
-			while(recibidoContiene(recibido, "FULL")){
+			while(recibidoEmpiezaCon(recibido, "FULL")){
 				enviarJournal(socket);
 				serializarYEnviarOperacionLQL(socket, opAux);
 				recibido = (char*) recibir(socket);
-				if(recibidoContiene(recibido, "ERROR")){
+				if(recibidoEmpiezaCon(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);
 					cerrarConexion(socket);
 					return -1;
@@ -200,10 +207,10 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		pthread_mutex_unlock(&mConexion);
 		if(socket){
 			if(string_contains(opAux->operacion,"INSERT")){
-				mem->cantidadIns += 1;
+				mem->cantidadIns ++;
 			}
 			else if(string_contains(opAux->operacion,"INSERT")){
-				mem->cantidadSel += 1;
+				mem->cantidadSel ++;
 			}
 			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
@@ -227,10 +234,10 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	pthread_mutex_lock(&mStrong);
 	list_find(criterios[STRONG].memorias,(void*)pudeConectarYEnviar);
 	if(string_contains(opAux->operacion,"INSERT")){
-		criterios[STRONG].cantidadInserts +=1;
+		criterios[STRONG].cantidadInserts ++;
 	}
 	else if(string_contains(opAux->operacion,"INSERT")){
-		criterios[STRONG].cantidadSelects += 1;
+		criterios[STRONG].cantidadSelects ++;
 	}
 	pthread_mutex_unlock(&mStrong);
 	return socket;
@@ -247,10 +254,10 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	pthread_mutex_lock(&mHash);
 	mem = list_get(criterios[HASH].memorias,indice);
 	if(string_contains(opAux->operacion,"INSERT")){
-		criterios[HASH].cantidadInserts +=1;
+		criterios[HASH].cantidadInserts ++;
 	}
 	else if(string_contains(opAux->operacion,"INSERT")){
-		criterios[HASH].cantidadSelects += 1;
+		criterios[HASH].cantidadSelects ++;
 	}
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mConexion);
@@ -428,9 +435,9 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
 	return c;
 }
 //------ ERRORES ---------
-bool recibidoContiene(char* recibido, char* contiene){
+bool recibidoEmpiezaCon(char* recibido, char* contiene){
 	string_to_upper(recibido);
-	return string_contains(recibido, contiene);
+	return string_starts_with(recibido, contiene);
 }
 //------ CERRAR ---------
 void kernel_destroy(){
