@@ -15,7 +15,7 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-bool recibidoContiene(char* recibido, char* contiene);
+bool recibidoEmpiezaCon(char* recibido, char* contiene);
 bool instruccion_no_ejecutada(instruccion* instruc);
 
 void describeTimeado();
@@ -45,6 +45,40 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
+void actualizarTiemposInsert(int index, clock_t tiempo){
+	if(index == STRONG){
+		pthread_mutex_lock(&mStrong);
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mStrong);
+	}
+	else if(index == HASH){
+		pthread_mutex_lock(&mHash);
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mHash);
+	}
+	else if(index == EVENTUAL){
+		pthread_mutex_lock(&mEventual);
+		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mEventual);
+	}
+}
+void actualizarTiemposSelect(int index, clock_t tiempo){
+	if(index == STRONG){
+		pthread_mutex_lock(&mStrong);
+		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mStrong);
+	}
+	else if(index == HASH){
+		pthread_mutex_lock(&mHash);
+		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mHash);
+	}
+	else if(index == EVENTUAL){
+		pthread_mutex_lock(&mEventual);
+		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		pthread_mutex_unlock(&mEventual);
+	}
+}
 void freeMemoria(memoria* mem3){
 	free(mem3->ip);
 	free(mem3->puerto);
@@ -59,6 +93,8 @@ void guardarDatos(seed* unaSeed){
 	memAux->numero = unaSeed->numero;
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
+	memAux->cantidadIns = 0;
+	memAux->cantidadSel = 0;
 	agregarALista(memorias,memAux,mMemorias);
 }
 void actualizarListaMetadata(metadata* met){
@@ -76,7 +112,7 @@ void actualizarListaMetadata(metadata* met){
 	liberarMetadata(met);
 }
 //------ TIMED ---------
-void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memoria o tiene que estar asignada a criterio
+void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memoria o tiene que estar asignada a criterio, o si tengo que hacer con TODAS la de la lista como memoria
 	int tamLista;
 	memoria* mem;
 	while(!destroy){
@@ -87,24 +123,33 @@ void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memori
 		pthread_mutex_lock(&mMemorias);
 		mem = list_get(memorias,memoria);
 		pthread_mutex_unlock(&mMemorias);
+		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
 		if(socket==-1){
-					continue;
-				}
+			continue;
+		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 		recibirYDeserializarTablaDeGossipRealizando(socket,guardarDatos);
+		cerrarConexion(socket);
 		usleep(timedGossip*1000);
 	}
 
 }
 void describeTimeado(){
 	operacionLQL* opAux = malloc(sizeof(operacionLQL));
-	opAux ->operacion = malloc(sizeof("DESCRIBE"));
+	//opAux ->operacion = malloc(sizeof("DESCRIBE"));
 	opAux ->operacion = "DESCRIBE";
 	opAux->parametros = "ALL";
 	while(!destroy){
-		int socket = obtenerSocketAlQueSeEnvio(opAux,EVENTUAL);
+		pthread_mutex_lock(&mMemorias);
+		memoria* mem = list_get(memorias,0);
+		pthread_mutex_unlock(&mMemorias);
+
+		pthread_mutex_lock(&mConexion);
+		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
 		if(socket != -1){
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
@@ -125,17 +170,17 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		if(recibido == NULL){
 			return -1;
 		}
-		if(recibidoContiene(recibido, "ERROR")){
+		if(recibidoEmpiezaCon(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
 			cerrarConexion(socket);
 			return -1;
 		}
 		else{
-			while(recibidoContiene(recibido, "FULL")){
+			while(recibidoEmpiezaCon(recibido, "FULL")){
 				enviarJournal(socket);
 				serializarYEnviarOperacionLQL(socket, opAux);
 				recibido = (char*) recibir(socket);
-				if(recibidoContiene(recibido, "ERROR")){
+				if(recibidoEmpiezaCon(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);
 					cerrarConexion(socket);
 					return -1;
@@ -148,7 +193,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 	}
 	else{
 		pthread_mutex_lock(&mLog);
-		log_error(kernel_configYLog->log, "@ ERROR[%d]: %s %s",thread, opAux->operacion, opAux->parametros);
+		log_error(kernel_configYLog->log, "@ CONEXION[%d]: %s %s",thread, opAux->operacion, opAux->parametros);
 		pthread_mutex_unlock(&mLog);
 		liberarOperacionLQL(opAux);
 		return -1;
@@ -157,7 +202,16 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	int socket = -1;
 	bool pudeConectarYEnviar(memoria* mem){
-		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
+		pthread_mutex_lock(&mConexion);
+		socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
+		if(socket){
+			if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadIns ++;
+			}
+			else if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadSel ++;
+			}
 			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
@@ -179,6 +233,12 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	}
 	pthread_mutex_lock(&mStrong);
 	list_find(criterios[STRONG].memorias,(void*)pudeConectarYEnviar);
+	if(string_contains(opAux->operacion,"INSERT")){
+		criterios[STRONG].cantidadInserts ++;
+	}
+	else if(string_contains(opAux->operacion,"INSERT")){
+		criterios[STRONG].cantidadSelects ++;
+	}
 	pthread_mutex_unlock(&mStrong);
 	return socket;
 }
@@ -193,9 +253,23 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	int indice = atoi(*operacion) % tamLista;
 	pthread_mutex_lock(&mHash);
 	mem = list_get(criterios[HASH].memorias,indice);
+	if(string_contains(opAux->operacion,"INSERT")){
+		criterios[HASH].cantidadInserts ++;
+	}
+	else if(string_contains(opAux->operacion,"INSERT")){
+		criterios[HASH].cantidadSelects ++;
+	}
 	pthread_mutex_unlock(&mHash);
-
-	if((socket = crearSocketCliente(mem->ip,mem->puerto))){
+	pthread_mutex_lock(&mConexion);
+	socket = crearSocketCliente(mem->ip,mem->puerto);
+	pthread_mutex_unlock(&mConexion);
+	if(socket){
+		if(string_contains(opAux->operacion,"INSERT")){
+			mem->cantidadIns += 1;
+		}
+		else if(string_contains(opAux->operacion,"INSERT")){
+			mem->cantidadSel += 1;
+		}
 		serializarYEnviarOperacionLQL(socket, opAux);
 		pthread_mutex_lock(&mLog);
 		log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
@@ -220,14 +294,29 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){ //todo liberar spli
 	memoria* mem;
 	pthread_mutex_lock(&mEventual);
 	tamLista = list_size(criterios[EVENTUAL].memorias);
+	if(string_contains(opAux->operacion,"INSERT")){
+		criterios[EVENTUAL].cantidadInserts +=1;
+	}
+	else if(string_contains(opAux->operacion,"INSERT")){
+		criterios[EVENTUAL].cantidadSelects += 1;
+	}
 	pthread_mutex_unlock(&mEventual);
 	while(socket==-1 && tamLista >0){
 		int rand = random_int(0,tamLista);
 		pthread_mutex_lock(&mEventual);
 		mem = list_get(criterios[EVENTUAL].memorias, rand);
 		pthread_mutex_unlock(&mEventual);
-		if((socket = crearSocketCliente(mem->ip,mem->puerto))){
-			serializarYEnviarOperacionLQL(socket, opAux);
+		pthread_mutex_lock(&mConexion);
+		socket = crearSocketCliente(mem->ip,mem->puerto);
+		pthread_mutex_unlock(&mConexion);
+		if(socket){
+			if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadIns += 1;
+			}
+			else if(string_contains(opAux->operacion,"INSERT")){
+				mem->cantidadSel += 1;
+			}
+			serializarYEnviarOperacionLQL(socket, opAux); //todo ponerle aca el mas uno si es insert o select
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLog);
@@ -328,7 +417,7 @@ memoria* encontrarMemoria(int numero){
 	}
 	pthread_mutex_lock(&mMemorias);
 	memoria* memory = (memoria*) list_find(memorias, (void*)memoriaEsNumero);
-	pthread_mutex_lock(&mMemorias);
+	pthread_mutex_unlock(&mMemorias);
 	return memory;
 }
 //------ CRITERIOS ---------
@@ -346,9 +435,9 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
 	return c;
 }
 //------ ERRORES ---------
-bool recibidoContiene(char* recibido, char* contiene){
+bool recibidoEmpiezaCon(char* recibido, char* contiene){
 	string_to_upper(recibido);
-	return string_contains(recibido, contiene);
+	return string_starts_with(recibido, contiene);
 }
 //------ CERRAR ---------
 void kernel_destroy(){

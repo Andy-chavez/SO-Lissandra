@@ -13,16 +13,46 @@
 void kernel_inicializarSemaforos();
 void kernel_crearListas();
 void liberarConfigYLogs();
-void kernel_inicializarVariables();
+void kernel_inicializarVariablesYListas();
 void kernel_finalizar();
 int kernel_inicializarMemoria();
 /******************************IMPLEMENTACIONES******************************************/
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
+//-----------------RESETEAR VARIABLES-----------------------------
+void memoria_resetearMetricas(memoria* mem){
+		mem->cantidadIns = 0;
+		mem->cantidadSel = 0;
+}
+void metrics_resetVariables(){
+	pthread_mutex_lock(&mHash);
+	criterios[HASH].cantidadInserts = 0;
+	criterios[HASH].cantidadSelects = 0;
+	criterios[HASH].tiempoInserts = 0;
+	criterios[HASH].tiempoSelects = 0;
+	list_iterate(criterios[HASH].memorias, (void*) memoria_resetearMetricas);
+	pthread_mutex_unlock(&mHash);
+	pthread_mutex_lock(&mStrong);
+	criterios[STRONG].cantidadInserts = 0;
+	criterios[STRONG].cantidadSelects = 0;
+	criterios[STRONG].tiempoInserts = 0;
+	criterios[STRONG].tiempoSelects = 0;
+	list_iterate(criterios[STRONG].memorias, (void*) memoria_resetearMetricas);
+	pthread_mutex_unlock(&mStrong);
+	pthread_mutex_lock(&mEventual);
+	criterios[EVENTUAL].cantidadInserts = 0;
+	criterios[EVENTUAL].cantidadSelects = 0;
+	criterios[EVENTUAL].tiempoInserts = 0;
+	criterios[EVENTUAL].tiempoSelects = 0;
+	list_iterate(criterios[EVENTUAL].memorias, (void*) memoria_resetearMetricas);
+	pthread_mutex_unlock(&mEventual);
+
+}
 //-----------------INICIALIZAR KERNEL-----------------------------
 void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaNuevos, NULL);
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
+	pthread_mutex_init(&mLogMetrics, NULL);
 	pthread_mutex_init(&mLog, NULL);
 	pthread_mutex_init(&mThread, NULL);
 	pthread_mutex_init(&mMemorias,NULL);
@@ -32,6 +62,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&mEventual,NULL);
 	pthread_mutex_init(&mStrong,NULL);
 	pthread_mutex_init(&mHash,NULL);
+	pthread_mutex_init(&mConexion,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&finalizar,0,0);
@@ -43,16 +74,30 @@ void kernel_crearListas(){
 	cola_proc_terminados = list_create();
 	rrThreads = list_create();
 	criterios[HASH].unCriterio = SH;
+	criterios[HASH].tiempoInserts = 0;
+	criterios[HASH].tiempoSelects = 0;
+	criterios[HASH].cantidadInserts = 0;
+	criterios[HASH].cantidadSelects = 0;
 	criterios[HASH].memorias = list_create();
 	criterios[STRONG].unCriterio = SC;
+	criterios[STRONG].tiempoInserts = 0;
+	criterios[STRONG].tiempoSelects = 0;
+	criterios[STRONG].cantidadInserts = 0;
+	criterios[STRONG].cantidadSelects = 0;
 	criterios[STRONG].memorias = list_create();
 	criterios[EVENTUAL].unCriterio = EC;
+	criterios[EVENTUAL].tiempoInserts = 0;
+	criterios[EVENTUAL].tiempoSelects = 0;
+	criterios[EVENTUAL].cantidadInserts = 0;
+	criterios[EVENTUAL].cantidadSelects = 0;
 	criterios[EVENTUAL].memorias = list_create();
 	tablas = list_create();
 	memorias = list_create();
 }
 int kernel_inicializarMemoria(){
+	pthread_mutex_lock(&mConexion);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
+	pthread_mutex_unlock(&mConexion);
 	if(socketClienteKernel==-1){
 		return -1;
 	}
@@ -61,7 +106,8 @@ int kernel_inicializarMemoria(){
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
 	return 0;
 }
-void kernel_inicializarVariables(){
+void kernel_inicializarVariablesYListas(){
+	logMetrics = log_create("Metrics.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
 	kernel_configYLog->log = log_create("Kernel.log", "KERNEL", 0, LOG_LEVEL_INFO);
@@ -75,7 +121,6 @@ void kernel_inicializarVariables(){
 	kernel_crearListas();
 }
 void kernel_inicializarEstructuras(){
-	//kernel_crearListas();
 	kernel_inicializarSemaforos();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
@@ -100,6 +145,8 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&quantum);
 	pthread_mutex_destroy(&sleepExec);
 	pthread_mutex_destroy(&mMetadataRefresh);
+	pthread_mutex_destroy(&mConexion);
+	pthread_mutex_destroy(&mLogMetrics);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
@@ -124,14 +171,37 @@ void liberarTabla(tabla* t) {
 	free(t);
 }
 void liberarListas(){ //todo agregar RR
-	 list_destroy_and_destroy_elements(cola_proc_nuevos,free);
-	 list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
-	 list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
-	 list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
-	 list_destroy_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
-	 list_destroy_and_destroy_elements(criterios[STRONG].memorias,(void*)liberarMemoria);
-	 list_destroy_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
-	 list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);
+	pthread_mutex_lock(&colaNuevos);
+	list_destroy_and_destroy_elements(cola_proc_nuevos,free);
+	pthread_mutex_unlock(&colaNuevos);
+
+	pthread_mutex_lock(&colaListos);
+	list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
+	pthread_mutex_unlock(&colaListos);
+
+	pthread_mutex_lock(&colaTerminados);
+	list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
+	pthread_mutex_unlock(&colaTerminados);
+
+	pthread_mutex_lock(&mMemorias);
+	list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mMemorias);
+
+	pthread_mutex_lock(&mHash);
+	list_destroy_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mHash);
+
+	pthread_mutex_lock(&mStrong);
+	list_destroy_and_destroy_elements(criterios[STRONG].memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mStrong);
+
+	pthread_mutex_lock(&mEventual);
+	list_destroy_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mEventual);
+
+	pthread_mutex_lock(&mTablas);
+	list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);
+	pthread_mutex_unlock(&mTablas);
 }
 void kernel_finalizar(){
 	liberarConfigYLogs();

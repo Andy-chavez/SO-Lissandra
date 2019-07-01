@@ -28,12 +28,18 @@ typedef struct{
 }instruccion;
 typedef struct{
 	consistencia unCriterio;
+	int cantidadSelects;
+	int cantidadInserts;
+	clock_t tiempoSelects; //aca es el tiempo total, realizar division cuando loggee
+	clock_t tiempoInserts;
 	t_list* memorias;
 }criterio;
 typedef struct{
 	int numero;
 	char* puerto;
 	char* ip;
+	int cantidadIns;
+	int cantidadSel;
 }memoria;
 typedef struct{
 	char* nombreDeTabla;
@@ -47,6 +53,8 @@ typedef struct {
 	pthread_t* thread;
 	int numero;
 } t_thread;
+
+t_log* logMetrics;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;
 t_list* cola_proc_listos;
@@ -74,6 +82,8 @@ pthread_mutex_t colaNuevos;
 pthread_mutex_t colaTerminados;
 pthread_mutex_t mLog;
 pthread_mutex_t mThread;
+pthread_mutex_t mConexion;
+pthread_mutex_t mLogMetrics;
 //char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 
 char* pathConfig;
