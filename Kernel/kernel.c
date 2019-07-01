@@ -66,5 +66,6 @@ int main(int argc, char *argv[]){
 
 	sem_wait(&finalizar);
 	kernel_finalizar();
+
 	return EXIT_SUCCESS;
 }

@@ -156,7 +156,7 @@ bool kernel_journal(){
 	journal_consistencia(2);
 	return true;
 }
-bool kernel_metrics(){
+bool kernel_metrics(){ // todo int consolaOLog){ //0 consola 1 log
 	pthread_mutex_lock(&mHash);
 	int hash_cantidadSelect = criterios[HASH].cantidadSelects;
 	int hash_cantidadInsert = criterios[HASH].cantidadInserts;
@@ -175,7 +175,9 @@ bool kernel_metrics(){
 	int eventual_tiempoSelect = criterios[EVENTUAL].tiempoSelects;
 	int eventual_tiempoInsert = criterios[EVENTUAL].tiempoInserts;
 	pthread_mutex_unlock(&mEventual);
-
+//	if(consolaOLog){
+//
+//	}
 	pthread_mutex_lock(&mLogMetrics);
 	log_info(logMetrics, "METRICS: \n"
 			"tiempo en selects de HASH: %d,"

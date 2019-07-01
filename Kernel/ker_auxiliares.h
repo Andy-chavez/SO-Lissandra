@@ -410,7 +410,7 @@ memoria* encontrarMemoria(int numero){
 	}
 	pthread_mutex_lock(&mMemorias);
 	memoria* memory = (memoria*) list_find(memorias, (void*)memoriaEsNumero);
-	pthread_mutex_lock(&mMemorias);
+	pthread_mutex_unlock(&mMemorias);
 	return memory;
 }
 //------ CRITERIOS ---------

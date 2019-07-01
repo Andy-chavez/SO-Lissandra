@@ -95,9 +95,9 @@ void kernel_crearListas(){
 	memorias = list_create();
 }
 int kernel_inicializarMemoria(){
-	//pthread_mutex_lock(&mConexion);
+	pthread_mutex_lock(&mConexion);
 	int socketClienteKernel = crearSocketCliente(ipMemoria,puertoMemoria);
-	//pthread_mutex_unlock(&mConexion);
+	pthread_mutex_unlock(&mConexion);
 	if(socketClienteKernel==-1){
 		return -1;
 	}
