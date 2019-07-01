@@ -232,7 +232,9 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 	}
 
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
-
+	if(encuentraLista == NULL){
+		return NULL;
+	}
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
