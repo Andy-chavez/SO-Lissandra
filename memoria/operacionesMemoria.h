@@ -516,6 +516,9 @@ registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 		return NULL;
 	};
 
+	if(*(parametros + 3) != NULL) {
+		nuevoRegistro->timestamp = atoi(*(parametros + 3));
+	}
 	nuevoRegistro->timestamp = time(NULL);
 	char* key = (char*) obtenerValorDe(parametros, 1);
 	nuevoRegistro->key = atoi(key);
@@ -1015,10 +1018,11 @@ void intentarConexiones() {
 		cerrarConexion(socketMemoria);
 	}
 
-	liberarSeed(seedPropia);
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);
+
+	liberarSeed(seedPropia);
 }
 
 void* timedGossip() {
