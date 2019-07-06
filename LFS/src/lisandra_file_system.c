@@ -270,9 +270,8 @@ int main(int argc, char* argv[]) {
 
 		sem_wait(&binarioLFS);
 
-//		pthread_cancel(threadServer);
-
-		int res = pthread_cancel(threadServer);
+		pthread_cancel(threadServer);
+//		int res = pthread_cancel(threadServer);
 		pthread_cancel(threadConsola);
 		pthread_cancel(threadDump);
 		pthread_cancel(threadCambiosConfig);
@@ -282,7 +281,7 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadDump,NULL);
 		pthread_join(threadCambiosConfig,NULL);
 
-		if (res) printf("que haces pa");
+//		if (res) printf("que haces pa");
 
 		//create y despues cancel y join
 		//enviar logear mensaje de error
