@@ -34,7 +34,6 @@
 
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
-
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
 				soloLoggear(socket,"Se recibio un INSERT\n");
 				funcionInsert(operacionAParsear->parametros,socket);
@@ -160,12 +159,23 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf ("Ingresa operacion\n");
 
+    	//ESTA ROMPIENDO EL INSERT POR EL FREE DE PARAMETROS SPLITEADOS, COMENTO POR AHORA PA PROBAR
+
+
 	    while ((linea = readline(""))){
-	    	parserGeneral(splitear_operacion(linea),socket);
-	    }
+	    			string_to_upper(linea);
+	    	    	if(esOperacionEjecutable(linea)){
+	    	    		parserGeneral(splitear_operacion(linea),socket);
+	    	    	}
+	    	    		else{
+	    	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
+	    	    		}
+	    	    }
+
 
 	    free (linea);
 }
+
 
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
@@ -173,7 +183,7 @@ void* cambiosConfig() {
 	char* path = "lisandra.config";
 
 	if(fdConfig < 0) {
-		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
+		soloLoggearError(-1, "Hubo un error con el inotify_init");
 	}
 
 	int watchDescriptorConfig = inotify_add_watch(fdConfig, path, IN_MODIFY);
@@ -182,13 +192,13 @@ void* cambiosConfig() {
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
 
 		if(size<0) {
-			soloLoggear(-1, "hubo un error al leer modificaciones del config");
+			soloLoggearError(-1, "hubo un error al leer modificaciones del config");
 		}
 
 		t_config* configConNuevosDatos = config_create(path);
 
 		if(!configConNuevosDatos) {
-			soloLoggear(-1, "hubo un error al abrir el archivo de config");
+			soloLoggearError(-1, "hubo un error al abrir el archivo de config");
 		}
 
 		int desplazamiento = 0;
@@ -233,11 +243,11 @@ int main(int argc, char* argv[]) {
 
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
-		inicializarRegistroError();
 
 		log_info(loggerConsola,"Inicializando FS");
 
 		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
+
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
@@ -249,12 +259,8 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);
+		sem_init(&binarioLFS, 0, 0);
 
-		sem_init(&binarioLFS, 0, 1);
 
 		struct sigaction terminar;
 			terminar.sa_handler = terminarTodo;
@@ -264,7 +270,19 @@ int main(int argc, char* argv[]) {
 
 		sem_wait(&binarioLFS);
 
-		//que mas quedaría liberar x aca?
+//		pthread_cancel(threadServer);
+
+		int res = pthread_cancel(threadServer);
+		pthread_cancel(threadConsola);
+		pthread_cancel(threadDump);
+		pthread_cancel(threadCambiosConfig);
+
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
+
+		if (res) printf("que haces pa");
 
 		//create y despues cancel y join
 		//enviar logear mensaje de error

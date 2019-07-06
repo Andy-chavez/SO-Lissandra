@@ -18,6 +18,9 @@
 #include "utils.h"
 #include "variablesGlobales.h"
 
+// ------------------------------------------------------------------------ //
+// 1) INICIALIZACIONES//
+
 void inicializarSemaforos(){
 		pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
@@ -27,27 +30,6 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexTiempoDump,NULL);
 		pthread_mutex_init(&mutexRetardo,NULL);
 
-}
-//*  liberar lista de tablas
-void liberarSemaforos(){
-	pthread_mutex_destroy(&mutexMemtable);
-	pthread_mutex_destroy(&mutexLogger);
-	pthread_mutex_destroy(&mutexLoggerConsola);
-	pthread_mutex_destroy(&mutexListaDeTablas);
-
-	pthread_mutex_destroy(&mutexBitarray);
-	pthread_mutex_destroy(&mutexTiempoDump);
-	pthread_mutex_destroy(&mutexRetardo);
-}
-
-void leerConfig(char* ruta){
-	archivoDeConfig = config_create(ruta);
-	ipLisandra = config_get_string_value(archivoDeConfig,"IP_LISANDRA");
-	puertoLisandra = config_get_string_value(archivoDeConfig,"PUERTO_ESCUCHA");
-	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
-	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
-	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
-	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
 }
 
 void inicializarBloques(){
@@ -110,17 +92,6 @@ void inicializarBitmap() {
 	free(direccionBitmap);
 }
 
-void leerMetadataFS (){
-	char* rutaMetadata = string_new();
-	string_append(&rutaMetadata,puntoMontaje);
-	string_append(&rutaMetadata,"Metadata/Metadata.bin");
-	archivoMetadata= config_create(rutaMetadata);
-	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
-	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
-	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
-	config_destroy(archivoMetadata);
-	free(rutaMetadata);
-}
 void inicializarListas(){
 	memtable = list_create();
 	listaDeTablas = list_create();
@@ -129,6 +100,20 @@ void inicializarListas(){
 void inicializarLog(char* ruta){
 	logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_INFO);
 	loggerConsola = log_create(ruta,"LISANDRA_CONSOLA",1,LOG_LEVEL_INFO);
+}
+
+// ------------------------------------------------------------------------ //
+// 2) LIBERACIONES//
+
+void liberarSemaforos(){
+	pthread_mutex_destroy(&mutexMemtable);
+	pthread_mutex_destroy(&mutexLogger);
+	pthread_mutex_destroy(&mutexLoggerConsola);
+	pthread_mutex_destroy(&mutexListaDeTablas);
+
+	pthread_mutex_destroy(&mutexBitarray);
+	pthread_mutex_destroy(&mutexTiempoDump);
+	pthread_mutex_destroy(&mutexRetardo);
 }
 
 void liberarConfigYLogs() {
@@ -146,6 +131,34 @@ void liberarVariablesGlobales(){
 	liberarListaDeTablas();
 	liberarConfigYLogs();
 }
+
+// ------------------------------------------------------------------------ //
+// 3) LECTURAS//
+
+
+void leerConfig(char* ruta){
+	archivoDeConfig = config_create(ruta);
+	ipLisandra = config_get_string_value(archivoDeConfig,"IP_LISANDRA");
+	puertoLisandra = config_get_string_value(archivoDeConfig,"PUERTO_ESCUCHA");
+	puntoMontaje = config_get_string_value(archivoDeConfig,"PUNTO_MONTAJE");
+	tamanioValue = config_get_int_value(archivoDeConfig,"TAMAÑO_VALUE");
+	tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
+	retardo = config_get_int_value(archivoDeConfig,"RETARDO");
+}
+
+void leerMetadataFS (){
+	char* rutaMetadata = string_new();
+	string_append(&rutaMetadata,puntoMontaje);
+	string_append(&rutaMetadata,"Metadata/Metadata.bin");
+	archivoMetadata= config_create(rutaMetadata);
+	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
+	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
+	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
+	config_destroy(archivoMetadata);
+	free(rutaMetadata);
+}
+
+
 
 
 #endif /* SRC_CONFIGURACIONES_H_ */
