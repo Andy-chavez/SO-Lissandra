@@ -174,6 +174,9 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	int eventual_tiempoSelect = criterios[EVENTUAL].tiempoSelects;
 	int eventual_tiempoInsert = criterios[EVENTUAL].tiempoInserts;
 	pthread_mutex_unlock(&mEventual);
+	void printearMetrics(memoria* mem){
+		printf("MEMORIA[%d]: Selects <%d> Inserts <%d>",mem->numero,mem->cantidadSel, mem->cantidadSel);
+	}
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: \n"
@@ -183,18 +186,9 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 				"cantidad inserts en STRONG : %d,\ncantidad selects en STRONG : %d\n"
 				">tiempo en selects de EVENTUAL: %d,\n>tiempo en inserts de EVENTUAL: %d,\n"
 				"cantidad inserts en EVENTUAL : %d,\ncantidad selects en EVENTUAL : %d\n",
-				hash_tiempoSelect,
-				hash_tiempoInsert,
-				hash_cantidadInsert,
-				hash_cantidadSelect,
-				strong_tiempoSelect,
-				strong_tiempoInsert,
-				strong_cantidadInsert,
-				strong_cantidadSelect,
-				eventual_tiempoSelect,
-				eventual_tiempoInsert,
-				eventual_cantidadInsert,
-				eventual_cantidadSelect);
+				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect,
+				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect,
+				eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_unlock(&mLogMetrics);
 	}
 	else if (consolaOLog==1){
@@ -217,6 +211,15 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 				eventual_tiempoInsert,
 				eventual_cantidadInsert,
 				eventual_cantidadSelect);
+		pthread_mutex_lock(&mHash);
+		list_iterate(criterios[HASH].memorias,(void*)printearMetrics);
+		pthread_mutex_unlock(&mHash);
+		pthread_mutex_lock(&mStrong);
+		list_iterate(criterios[STRONG].memorias,(void*)printearMetrics);
+		pthread_mutex_unlock(&mStrong);
+		pthread_mutex_lock(&mEventual);
+		list_iterate(criterios[EVENTUAL].memorias,(void*)printearMetrics);
+		pthread_mutex_unlock(&mEventual);
 	}
 	return 0;
 }
@@ -478,6 +481,7 @@ void kernel_run(char* operacion){
 	sem_post(&hayReady);
 }
 bool kernel_api(char* operacionAParsear, int thread){
+	if(esOperacionEjecutable(operacionAParsear)){
 		if(string_contains(operacionAParsear, "INSERT")) {
 			return kernel_insert(operacionAParsear,thread);
 		}
@@ -502,6 +506,9 @@ bool kernel_api(char* operacionAParsear, int thread){
 		else if (string_contains(operacionAParsear, "METRICS")) {
 			return kernel_metrics(1);
 		}
+		else
+			return false;
+	}
 	else
 		return false;
 }
