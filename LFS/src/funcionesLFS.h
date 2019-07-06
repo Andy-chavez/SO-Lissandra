@@ -44,7 +44,6 @@ void funcionInsert(char* argumentos,int socket);
 void crearMetadata(char* ruta, char* consistenciaTabla, char* numeroParticiones, char* tiempoCompactacion);
 void crearParticiones(char* ruta, int numeroParticiones); //se puede usar para los temporales.
 void funcionCreate(char* argumentos,int socket);
-int tamanioRegistros(char* nombreTabla);
 void funcionDescribe(char* argumentos,int socket); //despues quizas haya que cambiar el tipo
 void inicializarRegistroError();
 void funcionDrop(char* nombreTabla,int socket);
@@ -591,27 +590,6 @@ void funcionCreate(char* argumentos,int socket) {
 
 }
 
-//hacerlo por tabla!! y que reciba el nombre de la tabla
-int tamanioRegistros(char* nombreTabla){
-
-	int tamanioTotal = 0;
-
-	bool tieneElNombre(void *elemento){
-		return esIgualAlNombre(nombreTabla, elemento);
-	}
-
-	void* sumarRegistros(int valor , registro* registro ){
-		tamanioTotal = tamanioTotal + sizeof(registro->key)  + sizeof(registro->timestamp) + (strlen(registro->value) + 1);
-	}
-
-	pthread_mutex_lock(&mutexMemtable);
-	tablaMem* encuentraTabla =  list_find(memtable, tieneElNombre);
-	pthread_mutex_unlock(&mutexMemtable);
-
-	list_fold(encuentraTabla->listaRegistros, 0, sumarRegistros);
-
-return tamanioTotal;
-}
 
 void funcionDrop(char* nombreTabla,int socket){
 	bool liberarTablaConEsteNombre(metadataConSemaforo* unMetadata){

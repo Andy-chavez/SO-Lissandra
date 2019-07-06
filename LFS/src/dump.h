@@ -129,7 +129,7 @@ void dump(){
 
 //		liberarMemtable();
 
-		pthread_mutex_unlock(&mutexMemtable);
+		//pthread_mutex_unlock(&mutexMemtable);
 
 	}
 }

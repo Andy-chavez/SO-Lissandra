@@ -22,7 +22,7 @@
 // 1) INICIALIZACIONES//
 
 void inicializarSemaforos(){
-		pthread_mutex_init(&mutexMemtable, NULL);
+		//pthread_mutex_init(&mutexMemtable, NULL);
 		pthread_mutex_init(&mutexLogger, NULL);
 		pthread_mutex_init(&mutexLoggerConsola, NULL);
 		pthread_mutex_init(&mutexListaDeTablas,NULL);
@@ -106,7 +106,7 @@ void inicializarLog(char* ruta){
 // 2) LIBERACIONES//
 
 void liberarSemaforos(){
-	pthread_mutex_destroy(&mutexMemtable);
+	//pthread_mutex_destroy(&mutexMemtable);
 	pthread_mutex_destroy(&mutexLogger);
 	pthread_mutex_destroy(&mutexLoggerConsola);
 	pthread_mutex_destroy(&mutexListaDeTablas);
