@@ -1033,8 +1033,6 @@ void intentarConexiones() {
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);
-
-	liberarSeed(seedPropia);
 }
 
 void* timedGossip() {
