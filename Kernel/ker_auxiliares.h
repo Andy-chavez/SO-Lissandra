@@ -15,7 +15,7 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-bool recibidoEmpiezaCon(char* recibido, char* contiene);
+bool recibidoContiene(char* recibido, char* contiene);
 bool instruccion_no_ejecutada(instruccion* instruc);
 
 void describeTimeado();
@@ -182,7 +182,7 @@ void describeTimeado(){
 		}
 		usleep(metadataRefresh*1000);
 	}
-	liberarOperacionLQL(opAux);
+	//liberarOperacionLQL(opAux);
 }
 //------ ENVIOS Y SOCKETS ---------
 int enviarOperacion(operacionLQL* opAux,int index, int thread){
@@ -194,17 +194,17 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
 			return -1;
 		}
-		if(recibidoEmpiezaCon(recibido, "ERROR")){
+		if(recibidoContiene(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
 			cerrarConexion(socket);
 			return -1;
 		}
 		else{
-			while(recibidoEmpiezaCon(recibido, "FULL")){
+			while(recibidoContiene(recibido, "FULL")){
 				enviarJournal(socket);
 				serializarYEnviarOperacionLQL(socket, opAux);
 				recibido = (char*) recibir(socket);
-				if(recibidoEmpiezaCon(recibido, "ERROR")){
+				if(recibidoContiene(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);
 					cerrarConexion(socket);
 					return -1;
@@ -413,7 +413,7 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 void guardarTablaCreada(char* parametros){
 	char** opAux =string_n_split(parametros,3," ");
 	tabla* tablaAux = malloc(sizeof(tabla));
-	tablaAux->nombreDeTabla= *opAux;
+	tablaAux->nombreDeTabla= string_duplicate(*opAux);
 	if(string_equals_ignore_case(*(opAux+1),"SC")){
 		tablaAux->consistenciaDeTabla = SC;
 	}
@@ -477,9 +477,9 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
 	return c;
 }
 //------ ERRORES ---------
-bool recibidoEmpiezaCon(char* recibido, char* contiene){
+bool recibidoContiene(char* recibido, char* contiene){
 	string_to_upper(recibido);
-	return string_starts_with(recibido, contiene);
+	return string_contains(recibido, contiene);
 }
 //------ CERRAR ---------
 void kernel_semFinalizar() {

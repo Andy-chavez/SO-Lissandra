@@ -85,11 +85,13 @@ bool kernel_create(char* operacion, int thread){
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
 	if(consist == -1){
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		eliminarTablaCreada(*(parametros+1));
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	liberarParametrosSpliteados(parametros);
@@ -208,6 +210,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect,
 				eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_unlock(&mLogMetrics);
+		return true;
 	}
 	else if (consolaOLog==1){
 		printf("METRICS: \n"
@@ -238,6 +241,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 		pthread_mutex_lock(&mEventual);
 		list_iterate(criterios[EVENTUAL].memorias,(void*)printearMetrics);
 		pthread_mutex_unlock(&mEventual);
+		return true;
 	}
 	return 0;
 }
@@ -280,7 +284,7 @@ bool kernel_add(char* operacion){
 		}
 		else if(string_contains(*(opAux+4),"EC")){
 			agregarCriterioVerificandoSiLaTengo(mem,EVENTUAL,mEventual);
-			agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
+			//agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
@@ -417,8 +421,10 @@ void kernel_consola(){
 	while(!destroy){
 		printf(" ");
 		linea = readline("");
-		if(string_equals_ignore_case(linea,"cls"))
+		if(string_equals_ignore_case(linea,"cls")){
 			kernel_semFinalizar();
+			break;
+		}
 		kernel_almacenar_en_new(linea);
 	}
 	free(linea);
@@ -452,7 +458,7 @@ void kernel_pasar_a_ready(){
 		}
 		else{
 			pthread_mutex_lock(&mLog);
-			log_info(kernel_configYLog->log,"@ NEW: %s", operacion);
+			log_info(kernel_configYLog->log,"@ NEW: %s Operacion Invalida", operacion);
 			pthread_mutex_unlock(&mLog);
 		}
 	}
