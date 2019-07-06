@@ -533,6 +533,9 @@ int esInsertEjecutable(char* operacion) {
 
 	char* value = *(parametrosSpliteadosPorComillas + 1);
 	char** insertTablaYKey = string_split(*(parametrosSpliteadosPorComillas + 0), " ");
+
+	if(!tieneTodosLosParametros(insertTablaYKey, 3)) return 0;
+
 	char* timestamp = *(parametrosSpliteadosPorComillas + 2);
 
 	if(esNumeroParseable(*(insertTablaYKey + 2)) && tieneValorParseable(string_duplicate(value))){
