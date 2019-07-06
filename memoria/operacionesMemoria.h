@@ -509,18 +509,21 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 	registro* nuevoRegistro = malloc(sizeof(registro));
 
-	char* aux = (char*) obtenerValorDe(parametros, 2);
-	nuevoRegistro->value = string_trim_quotation(aux);
+	char* value = string_duplicate(*(parametros + 1));
+	nuevoRegistro->value = string_trim_quotation(value);
 	if(strlen(nuevoRegistro->value) > tamanioMaximoValue){
 		liberarRegistro(nuevoRegistro);
 		return NULL;
 	};
 
-	if(*(parametros + 3) != NULL) {
-		nuevoRegistro->timestamp = atoi(*(parametros + 3));
+	char* timestamp = *(parametros + 2);
+
+	if(timestamp != NULL) {
+		nuevoRegistro->timestamp = atoi(timestamp);
+	} else {
+		nuevoRegistro->timestamp = time(NULL);
 	}
-	nuevoRegistro->timestamp = time(NULL);
-	char* key = (char*) obtenerValorDe(parametros, 1);
+	char* key = string_duplicate((*(string_split((*parametros + 1), " "))));
 	nuevoRegistro->key = atoi(key);
 
 	free(key);
@@ -809,9 +812,11 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
 	verSiHayJournalEjecutandose(semaforoDeOperacion);
 
-	char** parametrosSpliteados = string_n_split(operacionInsert->parametros, 3, " ");
-	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
-	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+	char** parametrosSpliteadosPorComillas = string_split(operacionInsert->parametros, "\"");
+
+
+
+	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteadosPorComillas, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
 	if(!registroNuevo) {
 		enviarYLogearMensajeError(socketKernel, "ERROR: El value %s es mayor al tamanio maximo del value posible. (Tamanio maximo posible: %d)", *(parametrosSpliteados+2), MEMORIA_PRINCIPAL->tamanioMaximoValue);
@@ -1018,7 +1023,6 @@ void intentarConexiones() {
 		cerrarConexion(socketMemoria);
 	}
 
-	liberarSeed(seedPropia);
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);
