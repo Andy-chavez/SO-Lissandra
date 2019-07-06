@@ -31,7 +31,8 @@ typedef struct{
 	int cantParticiones;
 	int tiempoCompactacion;
 	char* nombreTabla;
-	pthread_mutex_t semaforoTabla;
+	pthread_mutex_t semaforoFS;
+	pthread_mutex_t semaforoMemtable;
 	pthread_t hiloDeCompactacion;
 }metadataConSemaforo;
 
@@ -58,7 +59,46 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
 void soloLoggear(int socket,char* mensaje,...);
 void soloLoggearError(int socket,char* mensaje,...);
-pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla);
+pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla);
+pthread_mutex_t devolverSemaforoDeTablaMemtable(char* nombreTabla);
+void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer);
+
+void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer) {
+
+	int desplazamiento=0;
+	int restante = tamanioTotalADumpear;
+	int i;
+	int j=0; //esto es para no desperdiciar espacio
+	for(i=0; i<cantBloquesNecesarios;i++){
+		j= i+1; //osea el proximo
+
+		if(*(bloquesAsignados+j) == NULL){ //osea si es el ultimo bloque
+
+			char* rutaBloque = string_new();
+			string_append(&rutaBloque,puntoMontaje);
+			string_append(&rutaBloque,"Bloques/");
+			string_append(&rutaBloque,*(bloquesAsignados+i));
+			string_append(&rutaBloque,".bin");
+			FILE* fd = fopen(rutaBloque,"w");
+			fwrite(buffer+desplazamiento,1,restante,fd);
+			fclose(fd);
+			free(rutaBloque);
+			break;
+		}
+
+		char* rutaBloque = string_new();
+		string_append(&rutaBloque,puntoMontaje);
+		string_append(&rutaBloque,"Bloques/");
+		string_append(&rutaBloque,*(bloquesAsignados+i)); //este es el numero de bloque donde escribo
+		string_append(&rutaBloque,".bin");
+		FILE* fd = fopen(rutaBloque,"w");
+		fwrite(buffer+desplazamiento,1,tamanioBloques,fd);
+		desplazamiento+= tamanioBloques;
+		restante-=tamanioBloques;
+		fclose(fd);
+		free(rutaBloque);
+	}
+}
 
 void soloLoggearError(int socket,char* mensaje,...){
 	va_list parametrosAdicionales;
@@ -95,7 +135,7 @@ void soloLoggear(int socket, char *mensaje, ...){
 	free(mensajeTotal);
 	va_end(parametrosAdicionales);
 }
-pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
+pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
 			metadata* unMetadata = elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
@@ -103,7 +143,18 @@ pthread_mutex_t devolverSemaforoDeTabla(char* nombreTabla){
 	pthread_mutex_lock(&mutexListaDeTablas);
 	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
 	pthread_mutex_unlock(&mutexListaDeTablas);
-	return metadataBuscado->semaforoTabla;
+	return metadataBuscado->semaforoFS;
+}
+
+pthread_mutex_t devolverSemaforoDeTablaMemtable(char* nombreTabla){
+		bool seEncuentraTabla(void* elemento){
+			metadata* unMetadata = elemento;
+			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
+		}
+	pthread_mutex_lock(&mutexListaDeTablas);
+	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
+	pthread_mutex_unlock(&mutexListaDeTablas);
+	return metadataBuscado->semaforoMemtable;
 }
 
 void agregarALista(char* unTimestamp,char* unaKey,char* unValue,t_list* head){
@@ -135,6 +186,7 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 	string_append(&rutaCompleta,nombreArchivo);
 	if(string_equals_ignore_case(nombreArchivo, "Metadata")){
 		remove(rutaCompleta);
+		free(rutaCompleta);
 		return;
 	}
 
@@ -193,7 +245,8 @@ void liberarMemtable() { //no elimina toda la memtable sino las tablas y registr
 
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
 	free(unMetadata->nombreTabla);
-	pthread_mutex_destroy(&(unMetadata->semaforoTabla));
+	pthread_mutex_destroy(&(unMetadata->semaforoFS));
+	pthread_mutex_destroy(&(unMetadata->semaforoMemtable));
 
 	pthread_cancel(unMetadata->hiloDeCompactacion);
 	pthread_join(unMetadata->hiloDeCompactacion,NULL);

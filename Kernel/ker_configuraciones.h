@@ -103,7 +103,7 @@ int kernel_inicializarMemoria(){
 	}
 	operacionProtocolo protocoloGossip = TABLAGOSSIP;
 	enviar(socketClienteKernel,(void*)&protocoloGossip, sizeof(operacionProtocolo));
-	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarDatos);
+	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarMemorias);
 	return 0;
 }
 void kernel_inicializarVariablesYListas(){
