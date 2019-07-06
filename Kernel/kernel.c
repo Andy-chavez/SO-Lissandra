@@ -34,12 +34,12 @@ int main(int argc, char *argv[]){
 		return EXIT_FAILURE;
 	}
 	kernel_inicializarEstructuras();
-	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_create(&threadDescribe, NULL,(void*)describeTimeado, NULL);
 	pthread_create(&threadGossip, NULL,(void*)kernel_gossiping, NULL);
 	pthread_create(&threadMetrics, NULL,(void*)metrics, NULL);
-	pthread_create(&threadDescribe, NULL,(void*)describeTimeado, NULL);
 	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
+	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	for(int i = 0; i<multiprocesamiento;i++){
 		crearThreadRR(i);
 	}

@@ -138,7 +138,7 @@ void actualizarListaMetadata(metadata* met){
 }
 //------ TIMED ---------
 void kernel_gossiping(){
-	while(!destroy){
+	while(destroy==0){
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
@@ -157,11 +157,25 @@ void describeTimeado(){
 	operacionLQL* opAux = malloc(sizeof(operacionLQL));
 	opAux ->operacion = "DESCRIBE";
 	opAux->parametros = "ALL";
-	while(!destroy){
+	while(destroy==0){
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket != -1){
+			serializarYEnviarOperacionLQL(socket, opAux);
+			void* bufferProtocolo = recibir(socket);
+			operacionProtocolo protocolo = empezarDeserializacion(bufferProtocolo);
+			if(protocolo == METADATA){
+				metadata * met = deserializarMetadata(bufferProtocolo);
+				actualizarListaMetadata(met);
+			}
+			if(protocolo == PAQUETEMETADATAS)
+				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			if(protocolo == ERROR){
+				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log, "@ RECIBIDO: Describe realizado");
+				pthread_mutex_unlock(&mLog);
+			}
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " RECIBIDO[TIMED]: Describe realizado");
@@ -179,6 +193,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
+			thread_loggearInfo("@ RECIBIDO",thread, "NULL");
 			return -1;
 		}
 		if(recibidoEmpiezaCon(recibido, "ERROR")){
@@ -380,8 +395,12 @@ void enviarJournal(int socket){
 	log_info(kernel_configYLog->log, " ENVIADO: JOURNAL");
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
-	if(recibido == NULL)
+	if(recibido == NULL){
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "@ RECIDIBO: NULL");
+		pthread_mutex_unlock(&mLog);
 		return;
+	}
 	pthread_mutex_lock(&mLog);
 	log_error(kernel_configYLog->log, "RECIBIDO: %s",recibido);
 	pthread_mutex_unlock(&mLog);
@@ -407,6 +426,7 @@ void guardarTablaCreada(char* parametros){
 		tablaAux->consistenciaDeTabla = EC;
 	}
 	agregarTablaVerificandoSiLaTengo(tablaAux);
+
 }
 void agregarTablaVerificandoSiLaTengo(tabla* t){
 	bool yaGuardeTabla(tabla* tab){

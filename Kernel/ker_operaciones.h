@@ -32,7 +32,7 @@ void metrics(){
 	while(!destroy){
 		kernel_metrics(0);
 		usleep(30000*1000);
-		metrics_resetVariables();
+		//metrics_resetVariables();
 	}
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
@@ -92,10 +92,23 @@ bool kernel_create(char* operacion, int thread){
 }
 bool kernel_describe(char* operacion, int thread){
 	if(string_length(operacion) <= string_length("describe ")){
-		//operacionLQL* opAux=splitear_operacion(operacion);
+		operacionLQL* opAux=splitear_operacion(operacion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		if(socket != -1){
-			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			serializarYEnviarOperacionLQL(socket, opAux);
+			void* bufferProtocolo = recibir(socket);
+			operacionProtocolo protocolo = empezarDeserializacion(bufferProtocolo);
+			if(protocolo == METADATA){
+				metadata * met = deserializarMetadata(bufferProtocolo);
+				actualizarListaMetadata(met);
+			}
+			if(protocolo == PAQUETEMETADATAS)
+				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			if(protocolo == ERROR){
+				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log, "@ RECIBIDO: Describe realizado");
+				pthread_mutex_unlock(&mLog);
+			}
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 			pthread_mutex_unlock(&mLog);
