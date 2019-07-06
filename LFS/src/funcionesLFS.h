@@ -122,6 +122,7 @@ metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	nuevoMetadata->semaforoFS = mutexFS;
 	nuevoMetadata->semaforoFS = mutexMemtable;
 	free(unMetadata->nombreTabla);
+	free(unMetadata);
 	return nuevoMetadata;
 }
 
@@ -244,7 +245,9 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t
 
 	soloLoggear(socket,"Registro encontrado en la memtable");
 
-//	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistro);
+	//list_destroy(encuentraLista);
+	list_destroy(registrosConLaKeyEnMemtable);
+//	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistros);
 
 return registroDeMayorTimestamp;
 
@@ -257,7 +260,6 @@ metadata* obtenerMetadata(char* nombreTabla){
 	int tiempoCompactacion;
 	consistencia tipoConsistencia;
 	metadata* unaMetadata= malloc(sizeof(metadata)); //ver si es necesario malloc, no me acuerdo porque lo pusimos
-
 
 	char* ruta = string_new();
 	string_append(&ruta, puntoMontaje);
@@ -466,7 +468,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		//if((devolverRegistroDeMayorTimestampYAgregarALista(listaRegistros, memtable,*(argSeparados+0), key)) == 0) return NULL;
 
 		liberarDoblePuntero(arrayDeBloques);
-		liberarDoblePuntero(argSeparados);
 
 		config_destroy(part);
 		free (ruta);
@@ -478,22 +479,28 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			if(!registroBuscado) {
 				enviarError(socket);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
+				liberarDoblePuntero(argSeparados);
 				return;
 			}
 			else {
 				soloLoggear(socket,"El value del registro buscado es: %s ",registroBuscado->value);
-				serializarYEnviarRegistro(socket,armarRegistroConNombreTabla(registroBuscado,nombreTabla));
+				registroConNombreTabla* registroAMandar = armarRegistroConNombreTabla(registroBuscado,nombreTabla);
+				serializarYEnviarRegistro(socket,registroAMandar);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
+				liberarRegistroConNombreTabla(registroAMandar);
+				liberarDoblePuntero(argSeparados);
 				return;
 			}
 		}
 		if(!registroBuscado){
 			soloLoggearError(socket,"No se encontro el registro");
 			list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
+			liberarDoblePuntero(argSeparados);
 			return;
 		}
 		soloLoggear(socket,"El value del registro buscado es: %s ",registroBuscado->value);
 		list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
+		liberarDoblePuntero(argSeparados);
 	}
 }
 
@@ -645,8 +652,10 @@ void serializarMetadataConSemaforo(int socket){
 	operacionProtocolo protocolo = PAQUETEMETADATAS;
 	enviar(socket,(void*) &protocolo,sizeof(operacionProtocolo));
 	pthread_mutex_lock(&mutexListaDeTablas);
-	serializarYEnviarPaqueteMetadatas(socket,list_map(listaDeTablas,tranformarMetadataSinSemaforo));
+	t_list* listaAMandar = list_map(listaDeTablas,tranformarMetadataSinSemaforo);
 	pthread_mutex_unlock(&mutexListaDeTablas);
+	serializarYEnviarPaqueteMetadatas(socket,listaAMandar);
+	list_destroy_and_destroy_elements(listaAMandar,(void*) liberarMetadata);
 }
 
 void funcionDescribe(char* argumentos,int socket) {

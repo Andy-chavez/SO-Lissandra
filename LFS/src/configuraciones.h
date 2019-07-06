@@ -97,9 +97,9 @@ void inicializarListas(){
 	listaDeTablas = list_create();
 }
 
-void inicializarLog(char* ruta){
+void inicializarLog(){
 	logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_INFO);
-	loggerConsola = log_create(ruta,"LISANDRA_CONSOLA",1,LOG_LEVEL_INFO);
+	loggerConsola = log_create("lisandraConsola.log","LISANDRA_CONSOLA",1,LOG_LEVEL_INFO);
 }
 
 // ------------------------------------------------------------------------ //
@@ -120,6 +120,7 @@ void liberarConfigYLogs() {
 	log_destroy(logger);
 	log_destroy(loggerConsola);
 	config_destroy(archivoDeConfig);
+	config_destroy(archivoMetadata);
 }
 void liberarVariablesGlobales(){
 	free(puntoMontaje);
@@ -154,7 +155,6 @@ void leerMetadataFS (){
 	tamanioBloques = config_get_int_value(archivoMetadata,"BLOCK_SIZE");
 	cantDeBloques = config_get_int_value(archivoMetadata,"BLOCKS");
 	magicNumber = config_get_string_value(archivoMetadata,"MAGIC_NUMBER");
-	config_destroy(archivoMetadata);
 	free(rutaMetadata);
 }
 

@@ -693,11 +693,7 @@ operacionLQL* splitear_operacion(char* operacion){
 }
 
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
-	int i = 0;
-	while(*(parametrosSpliteados + i)) {
-		free(*(parametrosSpliteados + i));
-		i++;
-	}
+	string_iterate_lines(parametrosSpliteados, free);
 	free(parametrosSpliteados);
 }
 

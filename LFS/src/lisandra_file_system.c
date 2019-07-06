@@ -234,7 +234,7 @@ int main(int argc, char* argv[]) {
 		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
-		inicializarLog("lisandraConsola.log");
+		inicializarLog();
 
 		inicializarBloques();
 		inicializarSemaforos();
