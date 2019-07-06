@@ -148,7 +148,7 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,int socket){
 	    }
 	    else
 	    {
-	    	soloLoggear(socket,"No existe tabla en ruta indicada %s \n",rutaDirectorio);
+	    	soloLoggear(socket,"No existe tabla en la ruta: %s \n",rutaDirectorio);
 	    	validacion=0;
 	    }
 	pthread_mutex_unlock(&mutexListaDeTablas);
@@ -616,7 +616,7 @@ void funcionDrop(char* nombreTabla,int socket){
 		pthread_mutex_lock(&mutexListaDeTablas);
 		list_remove_and_destroy_by_condition(listaDeTablas,liberarTablaConEsteNombre,(void*) liberarMetadataConSemaforo);
 		pthread_mutex_unlock(&mutexListaDeTablas);
-		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla");
+		enviarOMostrarYLogearInfo(socket,"Se elimino la tabla: %s",nombreTabla);
 
 		pthread_mutex_unlock(&semaforoDeTabla);
 
