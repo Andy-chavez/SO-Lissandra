@@ -46,16 +46,15 @@ void dump(){
 
 
 	while(1){
+		int tiempoActual=0;
+
 		pthread_mutex_lock(&mutexTiempoDump);
-		usleep(tiempoDump*1000);
+		tiempoActual = tiempoDump;
 		pthread_mutex_unlock(&mutexTiempoDump);
-		pthread_mutex_lock(&mutexMemtable);
+		usleep(tiempoActual*1000);
 		if(memtable->elements_count==0){
-			pthread_mutex_unlock(&mutexMemtable);
 			continue;
 		}
-
-		//pthread_mutex_unlock(&mutexMemtable);
 
 		int tamanioTotalADumpear =0;
 		char* buffer;
