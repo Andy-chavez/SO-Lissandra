@@ -508,40 +508,55 @@ int esNumeroParseable(char* key) {
 }
 
 int tieneValorParseable(char* value) {
-	if(string_starts_with(value, "\"") && string_ends_with(value, "\"")) {
-		char* valorTrimmeado = string_trim_quotation(value);
-		int respuesta = !string_equals_ignore_case(valorTrimmeado, "");
-		free(valorTrimmeado);
-		return respuesta;
-	}
-	else return 0;
+	return !string_equals_ignore_case(value, "");
 }
 
 int esConsistenciaParseable(char* consistencia) {
 	return string_equals_ignore_case(consistencia, "SC") || string_equals_ignore_case(consistencia, "EC") || string_equals_ignore_case(consistencia, "SHC");
+	// TODO es STRONG-EVENTUAL-nosefijateenelenunciado
+}
+
+int tieneTodosLosParametrosParaInsert(char** parametros) {
+	int i = 0;
+
+	while(*(parametros + i) != NULL) {
+		i++;
+	}
+
+	return i == 2 || i == 3;
 }
 
 int esInsertEjecutable(char* operacion) {
-	if(!tieneTodosLosParametros(operacion, 4) && !tieneTodosLosParametros(operacion, 5)) return 0;
+	char** parametrosSpliteadosPorComillas = string_split(operacion, "\"");
 
-	char** parametrosSpliteados = string_split(operacion, " ");
+	if(!tieneTodosLosParametrosParaInsert(parametrosSpliteadosPorComillas)) return 0;
 
-	if(esNumeroParseable(*(parametrosSpliteados + 2)) && tieneValorParseable(string_duplicate(*(parametrosSpliteados + 3)))){
+	char* value = *(parametrosSpliteadosPorComillas + 1);
+	char** insertTablaYKey = string_split(*(parametrosSpliteadosPorComillas + 0), " ");
+	char* timestamp = *(parametrosSpliteadosPorComillas + 2);
 
-		if(*(parametrosSpliteados + 4) == NULL) {
-			string_iterate_lines(parametrosSpliteados, free);
-			free(parametrosSpliteados);
+	if(esNumeroParseable(*(insertTablaYKey + 2)) && tieneValorParseable(string_duplicate(value))){
+
+		if(timestamp == NULL) {
+			string_iterate_lines(parametrosSpliteadosPorComillas, free);
+			string_iterate_lines(insertTablaYKey, free);
+			free(parametrosSpliteadosPorComillas);
+			free(insertTablaYKey);
 			return 1;
 		}
-		else if(esNumeroParseable(*(parametrosSpliteados + 4))) {
-			string_iterate_lines(parametrosSpliteados, free);
-			free(parametrosSpliteados);
+		else if(esNumeroParseable(timestamp)) {
+			string_iterate_lines(parametrosSpliteadosPorComillas, free);
+			string_iterate_lines(insertTablaYKey, free);
+			free(parametrosSpliteadosPorComillas);
+			free(insertTablaYKey);
 			return 1;
 		}
 
 	}
-	string_iterate_lines(parametrosSpliteados, free);
-	free(parametrosSpliteados);
+	string_iterate_lines(parametrosSpliteadosPorComillas, free);
+	string_iterate_lines(insertTablaYKey, free);
+	free(parametrosSpliteadosPorComillas);
+	free(insertTablaYKey);
 	return 0;
 }
 

@@ -43,7 +43,7 @@ int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDon
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo);
 void liberarParametrosSpliteados(char** parametrosSpliteados);
 void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado);
-registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue);
+registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamanioMaximoValue);
 void dropearSegmento(segmento* unSegmento);
 void liberarRegistro(registro* unRegistro);
 bool tienenIgualNombre(char* unNombre,char* otroNombre);
@@ -61,8 +61,8 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel);
 operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEnTabla* unaPagina);
 void modificarValorJournalRealizandose(int valor);
 hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo);
-void marcarHiloRealizandoSemaforo(pthread_t hilo, int semaforoElegido); //    1 = Operacion, 0 = Cancelar
-void marcarHiloComoSemaforoRealizado(pthread_t hilo, int semaforoElegido); // 1 = Operacion, 0 = Cancelar
+void marcarHiloRealizandoSemaforo(sem_t *semaforoElegido);
+void marcarHiloComoSemaforoRealizado(sem_t *semaforoElegido);
 void journalLQL(int socketKernel);
 void createLQL(operacionLQL* operacionCreate, int socketKernel);
 void describeLQL(operacionLQL* operacionDescribe, int socketKernel);
@@ -80,6 +80,11 @@ void* esperarSemaforoDeHilo(void* buffer);
 void* esperarSemaforoDeCancelar(void* buffer);
 void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*));
 void dejarEjecutarOperacionesDeNuevo();
+void protocoloCancelar();
+void cancelarListaHilos();
+void cancelarJournal();
+void cancelarGossiping();
+void cancelarConfig();
 
 // ------------------------------------------------------------------------ //
 // 1) INICIALIZACIONES Y FINALIZACIONES //
@@ -172,6 +177,7 @@ void inicializarSemaforos() {
 	sem_init(&BINARIO_CERRANDO_JOURNALTIMEADO, 0, 0);
 	sem_init(&BINARIO_CERRANDO_GOSSIPINGTIMEADO, 0, 0);
 	sem_init(&BINARIO_CERRANDO_CONFIG, 0, 0);
+	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 }
 
 void liberarSegmento(void* segmentoEnMemoria) {
@@ -393,7 +399,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	}
+	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -500,18 +506,21 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 	return (void*) parametroBuscado;
 }
 
-registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
+registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamanioMaximoValue) {
 	registro* nuevoRegistro = malloc(sizeof(registro));
 
-	char* aux = (char*) obtenerValorDe(parametros, 2);
-	nuevoRegistro->value = string_trim_quotation(aux);
-	if(strlen(nuevoRegistro->value + 1) > tamanioMaximoValue){
+	nuevoRegistro->value = string_trim_quotation(value);
+	if(strlen(nuevoRegistro->value) > tamanioMaximoValue){
 		liberarRegistro(nuevoRegistro);
 		return NULL;
 	};
 
-	nuevoRegistro->timestamp = time(NULL);
-	char* key = (char*) obtenerValorDe(parametros, 1);
+	if(timestamp != NULL) {
+		nuevoRegistro->timestamp = atoi(timestamp);
+	} else {
+		nuevoRegistro->timestamp = time(NULL);
+	}
+
 	nuevoRegistro->key = atoi(key);
 
 	free(key);
@@ -651,7 +660,7 @@ void modificarValorJournalRealizandose(int valor) {
 
 hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
 	bool esHiloPropio(void* unHilo) {
-		return hilo == ((hiloEnTabla*) unHilo)->thread;
+		return pthread_equal(hilo, ((hiloEnTabla*) unHilo)->thread);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
@@ -661,41 +670,24 @@ hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
 	return unHilo;
 }
 
-void marcarHiloRealizandoSemaforo(pthread_t hilo,int semaforoElegido) {
-	hiloEnTabla* hiloPropio = obtenerHiloEnTabla(hilo);
-	sem_t* semaforo; // BOBOALDFNSMFNKHFSMLGFSK TODO
-			if(semaforoElegido==1){
-				semaforo = &hiloPropio->semaforoOperacion;
-			}
-			else{
-				semaforo = &hiloPropio->cancelarThread;
-			}
-
-	sem_wait(&semaforo); // este wait es para que el journal espere a este hilo que esta ejecutando.
-
+void marcarHiloRealizandoSemaforo(sem_t *semaforo) {
 	// En el caso en que el journal ya se esta ejecutando, tendra que esperar a que el journal termine de ejecutar. Por lo tanto espera de nuevo a su propio semaforo
 	// (El journal lo liberara)
+	sem_wait(semaforo);
+}
 
+void verSiHayJournalEjecutandose(sem_t *semaforo) {
 	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
 	if(JOURNAL_REALIZANDOSE) {
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
-		sem_wait(&semaforo);
+		sem_wait(semaforo);
 	} else {
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 	}
-	free(semaforo);
 }
 
-void marcarHiloComoSemaforoRealizado(pthread_t hilo, int semaforoElegido) {
-	hiloEnTabla* hiloPropio = obtenerHiloEnTabla(hilo);
-	// TODO arreglar este polimorfismo pls
-	int semaforo;
-			if(semaforoElegido==1){
-				sem_post(&hiloPropio->semaforoOperacion);
-			}
-			else{
-				sem_post(&hiloPropio->cancelarThread);
-			}
+void marcarHiloComoSemaforoRealizado(sem_t *semaforo) {
+	sem_post(semaforo);
 }
 
 void journalLQL(int socketKernel) {
@@ -743,7 +735,9 @@ void liberarRecursosSelectLQL(char* nombreTabla, char *key) {
 }
 
 void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
-	marcarHiloRealizandoSemaforo(pthread_self(),1);
+	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
+	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
+	verSiHayJournalEjecutandose(semaforoDeOperacion);
 
 	char** parametrosSpliteados = string_split(operacionSelect->parametros, " ");
 	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
@@ -770,13 +764,13 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 			else if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 			}
 			else {
-				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 		}
 	}
@@ -785,7 +779,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
 		if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel)){
 			enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
@@ -794,7 +788,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			free(registroLFS);
 		}
 		else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 	}
 	// TODO else journal();
@@ -802,7 +796,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 	liberarRecursosSelectLQL(nombreTabla, keyString);
 	liberarParametrosSpliteados(parametrosSpliteados);
-	marcarHiloComoSemaforoRealizado(pthread_self(),1); //Operacion
+	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
 }
 
 void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
@@ -811,20 +805,31 @@ void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
 }
 
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
-	marcarHiloRealizandoSemaforo(pthread_self(),1);
+	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
+	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
+	verSiHayJournalEjecutandose(semaforoDeOperacion);
 
-	char** parametrosSpliteados = string_n_split(operacionInsert->parametros, 3, " ");
-	char* nombreTabla = (char*) obtenerValorDe(parametrosSpliteados, 0);
-	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteados, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+	char** parametrosSpliteadosPorComillas = string_split(operacionInsert->parametros, "\"");
+	char* value = string_duplicate(*(parametrosSpliteadosPorComillas + 1));
+	char* timestamp = string_duplicate(*(parametrosSpliteadosPorComillas + 2));
+	char** tablaYKey = string_split((*parametrosSpliteadosPorComillas + 1), " ");
+	char* tabla = string_duplicate(*tablaYKey);
+	char* key = string_duplicate(*(tablaYKey + 1));
+
+	registro* registroNuevo = crearRegistroNuevo(value, timestamp, key, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
 	if(!registroNuevo) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: El value %s es mayor al tamanio maximo del value posible. (Tamanio maximo posible: %d)", *(parametrosSpliteados+2), MEMORIA_PRINCIPAL->tamanioMaximoValue);
-		free(nombreTabla);
-		liberarParametrosSpliteados(parametrosSpliteados);
+		enviarYLogearMensajeError(socketKernel, "ERROR: El value %s es mayor al tamanio maximo del value posible. (Tamanio maximo posible: %d)", value, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+		free(tabla);
+		free(value);
+		free(timestamp);
+		free(key);
+		liberarParametrosSpliteados(tablaYKey);
+		liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
 		return;
 	}
 
-	segmento* unSegmento = encontrarSegmentoPorNombre(nombreTabla);
+	segmento* unSegmento = encontrarSegmentoPorNombre(tabla);
 	if(unSegmento){
 
 		paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,registroNuevo->key);
@@ -845,16 +850,19 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 
 	else {
-		if(agregarSegmento(registroNuevo,nombreTabla,1, socketKernel)) {
+		if(agregarSegmento(registroNuevo,tabla,1, socketKernel)) {
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 		};
 	}
 	// TODO else journal();
-	liberarParametrosSpliteados(parametrosSpliteados);
-	liberarRecursosInsertLQL(nombreTabla, registroNuevo);
-	marcarHiloComoSemaforoRealizado(pthread_self(),1); //Operacion
+	free(value);
+	free(timestamp);
+	free(key);
+	liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
+	liberarRecursosInsertLQL(tabla, registroNuevo);
+	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
 }
 
 void createLQL(operacionLQL* operacionCreate, int socketKernel) {
@@ -888,7 +896,9 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
-	marcarHiloRealizandoSemaforo(pthread_self(),1);
+	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
+	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
+	verSiHayJournalEjecutandose(semaforoDeOperacion);
 
 	segmento* unSegmento = encontrarSegmentoPorNombre(operacionDrop->parametros);
 
@@ -913,7 +923,7 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 		free(mensaje);
 	}
 
-	marcarHiloComoSemaforoRealizado(pthread_self(),1); //Operacion
+	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
 }
 // ------------------------------------------------------------------------ //
 // 7) TIMED OPERATIONS //
@@ -1023,22 +1033,26 @@ void intentarConexiones() {
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);
+
+	liberarSeed(seedPropia);
 }
 
 void* timedGossip() {
 	cargarSeeds();
+	pthread_cleanup_push(cancelarGossiping, NULL);
 
 	while(1) {
-		sem_post(&BINARIO_CERRANDO_JOURNALTIMEADO);
 		intentarConexiones();
-		sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
 
 		sem_wait(&MUTEX_RETARDO_GOSSIP);
 		int retardoGossip = RETARDO_GOSSIP * 1000;
 		sem_post(&MUTEX_RETARDO_GOSSIP);
 
+		sem_post(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
 		usleep(retardoGossip);
+		sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
 	}
+	pthread_cleanup_pop(0);
 }
 
 void* timedJournal(){
@@ -1051,9 +1065,9 @@ void* timedJournal(){
 
 		sem_post(&BINARIO_CERRANDO_JOURNALTIMEADO);
 		usleep(retardoJournal);
+		sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
 
 		journalLQL(-1);
-		sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
 	}
 }
 
@@ -1063,8 +1077,11 @@ void* timedJournal(){
 void agregarHiloAListaDeHilos() {
 	hiloEnTabla* hiloPropio = malloc(sizeof(hiloEnTabla));
 	hiloPropio->thread = pthread_self();
-	sem_init(&hiloPropio->semaforoOperacion, 0 , 1);
-	sem_init(&hiloPropio->cancelarThread, 0 , 1);
+
+	hiloPropio->semaforoOperacion = malloc(sizeof(sem_t));
+	hiloPropio->cancelarThread = malloc(sizeof(sem_t));
+	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
+	sem_init(hiloPropio->cancelarThread, 0 , 0);
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	list_add(TABLA_THREADS, hiloPropio);
@@ -1074,7 +1091,7 @@ void agregarHiloAListaDeHilos() {
 void eliminarHiloDeListaDeHilos() {
 	bool esElPropioThread(void* hiloEnLaTabla) {
 		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
-		if(unHilo->thread == pthread_self()) {
+		if(pthread_equal(unHilo->thread, pthread_self())) {
 			free(unHilo);
 			return true;
 		}
@@ -1089,7 +1106,7 @@ void eliminarHiloDeListaDeHilos() {
 void* esperarSemaforoDeHilo(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
-		sem_wait(&hiloAEsperar->semaforoOperacion);
+		sem_wait(hiloAEsperar->semaforoOperacion);
 
 		pthread_exit(0);
 }
@@ -1097,7 +1114,7 @@ void* esperarSemaforoDeHilo(void* buffer) {
 void* esperarSemaforoDeCancelar(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
-		sem_wait(&hiloAEsperar->cancelarThread);
+		sem_wait(hiloAEsperar->cancelarThread);
 
 		pthread_exit(0);
 }
@@ -1110,9 +1127,9 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
-		pthread_t hiloQueEspera;
-		pthread_create(&hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
-		list_add(listaHilosEsperandoSemaforos, &hiloQueEspera);
+		pthread_t *hiloQueEspera = malloc(sizeof(pthread_t));
+		pthread_create(hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
+		list_add(listaHilosEsperandoSemaforos, hiloQueEspera);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
@@ -1120,15 +1137,49 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
-	list_destroy(listaHilosEsperandoSemaforos);
+	list_destroy_and_destroy_elements(listaHilosEsperandoSemaforos, free);
 }
 
 void dejarEjecutarOperacionesDeNuevo() {
 	void postSemaforoDelHilo(void* hilo) {
-		sem_post(&((hiloEnTabla*) hilo)->semaforoOperacion);
+		sem_post(((hiloEnTabla*) hilo)->semaforoOperacion);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	list_iterate(TABLA_THREADS, postSemaforoDelHilo);
 	sem_post(&MUTEX_TABLA_THREADS);
+}
+
+//----------------Cancelaciones---------------------------
+
+
+void cancelarListaHilos(){
+		void cancelarHilo(void* hilo){
+			pthread_cancel(((hiloEnTabla*) hilo)->thread);
+			pthread_join(((hiloEnTabla*) hilo)->thread, NULL);
+		}
+
+	esperarAHilosEjecutandose(esperarSemaforoDeCancelar);
+	list_iterate(TABLA_THREADS,cancelarHilo);
+}
+
+void cleanupTrabajarConConexion() {
+	cancelarListaHilos();
+}
+
+void esperarParaCancelarConsola(pthread_t hiloConsola){
+	hiloEnTabla* hilo = obtenerHiloEnTabla(hiloConsola);
+	sem_wait(hilo->cancelarThread);
+}
+
+void cancelarJournal(){
+	sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
+}
+
+void cancelarGossiping(){
+	sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
+}
+
+void cancelarCambiosConfig(){
+	sem_wait(&BINARIO_CERRANDO_CONFIG);
 }
