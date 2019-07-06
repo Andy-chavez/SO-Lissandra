@@ -512,7 +512,7 @@ int tieneValorParseable(char* value) {
 }
 
 int esConsistenciaParseable(char* consistencia) {
-	return string_equals_ignore_case(consistencia, "SC") || string_equals_ignore_case(consistencia, "EC") || string_equals_ignore_case(consistencia, "SHC");
+	return string_equals_ignore_case(consistencia, "STRONG") || string_equals_ignore_case(consistencia, "EVENTUAL") || string_equals_ignore_case(consistencia, "HASH");
 	// TODO es STRONG-EVENTUAL-nosefijateenelenunciado
 }
 
