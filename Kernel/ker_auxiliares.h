@@ -467,6 +467,7 @@ void kernel_destroy(){
 }
 void kernel_semFinalizar() {
 	sem_post(&finalizar);
+	destroy = 1;
 }
 //----------------- LOGS -----------------------------
 void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux){
