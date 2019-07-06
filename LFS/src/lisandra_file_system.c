@@ -58,6 +58,7 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 				soloLoggear(socket,"Se recibio un DUMP");
 				dump();
 			}
+
 	else {
 		soloLoggear(socket,"no entendi xD\n");
 	}
@@ -147,6 +148,10 @@ void* servidorLisandra(){
 
 }
 
+void cerrar() {
+	sem_post(&binarioLFS);
+}
+
 void leerConsola() {
 		int socket = -1;
 		char *linea = NULL;
@@ -157,6 +162,7 @@ void leerConsola() {
 	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
+	    printf("-------CERRAR---------\n");
 	    printf ("Ingresa operacion\n");
 
     	//ESTA ROMPIENDO EL INSERT POR EL FREE DE PARAMETROS SPLITEADOS, COMENTO POR AHORA PA PROBAR
@@ -164,7 +170,11 @@ void leerConsola() {
 
 	    while ((linea = readline(""))){
 	    			string_to_upper(linea);
-	    	    	if(esOperacionEjecutable(linea)){
+	    			if(string_equals_ignore_case(linea,"Cerrar"))
+	    			{
+	    			cerrar();
+	    			}
+	    			else if(esOperacionEjecutable(linea)){
 	    	    		parserGeneral(splitear_operacion(linea),socket);
 	    	    	}
 	    	    		else{
@@ -230,11 +240,11 @@ void terminarTodo() {
 
 int main(int argc, char* argv[]) {
 
-		//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
-		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+		//leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
-		inicializarLog("lisandraConsola.log");
+		inicializarLog();
 
 		inicializarBloques();
 		inicializarSemaforos();
@@ -271,7 +281,6 @@ int main(int argc, char* argv[]) {
 		sem_wait(&binarioLFS);
 
 		pthread_cancel(threadServer);
-//		int res = pthread_cancel(threadServer);
 		pthread_cancel(threadConsola);
 		pthread_cancel(threadDump);
 		pthread_cancel(threadCambiosConfig);
@@ -281,10 +290,6 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadDump,NULL);
 		pthread_join(threadCambiosConfig,NULL);
 
-//		if (res) printf("que haces pa");
-
-		//create y despues cancel y join
-		//enviar logear mensaje de error
 		liberarVariablesGlobales();
-		return EXIT_SUCCESS;
+return EXIT_SUCCESS;
 }
