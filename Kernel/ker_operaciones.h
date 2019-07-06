@@ -238,14 +238,14 @@ bool kernel_add(char* operacion){
 	int numero = atoi(*(opAux+2));
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
-		if(string_contains(*(opAux+4),"HASH")){
+		if(string_contains(*(opAux+4),"SHC")){
 			agregarCriterioVerificandoSiLaTengo(mem,HASH,mHash);
 			//agregarALista(criterios[HASH].memorias, mem, mHash);
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
-		else if(string_contains(*(opAux+4),"STRONG")){
+		else if(string_contains(*(opAux+4),"SC")){
 			if(list_size(criterios[STRONG].memorias)==0){
 				agregarCriterioVerificandoSiLaTengo(mem,STRONG,mStrong);
 				//agregarALista(criterios[STRONG].memorias, mem, mStrong);
@@ -260,7 +260,7 @@ bool kernel_add(char* operacion){
 				return false;
 			}
 		}
-		else if(string_contains(*(opAux+4),"EVENTUAL")){
+		else if(string_contains(*(opAux+4),"EC")){
 			agregarCriterioVerificandoSiLaTengo(mem,EVENTUAL,mEventual);
 			agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
 			liberarParametrosSpliteados(opAux);
@@ -318,7 +318,7 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfo("FINISHCED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
@@ -358,13 +358,13 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			else if(ERROR ==-1){
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("@ FINISHCED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("FINISHCED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -395,7 +395,7 @@ void kernel_consola(){
 			">> DROP [NOMBRE_TABLA]\n"
 			">> METRICS\n"
 			">> JOURNAL\n"
-			">> ADD MEMORY [NUMERO] TO [STRONG/HASH/EVENTUAL]\n"
+			">> ADD MEMORY [NUMERO] TO [SC/SHC/EC]\n"
 			">> DROP [NOMBRE_TABLA]\n"
 			">> RUN [PATH_ARCHIVO]\n"
 			">> Y siga su ejecucion mediante el archivo Kernel.log\n");

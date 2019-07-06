@@ -367,7 +367,7 @@ int obtenerIndiceDeConsistencia(consistencia unaConsistencia){
 	else if(unaConsistencia == EC){
 		return EVENTUAL;
 	}
-	else if(unaConsistencia == SH){
+	else if(unaConsistencia == SHC){
 		return HASH;
 	}
 	return -1;
@@ -398,8 +398,8 @@ void guardarTablaCreada(char* parametros){
 	if(string_equals_ignore_case(*(opAux+1),"SC")){
 		tablaAux->consistenciaDeTabla = SC;
 	}
-	else if(string_equals_ignore_case(*(opAux+1),"SH")){
-		tablaAux->consistenciaDeTabla = SH;
+	else if(string_equals_ignore_case(*(opAux+1),"SHC")){
+		tablaAux->consistenciaDeTabla = SHC;
 	}
 	else if(string_equals_ignore_case(*(opAux+1),"EC")){
 		tablaAux->consistenciaDeTabla = EC;
