@@ -642,6 +642,8 @@ void* tranformarMetadataSinSemaforo(metadataConSemaforo* metadataATransformar){
 }
 
 void serializarMetadataConSemaforo(int socket){
+	operacionProtocolo protocolo = PAQUETEMETADATAS;
+	enviar(socket,(void*) &protocolo,sizeof(operacionProtocolo));
 	pthread_mutex_lock(&mutexListaDeTablas);
 	serializarYEnviarPaqueteMetadatas(socket,list_map(listaDeTablas,tranformarMetadataSinSemaforo));
 	pthread_mutex_unlock(&mutexListaDeTablas);
