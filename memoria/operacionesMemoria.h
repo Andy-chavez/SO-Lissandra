@@ -399,7 +399,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	} else if(empezarDeserializacion(&buffer) == -2) return NULL;
+	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -511,7 +511,7 @@ registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 
 	char* aux = (char*) obtenerValorDe(parametros, 2);
 	nuevoRegistro->value = string_trim_quotation(aux);
-	if(strlen(nuevoRegistro->value + 1) > tamanioMaximoValue){
+	if(strlen(nuevoRegistro->value) > tamanioMaximoValue){
 		liberarRegistro(nuevoRegistro);
 		return NULL;
 	};
@@ -761,13 +761,13 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 			else if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
 			}
 			else {
-				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 		}
 	}
@@ -776,7 +776,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
 		if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel)){
 			enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
@@ -785,7 +785,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			free(registroLFS);
 		}
 		else {
-			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 	}
 	// TODO else journal();
@@ -1015,6 +1015,7 @@ void intentarConexiones() {
 		cerrarConexion(socketMemoria);
 	}
 
+	liberarSeed(seedPropia);
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);

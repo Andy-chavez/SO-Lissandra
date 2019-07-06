@@ -53,8 +53,6 @@ bool APIProtocolo(void* buffer, int socket) {
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 		return true;
-	case ERROR:
-		return -2;
 	case PAQUETEOPERACIONES:
 	case UNREGISTRO:
 	case METADATA:
