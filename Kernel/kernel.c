@@ -51,11 +51,11 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i<multiprocesamiento;i++){
 		joinThreadRR();
 	}
-	struct sigaction terminar;
-	terminar.sa_handler = kernel_semFinalizar;
-	sigemptyset(&terminar.sa_mask);
-	terminar.sa_flags = SA_RESTART;
-	sigaction(SIGINT, &terminar, NULL);
+//	struct sigaction terminar;
+//	terminar.sa_handler = kernel_semFinalizar;
+//	sigemptyset(&terminar.sa_mask);
+//	terminar.sa_flags = SA_RESTART;
+//	sigaction(SIGINT, &terminar, NULL);
 
 	sem_wait(&finalizar);
 	kernel_finalizar();

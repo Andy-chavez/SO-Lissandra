@@ -19,7 +19,6 @@ bool recibidoEmpiezaCon(char* recibido, char* contiene);
 bool instruccion_no_ejecutada(instruccion* instruc);
 
 void describeTimeado();
-void kernel_destroy();
 void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux);
 void thread_loggearInfo(char* estado, int threadProcesador, char* operacion);
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
@@ -48,37 +47,37 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
-void actualizarTiemposInsert(int index, clock_t tiempo){
+void actualizarTiemposInsert(int index, time_t tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mEventual);
 	}
 }
-void actualizarTiemposSelect(int index, clock_t tiempo){
+void actualizarTiemposSelect(int index, time_t tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mEventual);
 	}
 }
@@ -124,17 +123,17 @@ void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex
 }
 void actualizarListaMetadata(metadata* met){
 	tabla* t = malloc(sizeof(tabla));
-	bool tablaYaGuardada(tabla* t){
-		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
-	}
-	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
-		liberarMetadata(met);
-		return;
-	}
+//	bool tablaYaGuardada(tabla* t){
+//		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
+//	}
+//	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
+//		//liberarMetadata(met);
+//		return;
+//	}
 	t->nombreDeTabla = string_duplicate(met->nombreTabla);
 	t->consistenciaDeTabla = met->tipoConsistencia;
 	agregarTablaVerificandoSiLaTengo(t);
-	liberarMetadata(met);
+	//liberarMetadata(met);
 }
 //------ TIMED ---------
 void kernel_gossiping(){
@@ -192,7 +191,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
-			thread_loggearInfo("@ RECIBIDO",thread, "NULL");
+			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
 			return -1;
 		}
 		if(recibidoEmpiezaCon(recibido, "ERROR")){
@@ -396,7 +395,7 @@ void enviarJournal(int socket){
 	char* recibido = (char*) recibir(socket);
 	if(recibido == NULL){
 		pthread_mutex_lock(&mLog);
-		log_info(kernel_configYLog->log, "@ RECIDIBO: NULL");
+		log_info(kernel_configYLog->log, "@ RECIDIBO:DESCONEXION/ERROR EN MEMORIA");
 		pthread_mutex_unlock(&mLog);
 		return;
 	}
@@ -483,9 +482,6 @@ bool recibidoEmpiezaCon(char* recibido, char* contiene){
 	return string_starts_with(recibido, contiene);
 }
 //------ CERRAR ---------
-void kernel_destroy(){
-	destroy = 1;
-}
 void kernel_semFinalizar() {
 	sem_post(&finalizar);
 	destroy = 1;

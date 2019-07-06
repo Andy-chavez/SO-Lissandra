@@ -37,7 +37,7 @@ void metrics(){
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion, int thread){
-	clock_t tiempo =time(NULL);
+	time_t tiempo =time(NULL);
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
@@ -47,16 +47,19 @@ bool kernel_insert(char* operacion, int thread){
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		tiempo = time(NULL) - tiempo;
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		return false;
 	}
 	tiempo = time(NULL) - tiempo;
-	criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+	criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
 bool kernel_select(char* operacion, int thread){
+//	struct timeval horaInicio;
+//	struct timeval horaFin;
 	time_t tiempo = time(NULL);
+
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
@@ -66,9 +69,11 @@ bool kernel_select(char* operacion, int thread){
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		tiempo = time(NULL) - tiempo;
+//		gettimeofday(&horaInicio);
 		actualizarTiemposSelect(index,tiempo);
 		return false;
 	}
+//	gettimeofday(&horaFin);
 	tiempo = time(NULL) - tiempo;
 	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
@@ -193,11 +198,11 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: \n"
-				">tiempo en selects de HASH: %d,\n>tiempo en inserts de HASH: %d,\n"
+				">tiempo en selects de HASH: %f,\n>tiempo en inserts de HASH: %f,\n"
 				"cantidad inserts en HASH : %d,\ncantidad selects en HASH : %d\n"
-				">tiempo en selects de STRONG: %d,\n>tiempo en inserts de STRONG: %d,\n"
+				">tiempo en selects de STRONG: %f,\n>tiempo en inserts de STRONG: %f,\n"
 				"cantidad inserts en STRONG : %d,\ncantidad selects en STRONG : %d\n"
-				">tiempo en selects de EVENTUAL: %d,\n>tiempo en inserts de EVENTUAL: %d,\n"
+				">tiempo en selects de EVENTUAL: %f,\n>tiempo en inserts de EVENTUAL: %f,\n"
 				"cantidad inserts en EVENTUAL : %d,\ncantidad selects en EVENTUAL : %d\n",
 				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect,
 				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect,
@@ -387,10 +392,6 @@ void kernel_roundRobin(int threadProcesador){
 }
 // ---------------.: THREAD CONSOLA A NEW :.---------------
 void kernel_almacenar_en_new(char*operacion){
-	if (string_contains( operacion, "x")||string_contains( operacion, "X")) {
-		void kernel_destroy();
-		return;
-	}
 	agregarALista(cola_proc_nuevos,operacion,colaNuevos);
 	sem_post(&hayNew);
 	string_to_upper(operacion);
@@ -416,6 +417,8 @@ void kernel_consola(){
 	while(!destroy){
 		printf(" ");
 		linea = readline("");
+		if(string_equals_ignore_case(linea,"cls"))
+			kernel_semFinalizar();
 		kernel_almacenar_en_new(linea);
 	}
 	free(linea);

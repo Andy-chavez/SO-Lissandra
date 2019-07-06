@@ -12,6 +12,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #define HASH 2
 #define STRONG 1

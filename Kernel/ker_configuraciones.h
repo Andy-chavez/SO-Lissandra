@@ -125,6 +125,7 @@ void kernel_inicializarEstructuras(){
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
+	log_destroy(logMetrics);
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
 	free(kernel_configYLog);
