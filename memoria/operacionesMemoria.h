@@ -405,8 +405,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	}
-	else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
+	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -522,9 +521,8 @@ registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 		liberarRegistro(nuevoRegistro);
 		return NULL;
 	};
-
 	if(*(parametros + 3) != NULL) {
-		nuevoRegistro->timestamp = atoi(*(parametros + 3));
+			nuevoRegistro->timestamp = atoi(*(parametros + 3));
 	}
 
 	nuevoRegistro->timestamp = time(NULL);
@@ -1062,7 +1060,6 @@ void intentarConexiones() {
 	sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
 	list_iterate(TABLA_SEEDS_CONFIG, intentarConexionTablaConfig);
 	sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
-	liberarSeed(seedPropia);
 
 }
 
