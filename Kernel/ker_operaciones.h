@@ -6,12 +6,11 @@
 
 /******************************DECLARACIONES******************************************/
 /* TODO metrics
- * metrics -> variables globales con semaforos
  */
 bool kernel_create(char* operacion,int thread);
 bool kernel_describe(char* operacion,int thread);
 bool kernel_journal();
-bool kernel_metrics();
+bool kernel_metrics(int consola);
 bool kernel_api(char* operacionAParsear,int thread);
 bool kernel_add(char* operacion);
 bool kernel_drop(char* operacion,int thread);
@@ -31,14 +30,14 @@ void metrics();
 /******************************IMPLEMENTACIONES******************************************/
 void metrics(){
 	while(!destroy){
-		kernel_metrics();
+		kernel_metrics(0);
 		usleep(30000*1000);
 		metrics_resetVariables();
 	}
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion, int thread){
-	clock_t tiempo =clock();
+	clock_t tiempo =time(NULL);
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
@@ -47,17 +46,17 @@ bool kernel_insert(char* operacion, int thread){
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = clock() - tiempo;
+		tiempo = time(NULL) - tiempo;
 		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
 		return false;
 	}
-	tiempo = clock() - tiempo;
+	tiempo = time(NULL) - tiempo;
 	criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
 bool kernel_select(char* operacion, int thread){
-	clock_t tiempo =clock();
+	time_t tiempo = time(NULL);
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
@@ -66,11 +65,11 @@ bool kernel_select(char* operacion, int thread){
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = clock() - tiempo;
+		tiempo = time(NULL) - tiempo;
 		actualizarTiemposSelect(index,tiempo);
 		return false;
 	}
-	tiempo = clock() - tiempo;
+	tiempo = time(NULL) - tiempo;
 	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
@@ -93,8 +92,8 @@ bool kernel_create(char* operacion, int thread){
 }
 bool kernel_describe(char* operacion, int thread){
 	if(string_length(operacion) <= string_length("describe ")){
-		operacionLQL* opAux=splitear_operacion(operacion);
-		int socket = obtenerSocketAlQueSeEnvio(opAux,STRONG);
+		//operacionLQL* opAux=splitear_operacion(operacion);
+		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		if(socket != -1){
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
@@ -156,7 +155,7 @@ bool kernel_journal(){
 	journal_consistencia(2);
 	return true;
 }
-bool kernel_metrics(){ // todo int consolaOLog){ //0 consola 1 log
+bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	pthread_mutex_lock(&mHash);
 	int hash_cantidadSelect = criterios[HASH].cantidadSelects;
 	int hash_cantidadInsert = criterios[HASH].cantidadInserts;
@@ -175,36 +174,50 @@ bool kernel_metrics(){ // todo int consolaOLog){ //0 consola 1 log
 	int eventual_tiempoSelect = criterios[EVENTUAL].tiempoSelects;
 	int eventual_tiempoInsert = criterios[EVENTUAL].tiempoInserts;
 	pthread_mutex_unlock(&mEventual);
-//	if(consolaOLog){
-//
-//	}
-	pthread_mutex_lock(&mLogMetrics);
-	log_info(logMetrics, "METRICS: \n"
-			"tiempo en selects de HASH: %d,\n"
-			"tiempo en inserts de HASH: %d,\n"
-			"cantidad inserts en HASH : %d,\n"
-			"cantidad selects en HASH : %d\n"
-			"tiempo en selects de STRONG: %d,\n"
-			"tiempo en inserts de STRONG: %d,\n"
-			"cantidad inserts en STRONG : %d,\n"
-			"cantidad selects en STRONG : %d\n"
-			"tiempo en selects de EVENTUAL: %d,\n"
-			"tiempo en inserts de EVENTUAL: %d,\n"
-			"cantidad inserts en EVENTUAL : %d,\n"
-			"cantidad selects en EVENTUAL : %d\n",
-			hash_tiempoSelect,
-			hash_tiempoInsert,
-			hash_cantidadInsert,
-			hash_cantidadSelect,
-			strong_tiempoSelect,
-			strong_tiempoInsert,
-			strong_cantidadInsert,
-			strong_cantidadSelect,
-			eventual_tiempoSelect,
-			eventual_tiempoInsert,
-			eventual_cantidadInsert,
-			eventual_cantidadSelect);
-	pthread_mutex_unlock(&mLogMetrics);
+	if(consolaOLog==0){
+		pthread_mutex_lock(&mLogMetrics);
+		log_info(logMetrics, "METRICS: \n"
+				">tiempo en selects de HASH: %d,\n>tiempo en inserts de HASH: %d,\n"
+				"cantidad inserts en HASH : %d,\ncantidad selects en HASH : %d\n"
+				">tiempo en selects de STRONG: %d,\n>tiempo en inserts de STRONG: %d,\n"
+				"cantidad inserts en STRONG : %d,\ncantidad selects en STRONG : %d\n"
+				">tiempo en selects de EVENTUAL: %d,\n>tiempo en inserts de EVENTUAL: %d,\n"
+				"cantidad inserts en EVENTUAL : %d,\ncantidad selects en EVENTUAL : %d\n",
+				hash_tiempoSelect,
+				hash_tiempoInsert,
+				hash_cantidadInsert,
+				hash_cantidadSelect,
+				strong_tiempoSelect,
+				strong_tiempoInsert,
+				strong_cantidadInsert,
+				strong_cantidadSelect,
+				eventual_tiempoSelect,
+				eventual_tiempoInsert,
+				eventual_cantidadInsert,
+				eventual_cantidadSelect);
+		pthread_mutex_unlock(&mLogMetrics);
+	}
+	else if (consolaOLog==1){
+		printf("METRICS: \n"
+				">tiempo en selects de HASH: %d,\n>tiempo en inserts de HASH: %d,\n"
+				"cantidad inserts en HASH : %d,\ncantidad selects en HASH : %d\n"
+				">tiempo en selects de STRONG: %d,\n>tiempo en inserts de STRONG: %d,\n"
+				"cantidad inserts en STRONG : %d,\ncantidad selects en STRONG : %d\n"
+				">tiempo en selects de EVENTUAL: %d,\n>tiempo en inserts de EVENTUAL: %d,\n"
+				"cantidad inserts en EVENTUAL : %d,\ncantidad selects en EVENTUAL : %d\n",
+				hash_tiempoSelect,
+				hash_tiempoInsert,
+				hash_cantidadInsert,
+				hash_cantidadSelect,
+				strong_tiempoSelect,
+				strong_tiempoInsert,
+				strong_cantidadInsert,
+				strong_cantidadSelect,
+				eventual_tiempoSelect,
+				eventual_tiempoInsert,
+				eventual_cantidadInsert,
+				eventual_cantidadSelect);
+	}
 	return 0;
 }
 void journal_consistencia(int consistencia){
@@ -223,14 +236,16 @@ bool kernel_add(char* operacion){
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_contains(*(opAux+4),"HASH")){
-			agregarALista(criterios[HASH].memorias, mem, mHash);
+			agregarCriterioVerificandoSiLaTengo(mem,HASH,mHash);
+			//agregarALista(criterios[HASH].memorias, mem, mHash);
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
 		else if(string_contains(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
-				agregarALista(criterios[STRONG].memorias, mem, mStrong);
+				agregarCriterioVerificandoSiLaTengo(mem,STRONG,mStrong);
+				//agregarALista(criterios[STRONG].memorias, mem, mStrong);
 				liberarParametrosSpliteados(opAux);
 				return true;
 			}
@@ -243,6 +258,7 @@ bool kernel_add(char* operacion){
 			}
 		}
 		else if(string_contains(*(opAux+4),"EVENTUAL")){
+			agregarCriterioVerificandoSiLaTengo(mem,EVENTUAL,mEventual);
 			agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
 			liberarParametrosSpliteados(opAux);
 			return true;
@@ -361,6 +377,7 @@ void kernel_almacenar_en_new(char*operacion){
 	}
 	agregarALista(cola_proc_nuevos,operacion,colaNuevos);
 	sem_post(&hayNew);
+	string_to_upper(operacion);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
@@ -483,7 +500,7 @@ bool kernel_api(char* operacionAParsear, int thread){
 			return kernel_journal();
 		}
 		else if (string_contains(operacionAParsear, "METRICS")) {
-			return kernel_metrics();
+			return kernel_metrics(1);
 		}
 	else
 		return false;
