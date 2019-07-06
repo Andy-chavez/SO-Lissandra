@@ -211,9 +211,15 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 				eventual_tiempoInsert,
 				eventual_cantidadInsert,
 				eventual_cantidadSelect);
-		list_iterate(criterios[HASH].memorias,printearMetrics);
-		list_iterate(criterios[STRONG].memorias,printearMetrics);
-		list_iterate(criterios[EVENTUAL].memorias,printearMetrics);
+		pthread_mutex_lock(&mHash);
+		list_iterate(criterios[HASH].memorias,(void*)printearMetrics);
+		pthread_mutex_unlock(&mHash);
+		pthread_mutex_lock(&mStrong);
+		list_iterate(criterios[STRONG].memorias,(void*)printearMetrics);
+		pthread_mutex_unlock(&mStrong);
+		pthread_mutex_lock(&mEventual);
+		list_iterate(criterios[EVENTUAL].memorias,(void*)printearMetrics);
+		pthread_mutex_unlock(&mEventual);
 	}
 	return 0;
 }
@@ -475,6 +481,7 @@ void kernel_run(char* operacion){
 	sem_post(&hayReady);
 }
 bool kernel_api(char* operacionAParsear, int thread){
+	if(esOperacionEjecutable(operacionAParsear)){
 		if(string_contains(operacionAParsear, "INSERT")) {
 			return kernel_insert(operacionAParsear,thread);
 		}
@@ -499,6 +506,9 @@ bool kernel_api(char* operacionAParsear, int thread){
 		else if (string_contains(operacionAParsear, "METRICS")) {
 			return kernel_metrics(1);
 		}
+		else
+			return false;
+	}
 	else
 		return false;
 }
