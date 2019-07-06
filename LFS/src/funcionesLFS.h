@@ -195,7 +195,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 	bool buscarPorNombre(tablaMem* elemento){
 		return agregarRegistro(nombreTabla, unRegistro, elemento);
 	}
-	//pthread_mutex_lock(&mutexMemtable);
+	pthread_mutex_lock(&mutexMemtable);
 	if(!list_find(memtable, buscarPorNombre)){
 
 		tablaMem* nuevaTabla = malloc(sizeof(tablaMem));
@@ -206,7 +206,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 
 						enviarOMostrarYLogearInfo(-1,"Se añadio la tabla %s ",nombreTabla ,"a la memtable");
 	}
-	//pthread_mutex_unlock(&mutexMemtable);
+	pthread_mutex_unlock(&mutexMemtable);
 }
 
 

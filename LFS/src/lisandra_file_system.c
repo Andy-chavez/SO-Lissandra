@@ -19,7 +19,7 @@
 #include <readline/history.h>
 #include <commons/string.h>
 #include <pthread.h>
-#include <commons/config.h>
+#include <commons/config.h>//hacerlo por tabla!! y que reciba el nombre de la tabla
 #include <commons/log.h>
 #include "dump.h"
 #include <semaphore.h>
