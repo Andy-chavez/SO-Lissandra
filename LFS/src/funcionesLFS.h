@@ -581,7 +581,7 @@ void funcionCreate(char* argumentos,int socket) {
 		crearMetadata(directorioTabla, consistenciaTabla, numeroParticiones, tiempoCompactacion);
 		int cantidadParticiones = atoi(numeroParticiones);
 		crearParticiones(directorioTabla, cantidadParticiones);
-		enviarOMostrarYLogearInfo(socket,"Se creo la tabla");
+		enviarOMostrarYLogearInfo(socket,"Se creo la tabla: %s",nombreTabla);
 		agregarTablaALista(nombreTabla);
 
 	}else{
