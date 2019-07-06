@@ -512,8 +512,7 @@ int tieneValorParseable(char* value) {
 }
 
 int esConsistenciaParseable(char* consistencia) {
-	return string_equals_ignore_case(consistencia, "STRONG") || string_equals_ignore_case(consistencia, "EVENTUAL") || string_equals_ignore_case(consistencia, "HASH");
-	// TODO es STRONG-EVENTUAL-nosefijateenelenunciado
+	return string_equals_ignore_case(consistencia, "SC") || string_equals_ignore_case(consistencia, "EC") || string_equals_ignore_case(consistencia, "SHC");
 }
 
 int tieneTodosLosParametrosParaInsert(char** parametros) {
@@ -526,6 +525,16 @@ int tieneTodosLosParametrosParaInsert(char** parametros) {
 	return i == 2 || i == 3;
 }
 
+int tieneTablaYKey(char** insertTablaYKey) {
+	int i = 0;
+
+	while(*(insertTablaYKey + i) != NULL) {
+		i++;
+	}
+
+	return i == 3;
+}
+
 int esInsertEjecutable(char* operacion) {
 	char** parametrosSpliteadosPorComillas = string_split(operacion, "\"");
 
@@ -534,7 +543,7 @@ int esInsertEjecutable(char* operacion) {
 	char* value = *(parametrosSpliteadosPorComillas + 1);
 	char** insertTablaYKey = string_split(*(parametrosSpliteadosPorComillas + 0), " ");
 
-	if(!tieneTodosLosParametros(insertTablaYKey, 3)) return 0;
+	if(!tieneTablaYKey(insertTablaYKey)) return 0;
 
 	char* timestamp = *(parametrosSpliteadosPorComillas + 2);
 
