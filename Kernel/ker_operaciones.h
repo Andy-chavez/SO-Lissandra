@@ -318,7 +318,7 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-			thread_loggearInfo("FINISHCED",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
 			continue;
 		}
@@ -358,13 +358,13 @@ void kernel_roundRobin(int threadProcesador){
 			}
 			else if(ERROR ==-1){
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfo("@ FINISHCED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
-				thread_loggearInfo("FINISHCED",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 				continue;
 			}
@@ -387,18 +387,18 @@ void kernel_almacenar_en_new(char*operacion){
 }
 void kernel_consola(){
 	printf(">> Welcome to Kernel <<\n"
-			">> Ingrese alguna de las siguientes operaciones:\n"
-			">> SELECT [NOMBRE_TABLA] [KEY]\n"
-			">> INSERT [NOMBRE_TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] <timestamp opcional>\n"
-			">> CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [NUMERO_PARTICIONES] [COMPACTATION_TIME]\n"
-			">> DESCRIBE [NOMBRE_TABLA] <nombre de tabla opcional>\n"
-			">> DROP [NOMBRE_TABLA]\n"
-			">> METRICS\n"
-			">> JOURNAL\n"
-			">> ADD MEMORY [NUMERO] TO [SC/SHC/EC]\n"
-			">> DROP [NOMBRE_TABLA]\n"
-			">> RUN [PATH_ARCHIVO]\n"
-			">> Y siga su ejecucion mediante el archivo Kernel.log\n");
+			"> Ingrese alguna de las siguientes operaciones:\n"
+			"> SELECT [TABLA] [KEY]\n"
+			"> INSERT [TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] \n"
+			"> CREATE [TABLA] [SC/SHC/EC] [NUMERO_PARTICIONES] [COMPACTATION_TIME]\n"
+			"> DESCRIBE [TABLA] \n"
+			"> DROP [NOMBRE_TABLA]\n"
+			"> METRICS\n"
+			"> JOURNAL\n"
+			"> ADD MEMORY [NUMERO] TO [SC/SHC/EC]\n"
+			"> DROP [NOMBRE_TABLA]\n"
+			"> RUN [PATH_ARCHIVO]\n"
+			"> Y siga su ejecucion mediante el archivo Kernel.log\n");
 	char* linea= NULL;
 	while(!destroy){
 		printf(" ");

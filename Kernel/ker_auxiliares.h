@@ -380,6 +380,8 @@ void enviarJournal(int socket){
 	log_info(kernel_configYLog->log, " ENVIADO: JOURNAL");
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
+	if(recibido == NULL)
+		return;
 	pthread_mutex_lock(&mLog);
 	log_error(kernel_configYLog->log, "RECIBIDO: %s",recibido);
 	pthread_mutex_unlock(&mLog);
