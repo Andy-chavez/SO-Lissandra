@@ -164,7 +164,7 @@ void describeTimeado(){
 		if(socket != -1){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			void* bufferProtocolo = recibir(socket);
-			operacionProtocolo protocolo = empezarDeserializacion(bufferProtocolo);
+			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
 			if(protocolo == METADATA){
 				metadata * met = deserializarMetadata(bufferProtocolo);
 				actualizarListaMetadata(met);
@@ -176,7 +176,6 @@ void describeTimeado(){
 				log_info(kernel_configYLog->log, "@ RECIBIDO: Describe realizado");
 				pthread_mutex_unlock(&mLog);
 			}
-			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " RECIBIDO[TIMED]: Describe realizado");
 			pthread_mutex_unlock(&mLog);

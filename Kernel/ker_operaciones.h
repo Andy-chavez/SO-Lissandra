@@ -97,7 +97,7 @@ bool kernel_describe(char* operacion, int thread){
 		if(socket != -1){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			void* bufferProtocolo = recibir(socket);
-			operacionProtocolo protocolo = empezarDeserializacion(bufferProtocolo);
+			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
 			if(protocolo == METADATA){
 				metadata * met = deserializarMetadata(bufferProtocolo);
 				actualizarListaMetadata(met);
@@ -110,7 +110,7 @@ bool kernel_describe(char* operacion, int thread){
 				pthread_mutex_unlock(&mLog);
 			}
 			pthread_mutex_lock(&mLog);
-			log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
+			log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado");
 			pthread_mutex_unlock(&mLog);
 			cerrarConexion(socket);
 			return true;
