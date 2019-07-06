@@ -26,7 +26,10 @@ void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
 void guardarTablaCreada(char* parametros);
 void eliminarTablaCreada(char* parametros);
 void enviarJournal(int socket);
-void guardarDatos(seed* unaSeed);
+void guardarMemorias(seed* unaSeed);
+void agregarTablaVerificandoSiLaTengo(tabla* t);
+void agregarTablaVerificandoSiLaTengo(tabla* t);
+void agregarMemoriaVerificandoSiLaTengo(memoria* memAux);
 
 int socketMemoriaSolicitada(consistencia criterio);
 int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
@@ -88,14 +91,36 @@ int random_int(int min, int max)
 {
    return min + rand() % (max - min);
 }
-void guardarDatos(seed* unaSeed){
+void guardarMemorias(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
 	memAux->cantidadIns = 0;
 	memAux->cantidadSel = 0;
-	agregarALista(memorias,memAux,mMemorias);
+	agregarMemoriaVerificandoSiLaTengo(memAux);
+}
+void agregarMemoriaVerificandoSiLaTengo(memoria* memAux){
+	bool yaGuardeMemoria(memoria* mem){
+		return mem->numero == memAux->numero;
+	}
+	pthread_mutex_lock(&mMemorias);
+	bool boleanFind = list_find(memorias,(void*)yaGuardeMemoria);
+	pthread_mutex_unlock(&mMemorias);
+	if(!boleanFind){
+		agregarALista(memorias,memAux,mMemorias);
+	}
+}
+void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex_t semaphore){
+	bool yaGuardeMemoria(memoria* mem){
+		return mem->numero == memAux->numero;
+	}
+	pthread_mutex_lock(&semaphore);
+	bool boleanFind = list_find(criterios[index].memorias,(void*)yaGuardeMemoria);
+	pthread_mutex_unlock(&semaphore);
+	if(!boleanFind){
+		agregarALista(criterios[index].memorias,memAux,mMemorias);
+	}
 }
 void actualizarListaMetadata(metadata* met){
 	tabla* t = malloc(sizeof(tabla));
@@ -108,30 +133,21 @@ void actualizarListaMetadata(metadata* met){
 	}
 	t->nombreDeTabla = string_duplicate(met->nombreTabla);
 	t->consistenciaDeTabla = met->tipoConsistencia;
-	agregarALista(tablas,t,mTablas);
+	agregarTablaVerificandoSiLaTengo(t);
 	liberarMetadata(met);
 }
 //------ TIMED ---------
-void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memoria o tiene que estar asignada a criterio, o si tengo que hacer con TODAS la de la lista como memoria
-	int tamLista;
-	memoria* mem;
+void kernel_gossiping(){
 	while(!destroy){
-		pthread_mutex_lock(&mMemorias);
-		tamLista = list_size(memorias);
-		pthread_mutex_unlock(&mMemorias);
-		int memoria = random_int(0,tamLista);
-		pthread_mutex_lock(&mMemorias);
-		mem = list_get(memorias,memoria);
-		pthread_mutex_unlock(&mMemorias);
 		pthread_mutex_lock(&mConexion);
-		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket==-1){
 			continue;
 		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
-		recibirYDeserializarTablaDeGossipRealizando(socket,guardarDatos);
+		recibirYDeserializarTablaDeGossipRealizando(socket,guardarMemorias);
 		cerrarConexion(socket);
 		usleep(timedGossip*1000);
 	}
@@ -139,16 +155,11 @@ void kernel_gossiping(){ //TODO preguntar si puedo conectar con cualquier memori
 }
 void describeTimeado(){
 	operacionLQL* opAux = malloc(sizeof(operacionLQL));
-	//opAux ->operacion = malloc(sizeof("DESCRIBE"));
 	opAux ->operacion = "DESCRIBE";
 	opAux->parametros = "ALL";
 	while(!destroy){
-		pthread_mutex_lock(&mMemorias);
-		memoria* mem = list_get(memorias,0);
-		pthread_mutex_unlock(&mMemorias);
-
 		pthread_mutex_lock(&mConexion);
-		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket != -1){
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
@@ -209,7 +220,7 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			if(string_contains(opAux->operacion,"INSERT")){
 				mem->cantidadIns ++;
 			}
-			else if(string_contains(opAux->operacion,"INSERT")){
+			else if(string_contains(opAux->operacion,"SELECT")){
 				mem->cantidadSel ++;
 			}
 			serializarYEnviarOperacionLQL(socket, opAux);
@@ -236,7 +247,7 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	if(string_contains(opAux->operacion,"INSERT")){
 		criterios[STRONG].cantidadInserts ++;
 	}
-	else if(string_contains(opAux->operacion,"INSERT")){
+	else if(string_contains(opAux->operacion,"SELECT")){
 		criterios[STRONG].cantidadSelects ++;
 	}
 	pthread_mutex_unlock(&mStrong);
@@ -256,7 +267,7 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	if(string_contains(opAux->operacion,"INSERT")){
 		criterios[HASH].cantidadInserts ++;
 	}
-	else if(string_contains(opAux->operacion,"INSERT")){
+	else if(string_contains(opAux->operacion,"SELECT")){
 		criterios[HASH].cantidadSelects ++;
 	}
 	pthread_mutex_unlock(&mHash);
@@ -267,7 +278,7 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		if(string_contains(opAux->operacion,"INSERT")){
 			mem->cantidadIns += 1;
 		}
-		else if(string_contains(opAux->operacion,"INSERT")){
+		else if(string_contains(opAux->operacion,"SELECT")){
 			mem->cantidadSel += 1;
 		}
 		serializarYEnviarOperacionLQL(socket, opAux);
@@ -288,17 +299,17 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	}
 	return socket;
 }
-int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){ //todo liberar split
+int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	int socket = -1;
 	int tamLista;
 	memoria* mem;
 	pthread_mutex_lock(&mEventual);
 	tamLista = list_size(criterios[EVENTUAL].memorias);
 	if(string_contains(opAux->operacion,"INSERT")){
-		criterios[EVENTUAL].cantidadInserts +=1;
+		criterios[EVENTUAL].cantidadInserts ++;
 	}
-	else if(string_contains(opAux->operacion,"INSERT")){
-		criterios[EVENTUAL].cantidadSelects += 1;
+	else if(string_contains(opAux->operacion,"SELECT")){
+		criterios[EVENTUAL].cantidadSelects ++;
 	}
 	pthread_mutex_unlock(&mEventual);
 	while(socket==-1 && tamLista >0){
@@ -313,10 +324,10 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){ //todo liberar spli
 			if(string_contains(opAux->operacion,"INSERT")){
 				mem->cantidadIns += 1;
 			}
-			else if(string_contains(opAux->operacion,"INSERT")){
+			else if(string_contains(opAux->operacion,"SELECT")){
 				mem->cantidadSel += 1;
 			}
-			serializarYEnviarOperacionLQL(socket, opAux); //todo ponerle aca el mas uno si es insert o select
+			serializarYEnviarOperacionLQL(socket, opAux);
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLog);
@@ -393,7 +404,18 @@ void guardarTablaCreada(char* parametros){
 	else if(string_equals_ignore_case(*(opAux+1),"EC")){
 		tablaAux->consistenciaDeTabla = EC;
 	}
-	agregarALista(tablas,tablaAux,mTablas);
+	agregarTablaVerificandoSiLaTengo(tablaAux);
+}
+void agregarTablaVerificandoSiLaTengo(tabla* t){
+	bool yaGuardeTabla(tabla* tab){
+		return strcmp(t->nombreDeTabla,tab->nombreDeTabla);
+	}
+	pthread_mutex_lock(&mTablas);
+	bool boleanFind = list_find(tablas,(void*)yaGuardeTabla);
+	pthread_mutex_unlock(&mTablas);
+	if(!boleanFind){
+		agregarALista(tablas,t,mTablas);
+	}
 }
 void eliminarTablaCreada(char* parametros){
 	bool tablaDeNombre(tabla* t){
@@ -460,6 +482,7 @@ void thread_loggearInfo(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_unlock(&mLog);
 }
 //------ LISTAS ---------
+
 void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore){
 	pthread_mutex_lock(&semaphore);
 	list_add(lista,elemento);

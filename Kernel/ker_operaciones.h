@@ -6,7 +6,6 @@
 
 /******************************DECLARACIONES******************************************/
 /* TODO metrics
- * metrics -> variables globales con semaforos
  */
 bool kernel_create(char* operacion,int thread);
 bool kernel_describe(char* operacion,int thread);
@@ -57,7 +56,7 @@ bool kernel_insert(char* operacion, int thread){
 	return true;
 }
 bool kernel_select(char* operacion, int thread){
-	clock_t tiempo =clock();
+	time_t tiempo = time(NULL);
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
@@ -66,11 +65,11 @@ bool kernel_select(char* operacion, int thread){
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = clock() - tiempo;
+		tiempo = time(NULL) - tiempo;
 		actualizarTiemposSelect(index,tiempo);
 		return false;
 	}
-	tiempo = clock() - tiempo;
+	tiempo = time(NULL) - tiempo;
 	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
@@ -93,8 +92,8 @@ bool kernel_create(char* operacion, int thread){
 }
 bool kernel_describe(char* operacion, int thread){
 	if(string_length(operacion) <= string_length("describe ")){
-		operacionLQL* opAux=splitear_operacion(operacion);
-		int socket = obtenerSocketAlQueSeEnvio(opAux,STRONG);
+		//operacionLQL* opAux=splitear_operacion(operacion);
+		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		if(socket != -1){
 			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 			pthread_mutex_lock(&mLog);
@@ -223,14 +222,16 @@ bool kernel_add(char* operacion){
 	memoria* mem;
 	if((mem = encontrarMemoria(numero))){
 		if(string_contains(*(opAux+4),"HASH")){
-			agregarALista(criterios[HASH].memorias, mem, mHash);
+			agregarCriterioVerificandoSiLaTengo(mem,HASH,mHash);
+			//agregarALista(criterios[HASH].memorias, mem, mHash);
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
 		else if(string_contains(*(opAux+4),"STRONG")){
 			if(list_size(criterios[STRONG].memorias)==0){
-				agregarALista(criterios[STRONG].memorias, mem, mStrong);
+				agregarCriterioVerificandoSiLaTengo(mem,STRONG,mStrong);
+				//agregarALista(criterios[STRONG].memorias, mem, mStrong);
 				liberarParametrosSpliteados(opAux);
 				return true;
 			}
@@ -243,6 +244,7 @@ bool kernel_add(char* operacion){
 			}
 		}
 		else if(string_contains(*(opAux+4),"EVENTUAL")){
+			agregarCriterioVerificandoSiLaTengo(mem,EVENTUAL,mEventual);
 			agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
 			liberarParametrosSpliteados(opAux);
 			return true;
@@ -361,6 +363,7 @@ void kernel_almacenar_en_new(char*operacion){
 	}
 	agregarALista(cola_proc_nuevos,operacion,colaNuevos);
 	sem_post(&hayNew);
+	string_to_upper(operacion);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
