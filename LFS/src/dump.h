@@ -52,9 +52,13 @@ void dump(){
 		tiempoActual = tiempoDump;
 		pthread_mutex_unlock(&mutexTiempoDump);
 		usleep(tiempoActual*1000);
+
+		pthread_mutex_lock(&mutexMemtable);
 		if(memtable->elements_count==0){
+			pthread_mutex_unlock(&mutexMemtable);
 			continue;
 		}
+		pthread_mutex_unlock(&mutexMemtable);
 
 		int tamanioTotalADumpear =0;
 		char* buffer;
@@ -117,19 +121,22 @@ void dump(){
 				return (unaTabla->nombre == unaTabla->nombre);
 			}
 
-
+			pthread_mutex_lock(&mutexMemtable);
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
+			pthread_mutex_unlock(&mutexMemtable);
+
 			pthread_mutex_unlock(&semaforoDeTablaMemtable);
 
 
 		}
+
 		list_iterate(memtable,(void*)dumpearTabla);
 
 		//liberarPorTablas
 
 //		liberarMemtable();
 
-		//pthread_mutex_unlock(&mutexMemtable);
+
 
 	}
 }
