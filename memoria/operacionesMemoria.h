@@ -1018,6 +1018,7 @@ void intentarConexiones() {
 		cerrarConexion(socketMemoria);
 	}
 
+	liberarSeed(seedPropia);
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);
