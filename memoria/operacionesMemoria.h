@@ -400,7 +400,10 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
+	} else if(empezarDeserializacion(&buffer) == ERROR) {
+		sem_post(&MUTEX_SOCKET_LFS);
+		return NULL;
+	}
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -510,11 +513,11 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamanioMaximoValue) {
 	registro* nuevoRegistro = malloc(sizeof(registro));
 
-	nuevoRegistro->value = string_trim_quotation(value);
-	if(strlen(nuevoRegistro->value) > tamanioMaximoValue){
+	nuevoRegistro->value = string_duplicate(value);
+	if(strlen(nuevoRegistro->value) >= tamanioMaximoValue){
 		liberarRegistro(nuevoRegistro);
 		return NULL;
-	};
+	}
 
 	if(timestamp != NULL) {
 		nuevoRegistro->timestamp = atoi(timestamp);
@@ -524,7 +527,6 @@ registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamani
 
 	nuevoRegistro->key = atoi(key);
 
-	free(key);
 	return nuevoRegistro;
 }
 
@@ -717,7 +719,7 @@ void journalLQL(int socketKernel) {
 	operacionProtocolo protocoloJournal = PAQUETEOPERACIONES;
 
 	sem_wait(&MUTEX_SOCKET_LFS);
-	enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo));
+	enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo)); // TODO VERIFICAR SI SOCKETLFS NO EXISTE YA
 	serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
 	sem_post(&MUTEX_SOCKET_LFS);
 
@@ -811,13 +813,15 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
 	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
 	verSiHayJournalEjecutandose(semaforoDeOperacion);
-
+	char* timestamp = NULL;
 	bool seEjecutaraJournal = false;
 
 	char** parametrosSpliteadosPorComillas = string_split(operacionInsert->parametros, "\"");
 	char* value = string_duplicate(*(parametrosSpliteadosPorComillas + 1));
-	char* timestamp = string_duplicate(*(parametrosSpliteadosPorComillas + 2));
-	char** tablaYKey = string_split((*parametrosSpliteadosPorComillas + 1), " ");
+	if(*(parametrosSpliteadosPorComillas + 2) != NULL) {
+		timestamp = string_duplicate(*(parametrosSpliteadosPorComillas + 2));
+	}
+	char** tablaYKey = string_split(*(parametrosSpliteadosPorComillas + 0), " ");
 	char* tabla = string_duplicate(*tablaYKey);
 	char* key = string_duplicate(*(tablaYKey + 1));
 
@@ -863,9 +867,10 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 	// TODO else journal();
 	free(value);
-	free(timestamp);
+	if(timestamp) free(timestamp);
 	free(key);
 	liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
+	liberarParametrosSpliteados(tablaYKey);
 	liberarRecursosInsertLQL(tabla, registroNuevo);
 	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
 }
@@ -888,16 +893,41 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 	void* bufferMetadata = pedirALFS(operacionDescribe);
 
 	if(!bufferMetadata) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE %s", operacionDescribe->parametros);
+		enviarYLogearMensajeError(-1, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE %s", operacionDescribe->parametros);
+		enviarError(socketKernel);
 		return;
 	}
 
-	metadata* unaMetadata = deserializarMetadata(bufferMetadata);
+	operacionProtocolo tipoDeMetadata = empezarDeserializacion(&bufferMetadata);
 
-	serializarYEnviarMetadata(socketKernel, unaMetadata);
+	if(tipoDeMetadata == METADATA){
+		metadata* unaMetadata = deserializarMetadata(bufferMetadata);
+		serializarYEnviarMetadata(socketKernel, unaMetadata);
+		free(unaMetadata->nombreTabla);
+		free(unaMetadata);
+	} else if(tipoDeMetadata == PAQUETEMETADATAS) {
+		t_list* metadatas = list_create();
 
-	free(unaMetadata->nombreTabla);
-	free(unaMetadata);
+		void guardarMetadata(void* unaMetadata) {
+			metadata* auxMetadata = (metadata*) unaMetadata;
+			metadata* metadataAEnviar = malloc(sizeof(metadata));
+
+			metadataAEnviar->cantParticiones = auxMetadata->cantParticiones;
+			metadataAEnviar->nombreTabla = string_duplicate(auxMetadata->nombreTabla);
+			metadataAEnviar->tiempoCompactacion = auxMetadata->tiempoCompactacion;
+			metadataAEnviar->tipoConsistencia = auxMetadata->tipoConsistencia;
+
+			list_add(metadatas, metadataAEnviar);
+		}
+
+		sem_wait(&MUTEX_SOCKET_LFS);
+		recibirYDeserializarPaqueteDeMetadatasRealizando(SOCKET_LFS, guardarMetadata);
+		sem_post(&MUTEX_SOCKET_LFS);
+
+		enviar(socketKernel, (void*) &tipoDeMetadata, sizeof(operacionProtocolo));
+		serializarYEnviarPaqueteMetadatas(socketKernel, metadatas);
+		list_destroy_and_destroy_elements(metadatas, liberarMetadata);
+	}
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {

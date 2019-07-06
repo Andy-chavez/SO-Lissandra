@@ -258,7 +258,7 @@ void* cambiosConfig() {
 		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
-			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING") && config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL") && config_get_int_value(configConNuevosDatos, "RETARDO_MEM")) {
+			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
 				sem_wait(&MUTEX_RETARDO_GOSSIP);
