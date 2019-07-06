@@ -11,7 +11,7 @@
 #include <commons/bitarray.h>
 #include <semaphore.h>
 
-pthread_mutex_t mutexMemtable;
+//pthread_mutex_t mutexMemtable;
 pthread_mutex_t mutexLogger;
 pthread_mutex_t mutexLoggerConsola;
 pthread_mutex_t mutexListaDeTablas;

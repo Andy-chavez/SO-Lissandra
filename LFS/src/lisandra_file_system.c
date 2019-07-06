@@ -163,13 +163,13 @@ void leerConsola() {
 
 
 	    while ((linea = readline(""))){
-
-	    //	    	if(esOperacionEjecutable(linea)){
+	    			string_to_upper(linea);
+	    	    	if(esOperacionEjecutable(linea)){
 	    	    		parserGeneral(splitear_operacion(linea),socket);
-	    	//    		}
-	    	  //  		else{
-	    	    //		soloLoggearError(-1,"No es una operacion valida la ingresada por consola");
-	    	    	//	}
+	    	    	}
+	    	    		else{
+	    	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
+	    	    		}
 	    	    }
 
 
