@@ -31,11 +31,6 @@ void* manejarConsola();
 void* servidorMemoria();
 void* cambiosConfig();
 void cambiarValor();
-void protocoloCancelar();
-void cancelarListaHilos();
-void cancelarJournal();
-void cancelarGossiping();
-void cancelarConfig();
 
 
 bool APIProtocolo(void* buffer, int socket) {
@@ -70,7 +65,6 @@ bool APIProtocolo(void* buffer, int socket) {
 }
 
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
-	marcarHiloRealizandoSemaforo(pthread_self(),0); // De cancelacion
 	if(string_starts_with(operacionAParsear->operacion, "INSERT")) {
 		enviarOMostrarYLogearInfo(-1, "Recibi un INSERT %s", operacionAParsear->parametros);
 		insertLQL(operacionAParsear, socketKernel);
@@ -102,9 +96,7 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
-	marcarHiloComoSemaforoRealizado(pthread_self(),0);
 	liberarOperacionLQL(operacionAParsear);
-
 
 }
 
@@ -112,7 +104,6 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 
 void* trabajarConConexion(void* socket) {
 	agregarHiloAListaDeHilos();
-
 
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
@@ -124,11 +115,14 @@ void* trabajarConConexion(void* socket) {
 	int hayMensaje = 1;
 
 	while(hayMensaje) {
+		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 		void* bufferRecepcion = recibir(socketKernel);
+		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
 	}
 
 	eliminarHiloDeListaDeHilos();
+	pthread_detach(pthread_self());
 	pthread_exit(0);
 }
 
@@ -161,53 +155,25 @@ int crearSocketLFS() {
 	int socketClienteLFS = crearSocketCliente(fileSystemIP,fileSystemPuerto);
 	return socketClienteLFS;
 }
-//----------------Cancelaciones---------------------------
-
-void protocoloCancelar(){
-	sem_wait(&BINARIO_CERRANDO_SERVIDOR);
-	pthread_cancel(threadConsola);
-	pthread_cancel(threadTimedJournal);
-	pthread_cancel(threadTimedGossiping);
-	pthread_cancel(threadCambiosConfig);
-	cancelarListaHilos();
-}
-
-void cancelarListaHilos(){
-	esperarAHilosEjecutandose(esperarSemaforoDeCancelar);
-	list_iterate(TABLA_THREADS,pthread_cancel);
-}
-
-void cancelarConsola(){
-	hiloEnTabla* hilo = obtenerHiloEnTabla(pthread_self());
-	sem_wait(&hilo->cancelarThread);
-}
-
-void cancelarJournal(){
-	sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
-}
-
-void cancelarGossiping(){
-	sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
-}
-
-void cancelarCambiosConfig(){
-	sem_wait(&BINARIO_CERRANDO_CONFIG);
-}
 
 //--------------------------------------------------------
 
 void* manejarConsola() {
 	agregarHiloAListaDeHilos();
 
-	pthread_cleanup_push(cancelarConsola,NULL);
+	system("clear");
+	printf("------ ¡Bienvenid@ al proceso Memoria! ------\n\n");
+	printf("------ Esta es la memoria N°%d ------\n\n", config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER"));
+	printf("------ Para ver los resultados de las operaciones, vea el log \"memoria_consola.log\" ------\n\n");
+	printf("Por favor, ingrese un comando LQL:\n");
 
 	enviarOMostrarYLogearInfo(-1, "Memoria lista para ser utilizada.");
 	while(1) {
 
 		char* comando = NULL;
-		enviarOMostrarYLogearInfo(-1, "Por favor, ingrese un comando LQL:");
+		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 		comando = readline(">");
-		marcarHiloRealizandoSemaforo(pthread_self(),0); //De cancelacion
+		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 
 		if(!esOperacionEjecutable(comando)) {
 			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
@@ -222,10 +188,10 @@ void* manejarConsola() {
 
 		APIMemoria(splitear_operacion(comando), -1);
 		free(comando);
-		marcarHiloComoSemaforoRealizado(pthread_self(),0);
+
+		printf("Por favor, ingrese otro comando LQL:\n");
 	}
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
-	pthread_cleanup_pop(valorCleanUp);
 }
 
 void *servidorMemoria() {
@@ -241,18 +207,20 @@ void *servidorMemoria() {
 
 	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
 	while(1){
-		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		sem_wait(&BINARIO_SOCKET_KERNEL);
+
+		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		socketKernel = aceptarCliente(socketServidorMemoria);
+		sem_wait(&BINARIO_CERRANDO_SERVIDOR);
+
 		if(socketKernel == -1) {
 			enviarYLogearMensajeError(-1, "ERROR: Socket Defectuoso");
-			sem_wait(&BINARIO_CERRANDO_SERVIDOR);
 			continue;
 		}
 		if(pthread_create(&threadConexion, NULL, trabajarConConexion, &socketKernel) < 0) {
 			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
 		}
-		sem_wait(&BINARIO_CERRANDO_SERVIDOR);
+
 	}
 
 	cerrarConexion(socketServidorMemoria);
@@ -271,8 +239,10 @@ void* cambiosConfig() {
 	inotify_add_watch(fdConfig, "memoria.config", IN_MODIFY);
 
 	while(1) {
-		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
 		sem_post(&BINARIO_CERRANDO_CONFIG);
+		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
+		sem_wait(&BINARIO_CERRANDO_CONFIG);
+
 		if(size<0) {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
 		}
@@ -288,7 +258,7 @@ void* cambiosConfig() {
 		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
-			if (event->mask & IN_MODIFY) {
+			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING") && config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL") && config_get_int_value(configConNuevosDatos, "RETARDO_MEM")) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
 				sem_wait(&MUTEX_RETARDO_GOSSIP);
@@ -305,7 +275,6 @@ void* cambiosConfig() {
 			config_destroy(configConNuevosDatos);
 			desplazamiento += sizeof (struct inotify_event) + event->len;
 		}
-		sem_wait(&BINARIO_CERRANDO_CONFIG);
 	}
 }
 
@@ -313,11 +282,40 @@ void cambiarValor() {
 	sem_post(&BINARIO_FINALIZACION_PROCESO);
 }
 
- int main() {
-	inicializarProcesoMemoria();
+void cerrarMemoria() {
+	struct sigaction terminar;
+	terminar.sa_handler = cambiarValor;
+	sigemptyset(&terminar.sa_mask);
+	terminar.sa_flags = SA_RESTART;
+	sigaction(SIGINT, &terminar, NULL);
 
-	int valorCleanUp = 0;
-	pthread_cleanup_push(cancelarConsola,NULL);
+	sem_wait(&BINARIO_FINALIZACION_PROCESO);
+	sem_wait(&MUTEX_CERRANDO_MEMORIA);
+	CERRANDO_MEMORIA = 1;
+	sem_post(&MUTEX_CERRANDO_MEMORIA);
+
+	sem_wait(&MUTEX_LOG);
+	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
+	// no libero mutex ya que quiero que sea lo ultimo que se loguee.
+
+	esperarParaCancelarConsola(threadConsola);
+	pthread_cancel(threadConsola);
+	pthread_join(threadConsola, NULL);
+
+	sem_wait(&BINARIO_CERRANDO_SERVIDOR);
+	pthread_cancel(threadServer);
+	pthread_join(threadServer, NULL);
+
+	pthread_cancel(threadCambiosConfig);
+	pthread_cancel(threadTimedGossiping);
+	pthread_cancel(threadTimedJournal);
+	pthread_join(threadCambiosConfig, NULL);
+	pthread_join(threadTimedJournal, NULL);
+	pthread_join(threadTimedGossiping, NULL);
+}
+
+int main() {
+	inicializarProcesoMemoria();
 
 	datosInicializacion* datosDeInicializacion;
 	if(!(datosDeInicializacion = realizarHandshake())) {
@@ -336,37 +334,14 @@ void cambiarValor() {
 	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
 
-	struct sigaction terminar;
-	terminar.sa_handler = cambiarValor;
-	sigemptyset(&terminar.sa_mask);
-	terminar.sa_flags = SA_RESTART;
-	sigaction(SIGINT, &terminar, NULL);
-
-	sem_wait(&BINARIO_FINALIZACION_PROCESO);
-
-	sem_wait(&MUTEX_LOG);
-	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
-	// no libero mutex ya que quiero que sea lo ultimo que se loguee.
-
-	pthread_cancel(threadServer);
-	pthread_cancel(threadConsola);
-	pthread_cancel(threadCambiosConfig);
-	pthread_cancel(threadTimedGossiping);
-	pthread_cancel(threadTimedJournal);
-
-	pthread_cleanup_pop(valorCleanUp);
-
-
-	pthread_join(threadServer, NULL);
-	pthread_join(threadConsola, NULL);
-	pthread_join(threadCambiosConfig, NULL);
-	pthread_join(threadTimedJournal, NULL);
-	pthread_join(threadTimedGossiping, NULL);
+	cerrarMemoria();
 
 	liberarMemoria();
 	liberarConfigYLogs();
 	liberarTablaMarcos();
 	liberarTablaGossip();
+
+	system("reset");
 	return 0;
 
 }
