@@ -125,6 +125,10 @@ void inicializarTablaGossip() {
 	list_add(TABLA_GOSSIP, seedPropia);
 }
 
+void inicializarTablaSeedsConfig(){
+	TABLA_SEEDS_CONFIG = list_create();
+}
+
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
 	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
@@ -143,6 +147,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar) {
 	}
 
 	inicializarTablaGossip();
+	inicializarTablaSeedsConfig();
 	TABLA_THREADS = list_create();
 
 	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Memoria inicializada.");
@@ -168,6 +173,7 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_RETARDO_JOURNAL, 0, 1);
 	sem_init(&MUTEX_LOG_CONSOLA, 0, 1);
 	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
+	sem_init(&MUTEX_TABLA_SEEDS_CONFIG, 0, 1);
 	sem_init(&BINARIO_FINALIZACION_PROCESO, 0, 0);
 	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
@@ -399,7 +405,8 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
+	}
+	else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -519,6 +526,7 @@ registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
 	if(*(parametros + 3) != NULL) {
 		nuevoRegistro->timestamp = atoi(*(parametros + 3));
 	}
+
 	nuevoRegistro->timestamp = time(NULL);
 	char* key = (char*) obtenerValorDe(parametros, 1);
 	nuevoRegistro->key = atoi(key);
@@ -931,6 +939,11 @@ void cargarSeeds() {
 		list_add(TABLA_GOSSIP, unaSeed);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 
+		sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
+		list_add(TABLA_SEEDS_CONFIG, unaSeed);
+		sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
+
+
 		free(*(IPs + i));
 		free(*(puertos + i));
 		i++;
@@ -981,13 +994,21 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
 
+bool seedEnTablaGossip(void* seedAComprobar){
+	seed* unaSeed = (seed*) seedAComprobar;
+	bool esIgualA(void* otraSeed) {
+		return sonSeedsIguales(unaSeed,(seed*) otraSeed);
+	}
+	return list_any_satisfy(TABLA_GOSSIP,esIgualA);
+}
+
 void intentarConexiones() {
 	seed* seedPropia = malloc(sizeof(seed));
 	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
 	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
 
-	void intentarConexion(void* seedEnTablaGossip) {
-		seed* unaSeed = (seed*) seedEnTablaGossip;
+	void intentarConexion(void* seedEnTabla, int tabla) {
+		seed* unaSeed = (seed*) seedEnTabla;
 
 		bool esIgualA(void* otraSeed) {
 			return sonSeedsIguales(unaSeed,(seed*) otraSeed);
@@ -1004,26 +1025,45 @@ void intentarConexiones() {
 		sem_post(&MUTEX_LOG_CONSOLA);
 
 		if(socketMemoria == -1) {
+			if(tabla==1){
 			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
+			log_info(LOGGER_CONSOLA, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 			sem_post(&MUTEX_LOG_CONSOLA);
 
 			list_remove_by_condition(TABLA_GOSSIP, esIgualA);
 
 			return;
+			}
+			sem_wait(&MUTEX_LOG_CONSOLA);
+			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
+			sem_post(&MUTEX_LOG_CONSOLA);
+			return;
 		}
 
-		log_info(LOGGER_CONSOLA, "recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
+		log_info(LOGGER_CONSOLA, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
 		recibirYGuardarEnTablaGossip(socketMemoria);
 		cerrarConexion(socketMemoria);
 	}
 
-	liberarSeed(seedPropia);
+	void intentarConexionTablaGossip(void* seedEnTablaGossip){
+		intentarConexion(seedEnTablaGossip,1);
+	}
+
+	void intentarConexionTablaConfig(void* seedEnTablaConfig){
+		if(!seedEnTablaGossip(seedEnTablaConfig)){
+			intentarConexion(seedEnTablaConfig,0);
+		}
+	}
+
 	sem_wait(&MUTEX_TABLA_GOSSIP);
-	list_iterate(TABLA_GOSSIP, intentarConexion);
+	list_iterate(TABLA_GOSSIP, intentarConexionTablaGossip);
 	sem_post(&MUTEX_TABLA_GOSSIP);
 
+	sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
+	list_iterate(TABLA_SEEDS_CONFIG, intentarConexionTablaConfig);
+	sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
 	liberarSeed(seedPropia);
+
 }
 
 void* timedGossip() {
@@ -1116,9 +1156,9 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
-		pthread_t *hiloQueEspera = malloc(sizeof(pthread_t));
-		pthread_create(hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
-		list_add(listaHilosEsperandoSemaforos, hiloQueEspera);
+		pthread_t hiloQueEspera;
+		pthread_create(&hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
+		list_add(listaHilosEsperandoSemaforos, &hiloQueEspera);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
@@ -1126,7 +1166,7 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
-	list_destroy_and_destroy_elements(listaHilosEsperandoSemaforos, free);
+	list_destroy(listaHilosEsperandoSemaforos);
 }
 
 void dejarEjecutarOperacionesDeNuevo() {
