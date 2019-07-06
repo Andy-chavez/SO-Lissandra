@@ -43,7 +43,7 @@ int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDon
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo);
 void liberarParametrosSpliteados(char** parametrosSpliteados);
 void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado);
-registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue);
+registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamanioMaximoValue);
 void dropearSegmento(segmento* unSegmento);
 void liberarRegistro(registro* unRegistro);
 bool tienenIgualNombre(char* unNombre,char* otroNombre);
@@ -506,24 +506,21 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 	return (void*) parametroBuscado;
 }
 
-registro* crearRegistroNuevo(char** parametros, int tamanioMaximoValue) {
+registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamanioMaximoValue) {
 	registro* nuevoRegistro = malloc(sizeof(registro));
 
-	char* value = string_duplicate(*(parametros + 1));
 	nuevoRegistro->value = string_trim_quotation(value);
 	if(strlen(nuevoRegistro->value) > tamanioMaximoValue){
 		liberarRegistro(nuevoRegistro);
 		return NULL;
 	};
 
-	char* timestamp = *(parametros + 2);
-
 	if(timestamp != NULL) {
 		nuevoRegistro->timestamp = atoi(timestamp);
 	} else {
 		nuevoRegistro->timestamp = time(NULL);
 	}
-	char* key = string_duplicate((*(string_split((*parametros + 1), " "))));
+
 	nuevoRegistro->key = atoi(key);
 
 	free(key);
@@ -813,19 +810,26 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	verSiHayJournalEjecutandose(semaforoDeOperacion);
 
 	char** parametrosSpliteadosPorComillas = string_split(operacionInsert->parametros, "\"");
+	char* value = string_duplicate(*(parametrosSpliteadosPorComillas + 1));
+	char* timestamp = string_duplicate(*(parametrosSpliteadosPorComillas + 2));
+	char** tablaYKey = string_split((*parametrosSpliteadosPorComillas + 1), " ");
+	char* tabla = string_duplicate(*tablaYKey);
+	char* key = string_duplicate(*(tablaYKey + 1));
 
-
-
-	registro* registroNuevo = crearRegistroNuevo(parametrosSpliteadosPorComillas, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+	registro* registroNuevo = crearRegistroNuevo(value, timestamp, key, MEMORIA_PRINCIPAL->tamanioMaximoValue);
 
 	if(!registroNuevo) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: El value %s es mayor al tamanio maximo del value posible. (Tamanio maximo posible: %d)", *(parametrosSpliteados+2), MEMORIA_PRINCIPAL->tamanioMaximoValue);
-		free(nombreTabla);
-		liberarParametrosSpliteados(parametrosSpliteados);
+		enviarYLogearMensajeError(socketKernel, "ERROR: El value %s es mayor al tamanio maximo del value posible. (Tamanio maximo posible: %d)", value, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+		free(tabla);
+		free(value);
+		free(timestamp);
+		free(key);
+		liberarParametrosSpliteados(tablaYKey);
+		liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
 		return;
 	}
 
-	segmento* unSegmento = encontrarSegmentoPorNombre(nombreTabla);
+	segmento* unSegmento = encontrarSegmentoPorNombre(tabla);
 	if(unSegmento){
 
 		paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,registroNuevo->key);
@@ -846,15 +850,18 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 
 	else {
-		if(agregarSegmento(registroNuevo,nombreTabla,1, socketKernel)) {
+		if(agregarSegmento(registroNuevo,tabla,1, socketKernel)) {
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 		};
 	}
 	// TODO else journal();
-	liberarParametrosSpliteados(parametrosSpliteados);
-	liberarRecursosInsertLQL(nombreTabla, registroNuevo);
+	free(value);
+	free(timestamp);
+	free(key);
+	liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
+	liberarRecursosInsertLQL(tabla, registroNuevo);
 	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
 }
 
