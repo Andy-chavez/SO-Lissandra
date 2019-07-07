@@ -9,6 +9,7 @@
 #include "structsYVariablesGlobales.h"
 #include <unistd.h>
 #include <stdarg.h>
+#include <fcntl.h>
 
 // DECLARACIONES //
 void inicializarProcesoMemoria();
@@ -117,8 +118,8 @@ void inicializarTablaMarcos() {
 
 void inicializarTablaGossip() {
 	seed* seedPropia = malloc(sizeof(seed));
-	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
-	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
+	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
+	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 	seedPropia->numero = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
 
 	TABLA_GOSSIP = list_create();
@@ -1048,8 +1049,8 @@ bool seedEnTablaGossip(void* seedAComprobar){
 
 void intentarConexiones() {
 	seed* seedPropia = malloc(sizeof(seed));
-	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
-	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
+	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
+	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 
 	void intentarConexion(void* seedEnTabla, int tabla) {
 		seed* unaSeed = (seed*) seedEnTabla;
@@ -1074,7 +1075,9 @@ void intentarConexiones() {
 			log_info(LOGGER_CONSOLA, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 			sem_post(&MUTEX_LOG_CONSOLA);
 
-			list_remove_by_condition(TABLA_GOSSIP, esIgualA);
+			seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
+
+			liberarSeed(seedRemovida);
 
 			return;
 			}
@@ -1106,6 +1109,7 @@ void intentarConexiones() {
 	sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
 	list_iterate(TABLA_SEEDS_CONFIG, intentarConexionTablaConfig);
 	sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
+	liberarSeed(seedPropia);
 }
 
 void* timedGossip() {
