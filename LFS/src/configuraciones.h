@@ -98,8 +98,8 @@ void inicializarListas(){
 }
 
 void inicializarLog(){
-	logger = log_create("lisandra.log", "LISANDRA", 1, LOG_LEVEL_INFO);
-	loggerConsola = log_create("lisandraConsola.log","LISANDRA_CONSOLA",1,LOG_LEVEL_INFO);
+	logger = log_create("lisandra.log", "LISANDRA", 0, LOG_LEVEL_INFO);
+	loggerConsola = log_create("lisandraConsola.log","LISANDRA_CONSOLA",0,LOG_LEVEL_INFO);
 }
 
 // ------------------------------------------------------------------------ //

@@ -140,7 +140,6 @@ int verificarExistenciaDirectorioTabla(char* nombreTabla,int socket){
 	string_append(&rutaDirectorio,"Tables/");
 	string_append(&rutaDirectorio,nombreTabla);
 	//struct stat sb;
-	soloLoggear(socket,"Determinando existencia de tabla en la ruta: %s",rutaDirectorio);
 	pthread_mutex_lock(&mutexListaDeTablas);
 	if (list_find(listaDeTablas,seEncuentraTabla))
 	    {
@@ -231,7 +230,6 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int ke
 	}
 	pthread_mutex_lock(&mutexMemtable);
 	tablaMem* encuentraLista =  list_find(memtable, tieneElNombre);
-	pthread_mutex_unlock(&mutexMemtable);
 	if(encuentraLista == NULL){
 		return NULL;
 	}
@@ -242,6 +240,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int ke
 	}
 
 	registro* registroDeMayorTimestamp= list_fold(registrosConLaKeyEnMemtable, list_get(registrosConLaKeyEnMemtable,0), cualEsElMayorTimestamp);
+	pthread_mutex_unlock(&mutexMemtable);
 
 	soloLoggear(socket,"Registro encontrado en la memtable");
 
@@ -422,9 +421,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_lock(&semaforoDeTabla);
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
-
-
-		soloLoggear(socket,"Metadata cargado");
 
 		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones));
 		liberarMetadata(metadataTabla);

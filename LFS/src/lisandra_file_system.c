@@ -213,7 +213,7 @@ void* cambiosConfig() {
 
 			if (event->mask & IN_MODIFY) {
 
-				soloLoggear(-1,"hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos y tiempo de dump...");
+				soloLoggear(-1,"Cambios en config, cambiando retardo y dump");
 
 				pthread_mutex_lock(&mutexTiempoDump);
 				tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
@@ -251,7 +251,7 @@ int main(int argc, char* argv[]) {
 
 		log_info(loggerConsola,"Inicializando FS");
 
-		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
+		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d",bitarray_get_max_bit(bitarray));
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
