@@ -653,6 +653,9 @@ int esOperacionEjecutable(char* unaOperacion) {
 	else if(string_starts_with(unaOperacion, "HEXDUMP")) {
 		return 1;
 	}
+	else if(string_starts_with(unaOperacion, "CERRAR")) {
+		return 1;
+	}
 	else if(string_starts_with(unaOperacion, "ADD")) {
 		return esAddEjecutable(unaOperacion);
 	}
