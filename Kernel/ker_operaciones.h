@@ -163,10 +163,12 @@ bool kernel_drop(char* operacion, int thread){
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		guardarTablaCreada(opAux->parametros);
+		//todo arreglar seg fault porque enviarOp ya libera los parametros y no se puede volver a agregar
 		return false;
 	}
 	eliminarTablaCreada(*(parametros+1));
 	liberarParametrosSpliteados(parametros);
+	//liberarOperacionLQL(opAux);
 	return 0;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
