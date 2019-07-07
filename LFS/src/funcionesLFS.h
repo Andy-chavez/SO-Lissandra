@@ -37,7 +37,7 @@ metadata* obtenerMetadata(char* nombreTabla); //habria que ver de pasarle la rut
 bool estaLaKey(int key,void* elemento);
 bool esIgualAlNombre(char* nombreTabla,void * elemento);
 bool agregarRegistro(char* nombreTabla, registro* unRegistro, tablaMem * tabla); //este es para memtable
-registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key,int socket);
+registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int key,int socket);
 void liberarDoblePuntero(char** doblePuntero);
 void funcionSelect(char* argumentos,int socket);
 void funcionInsert(char* argumentos,int socket);
@@ -210,7 +210,7 @@ void guardarRegistro(registro* unRegistro, char* nombreTabla) {
 }
 
 
-registro* devolverRegistroDeMayorTimestampDeLaMemtable(t_list* listaRegistros, t_list* memtable, char* nombreTabla, int key,int socket){
+registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int key,int socket){
 
 
 	bool encontrarLaKey(void *elemento){
@@ -450,7 +450,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
 			pthread_mutex_lock(&semaforoTablaMemtable);
-			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(listaRegistros, memtable,nombreTabla, key,socket))){
+			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(nombreTabla, key,socket))){
 			pthread_mutex_unlock(&semaforoTablaMemtable);
 			soloLoggear(socket,"El registro no se encuentra en la memtable");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket);

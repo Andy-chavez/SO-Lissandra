@@ -87,8 +87,6 @@ int APIProtocolo(void* buffer, int socket) {
 		soloLoggear(socket,"Recibi una operacion");
 		parserGeneral(deserializarOperacionLQL(buffer), socket);
 		return 1;
-	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
-	// por ahora va a ser el default, ver como arreglarlo
 	case PAQUETEOPERACIONES:
 		soloLoggear(socket,"Recibi un paquete de operacion");
 		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
@@ -124,7 +122,6 @@ void* servidorLisandra(){
 		pthread_exit(0);
 		log_error(logger, "No se pudo crear el servidor lissandra");
 	}
-
 
 	while(1){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
@@ -164,9 +161,6 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf("-------CERRAR---------\n");
 	    printf ("Ingresa operacion\n");
-
-    	//ESTA ROMPIENDO EL INSERT POR EL FREE DE PARAMETROS SPLITEADOS, COMENTO POR AHORA PA PROBAR
-
 
 	    while ((linea = readline(""))){
 	    			string_to_upper(linea);
@@ -259,7 +253,6 @@ int main(int argc, char* argv[]) {
 
 		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
 
-
 		pthread_t threadConsola;
 		pthread_t threadServer;
 		pthread_t threadDump;
@@ -271,7 +264,6 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
 		sem_init(&binarioLFS, 0, 0);
-
 
 		struct sigaction terminar;
 			terminar.sa_handler = terminarTodo;

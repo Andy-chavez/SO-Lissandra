@@ -170,7 +170,7 @@ bool perteneceAParticion(int suParticion,int particionActual){
 // 2) REALIZACION DE LA COMPACTACION//
 
 
-void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemporales){
+void insertarInfoEnBloquesDeTabla(char* rutaTabla, t_list* listaRegistrosTemporales){
 
 	char* rutaMetadata = string_new();
 
@@ -240,8 +240,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 		marcarBloquesComoLibre(arrayDeBloques);
 
 
-
-		//el array de bloques no se pasa, hay que liberar los viejos
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferParticion, arrayDeBloques)){
 
 			enviarOMostrarYLogearInfo(-1, "La particion esta vacia, se ingresara la nueva informacion");
@@ -253,8 +251,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 			enviarOMostrarYLogearInfo(-1, "Se ha ingresado la informacion");
 
-			//break porque no puede haber una particion que tenga data si la anterior no tenia data
-			//puede ser q sea continue
 
 			list_destroy(listaRegistrosTemporalesDeParticionActual);
 			//list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
@@ -274,45 +270,23 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 			enviarOMostrarYLogearInfo(-1, "La particion tiene informacion, se actualizaran los registros");
 
-			void liberarRegistrosNoTemporales(registro* unRegistro){
-
-				bool seEncuentraKey(registro* registroTemporal){
-					return (registroTemporal->key == unRegistro->key);
-				}
-
-
-				list_remove_and_destroy_by_condition(listaRegistrosTemporales, seEncuentraKey, liberarRegistros);
-			/*	if(list_remove_by_condition(listaRegistrosTemporales, seEncuentraKey)){
-					liberarRegistros(unRegistro);
-				}
-			*/
-			}
-
-			//DESTRUIR CABEZA Y ELEMENTOS DE LISTAREGISTROSORIGINALESDEPARTICIONACTUAL
-			t_list* listaRegistrosOriginalesDeParticionActual = list_create();
-			separarRegistrosYCargarALista(bufferParticion, listaRegistrosOriginalesDeParticionActual);
-			t_list* listaRegistrosFinal = list_duplicate(listaRegistrosOriginalesDeParticionActual);
-
+			t_list* listaRegistrosDeTablaDeParticionActual = list_create();
+			separarRegistrosYCargarALista(bufferParticion, listaRegistrosDeTablaDeParticionActual);
+			t_list* listaRegistrosFinal = list_duplicate(listaRegistrosDeTablaDeParticionActual);
 
 			agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosFinal);
 			list_iterate(listaRegistrosFinal, (void *)guardarEnBuffer);
 
-			/*
-			t_list* listaRegistrosFinal = agregadoYReemplazoDeRegistros(listaRegistrosTemporalesDeParticionActual, listaRegistrosOriginalesDeParticionActual);
-			list_iterate(listaRegistrosFinal, (void *)guardarEnBuffer);
-*/
 			ingresarNuevaInfo(rutaParticion, bufferFinal, arrayDeBloques);
 
 			enviarOMostrarYLogearInfo(-1, "Se ha actualizado la informacion");
 
 			//liberar todos los registros
-			list_destroy_and_destroy_elements(listaRegistrosOriginalesDeParticionActual,(void*)liberarRegistros);
+			list_destroy_and_destroy_elements(listaRegistrosDeTablaDeParticionActual,(void*)liberarRegistros);
 			list_destroy(listaRegistrosFinal);
 
-			//			list_destroy(listaRegistrosFinal);
 		}
 	list_destroy(listaRegistrosTemporalesDeParticionActual);
-	//list_destroy_and_destroy_elements(listaRegistrosTemporalesDeParticionActual,(void*)liberarRegistros);
 
 	config_destroy(tabla);
 	free(numeroDeParticion);
@@ -329,7 +303,6 @@ void insertarInfoEnBloquesOriginales(char* rutaTabla, t_list* listaRegistrosTemp
 
 void compactar(metadataConSemaforo* metadataDeTabla){
 
-	///////////////SEMAFOROOOOO
 	pthread_mutex_t semaforoDeTabla = devolverSemaforoDeTablaFS(metadataDeTabla->nombreTabla);
 
 	enviarOMostrarYLogearInfo(-1,"Comenzando compactacion de la tabla: %s\n",metadataDeTabla->nombreTabla);
@@ -421,7 +394,9 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	t_list* listaRegistrosTemporalesSinKeyRepetidas = list_create();
 	agregadoYReemplazoDeRegistros(listaRegistrosTemporales, listaRegistrosTemporalesSinKeyRepetidas);
 
-	insertarInfoEnBloquesOriginales(rutaTabla, listaRegistrosTemporalesSinKeyRepetidas);
+	//Bloques originales -- de tabla
+
+	insertarInfoEnBloquesDeTabla(rutaTabla, listaRegistrosTemporalesSinKeyRepetidas);
 
 	pthread_mutex_unlock(&semaforoDeTabla);
 		// LIBERAR Y DESTRUIR ELEMENTOS DE LISTAREGISTROSTEMPORALES
