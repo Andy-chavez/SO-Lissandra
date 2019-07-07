@@ -5,7 +5,7 @@
 #include "ker_structs.h"
 
 /******************************DECLARACIONES******************************************/
-/* TODO metrics
+/* TODO metrics-> time
  */
 bool kernel_create(char* operacion,int thread);
 bool kernel_describe(char* operacion,int thread);
