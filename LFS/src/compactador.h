@@ -416,7 +416,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	}
 
 	separarRegistrosYCargarALista(bufferTemporales, listaRegistrosTemporales);
-	enviarOMostrarYLogearInfo(-1, "Se insertara la informacion en los bloques de las particiones");
+	soloLoggear(-1, "Se insertara la informacion en los bloques de las particiones");
 
 	t_list* listaRegistrosTemporalesSinKeyRepetidas = list_create();
 	agregadoYReemplazoDeRegistros(listaRegistrosTemporales, listaRegistrosTemporalesSinKeyRepetidas);
@@ -430,8 +430,6 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	free(rutaTabla);
 	free(bufferTemporales);
 
-	pthread_mutex_lock(&mutexLoggerConsola);
-	log_info(loggerConsola, "Compactacion finalizada de la tabla: %s", metadataDeTabla->nombreTabla);
-	pthread_mutex_unlock(&mutexLoggerConsola);
+	soloLoggear(-1,"Compactacion finalizada de la tabla: %s", metadataDeTabla->nombreTabla);
 }
 }

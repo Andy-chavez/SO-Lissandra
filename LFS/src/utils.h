@@ -198,7 +198,6 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 	config_destroy(archivo);
 	remove(rutaCompleta);
 	free(rutaCompleta);
-
 }
 
 
@@ -265,9 +264,7 @@ int calcularParticion(int key,int cantidadParticiones){
 	return particion;
 }
 
-int obtenerCantTemporales(char* nombreTabla){ //SIRVE PARA DUMP(TE DEVUELVE EL NUMERO A ESCRIBIR)
-											//REUTILIZAR EN COMPACTACION
-	//puntoMontaje/Tables/TABLA1/1.tmp, suponemos que los temporales se hacen en orden
+int obtenerCantTemporales(char* nombreTabla){
 	int cantTemporal = 0;
 	int existe;
 	do{

@@ -190,7 +190,8 @@ void leerConsola() {
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
-	char* path = "lisandra.config";
+	char* path = "../lisandra.config";
+	//char* path = "lisandra.config";
 
 	if(fdConfig < 0) {
 		soloLoggearError(-1, "Hubo un error con el inotify_init");
