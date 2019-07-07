@@ -1026,7 +1026,9 @@ void intentarConexiones() {
 			log_info(LOGGER_CONSOLA, "se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 			sem_post(&MUTEX_LOG_CONSOLA);
 
-			list_remove_by_condition(TABLA_GOSSIP, esIgualA);
+			seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
+
+			liberarSeed(seedRemovida);
 
 			return;
 		}
