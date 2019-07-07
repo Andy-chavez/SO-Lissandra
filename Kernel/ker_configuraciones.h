@@ -73,7 +73,7 @@ void kernel_crearListas(){
 	cola_proc_listos = list_create();
 	cola_proc_terminados = list_create();
 	rrThreads = list_create();
-	criterios[HASH].unCriterio = SH;
+	criterios[HASH].unCriterio = SHC;
 	criterios[HASH].tiempoInserts = 0;
 	criterios[HASH].tiempoSelects = 0;
 	criterios[HASH].cantidadInserts = 0;
@@ -122,9 +122,11 @@ void kernel_inicializarVariablesYListas(){
 }
 void kernel_inicializarEstructuras(){
 	kernel_inicializarSemaforos();
+	metrics_resetVariables();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
+	log_destroy(logMetrics);
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
 	free(kernel_configYLog);
