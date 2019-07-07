@@ -122,6 +122,7 @@ void kernel_inicializarVariablesYListas(){
 }
 void kernel_inicializarEstructuras(){
 	kernel_inicializarSemaforos();
+	metrics_resetVariables();
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {

@@ -64,7 +64,7 @@ void actualizarTiemposInsert(int index, time_t tiempo){
 		pthread_mutex_unlock(&mEventual);
 	}
 }
-void actualizarTiemposSelect(int index, time_t tiempo){
+void actualizarTiemposSelect(int index, unsigned long tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
 		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
@@ -141,6 +141,9 @@ void kernel_gossiping(){
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket==-1){
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, "@@ Gossip no se pudo realizar");
+			pthread_mutex_unlock(&mLog);
 			continue;
 		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
@@ -404,7 +407,7 @@ void enviarJournal(int socket){
 		return;
 	}
 	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log, "RECIBIDO: %s",recibido);
+	log_info(kernel_configYLog->log, "RECIBIDO: %s",recibido);
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);

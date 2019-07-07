@@ -59,7 +59,7 @@ bool kernel_insert(char* operacion, int thread){
 bool kernel_select(char* operacion, int thread){
 //	struct timeval horaInicio;
 //	struct timeval horaFin;
-	time_t tiempo = time(NULL);
+	unsigned long tiempo = time(NULL);
 
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
