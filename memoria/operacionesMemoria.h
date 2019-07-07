@@ -181,9 +181,6 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
 	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
-	sem_init(&BINARIO_CERRANDO_JOURNALTIMEADO, 0, 0);
-	sem_init(&BINARIO_CERRANDO_GOSSIPINGTIMEADO, 0, 0);
-	sem_init(&BINARIO_CERRANDO_CONFIG, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 }
 
@@ -287,8 +284,10 @@ marco* algoritmoLRU() {
 			return NULL;
 		}
 
-	return encontrarMarcoEscrito(paginaACambiar->marco);
+	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
+	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
 
+	return encontrarMarcoEscrito(paginaACambiar->marco);
 }
 
 marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
@@ -975,17 +974,22 @@ void cargarSeeds() {
 
 	int i = 0;
 	while(*(IPs + i) != NULL && *(puertos + i) != NULL) {
-		seed *unaSeed = malloc(sizeof(seed));
-		unaSeed->ip = string_duplicate(*(IPs + i));
-		unaSeed->puerto = string_duplicate(*(puertos + i));
-		unaSeed->numero = -1;
+		seed *unaSeedParaTablaGossip = malloc(sizeof(seed));
+		unaSeedParaTablaGossip->ip = string_duplicate(*(IPs + i));
+		unaSeedParaTablaGossip->puerto = string_duplicate(*(puertos + i));
+		unaSeedParaTablaGossip->numero = -1;
+
+		seed* unaSeedParaTablaDeSeeds = malloc(sizeof(seed)); // YEAH THIS FUCKING SUCKS
+		unaSeedParaTablaDeSeeds->ip = string_duplicate(*(IPs + i));
+		unaSeedParaTablaDeSeeds->puerto = string_duplicate(*(puertos + i));
+		unaSeedParaTablaDeSeeds->numero = -1;
 
 		sem_wait(&MUTEX_TABLA_GOSSIP);
-		list_add(TABLA_GOSSIP, unaSeed);
+		list_add(TABLA_GOSSIP, unaSeedParaTablaGossip);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 
 		sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
-		list_add(TABLA_SEEDS_CONFIG, unaSeed);
+		list_add(TABLA_SEEDS_CONFIG, unaSeedParaTablaDeSeeds);
 		sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
 
 
@@ -1113,8 +1117,8 @@ void intentarConexiones() {
 }
 
 void* timedGossip() {
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
-	pthread_cleanup_push(cancelarGossiping, NULL);
 
 	while(1) {
 		intentarConexiones();
@@ -1123,14 +1127,14 @@ void* timedGossip() {
 		int retardoGossip = RETARDO_GOSSIP * 1000;
 		sem_post(&MUTEX_RETARDO_GOSSIP);
 
-		sem_post(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		usleep(retardoGossip);
-		sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	}
-	pthread_cleanup_pop(0);
 }
 
 void* timedJournal(){
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 	while(1){
 
@@ -1138,9 +1142,9 @@ void* timedJournal(){
 		int retardoJournal = RETARDO_JOURNAL * 1000;
 		sem_post(&MUTEX_RETARDO_JOURNAL);
 
-		sem_post(&BINARIO_CERRANDO_JOURNALTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		usleep(retardoJournal);
-		sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 
 		journalLQL(-1);
 	}
@@ -1198,13 +1202,18 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	t_list* listaHilosEsperandoSemaforos = list_create();
 
 	void esperarHiloEsperando(void* hiloEsperando) {
-		pthread_join(*(pthread_t*) hiloEsperando, NULL);
+		hiloQueEspera* unHiloEsperando = (hiloQueEspera*) hiloEsperando;
+		pthread_join(unHiloEsperando->thread, NULL);
+		free(unHiloEsperando);
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
-		pthread_t hiloQueEspera;
-		pthread_create(&hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
-		list_add(listaHilosEsperandoSemaforos, &hiloQueEspera);
+		hiloQueEspera* unHiloQueEspera = malloc(sizeof(hiloQueEspera));
+		int error = pthread_create(&unHiloQueEspera->thread, NULL, esperarSemaforoParticular, unHilo);
+		if(error) {
+			printf("Hubo un error al crear un hilo para esperar\n");
+		}
+		list_add(listaHilosEsperandoSemaforos, unHiloQueEspera);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
@@ -1245,16 +1254,4 @@ void cleanupTrabajarConConexion() {
 void esperarParaCancelarConsola(pthread_t hiloConsola){
 	hiloEnTabla* hilo = obtenerHiloEnTabla(hiloConsola);
 	sem_wait(hilo->cancelarThread);
-}
-
-void cancelarJournal(){
-	sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
-}
-
-void cancelarGossiping(){
-	sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
-}
-
-void cancelarCambiosConfig(){
-	sem_wait(&BINARIO_CERRANDO_CONFIG);
 }

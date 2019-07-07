@@ -66,6 +66,10 @@ typedef struct {
 	sem_t *cancelarThread;
 } hiloEnTabla;
 
+typedef struct {
+	pthread_t thread;
+} hiloQueEspera;
+
 int SOCKET_LFS;
 
 int TAMANIO_UN_REGISTRO_EN_MEMORIA;
@@ -93,9 +97,6 @@ sem_t MUTEX_TABLA_MARCOS;
 sem_t MUTEX_TABLA_SEGMENTOS;
 
 sem_t BINARIO_CERRANDO_SERVIDOR;
-sem_t BINARIO_CERRANDO_JOURNALTIMEADO;
-sem_t BINARIO_CERRANDO_GOSSIPINGTIMEADO;
-sem_t BINARIO_CERRANDO_CONFIG;
 
 memoria* MEMORIA_PRINCIPAL;
 t_list* TABLA_MARCOS;
