@@ -641,6 +641,9 @@ int esOperacionEjecutable(char* unaOperacion) {
 	else if (string_starts_with(unaOperacion, "DESCRIBE")) {
 		return 1; // no hace falta verificar el describe
 	}
+	else if (string_starts_with(unaOperacion, "METRICS")) {
+			return 1;
+	}
 	else if (string_starts_with(unaOperacion, "CREATE")) {
 		return esCreateEjecutable(unaOperacion);
 	}

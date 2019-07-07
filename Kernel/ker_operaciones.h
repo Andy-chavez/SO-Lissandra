@@ -29,10 +29,11 @@ void crearThreadRR(int numero);
 void metrics();
 /******************************IMPLEMENTACIONES******************************************/
 void metrics(){
+	metrics_resetVariables();
 	while(!destroy){
 		kernel_metrics(0);
+		metrics_resetVariables();
 		usleep(30000*1000);
-		//metrics_resetVariables();
 	}
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
@@ -199,15 +200,17 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	}
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
-		log_info(logMetrics, "METRICS: \n"
-				">tiempo en selects de HASH: %f,\n>tiempo en inserts de HASH: %f,\n"
-				"cantidad inserts en HASH : %d,\ncantidad selects en HASH : %d\n"
-				">tiempo en selects de STRONG: %f,\n>tiempo en inserts de STRONG: %f,\n"
-				"cantidad inserts en STRONG : %d,\ncantidad selects en STRONG : %d\n"
-				">tiempo en selects de EVENTUAL: %f,\n>tiempo en inserts de EVENTUAL: %f,\n"
+		log_info(logMetrics, "METRICS: HASH\n"
+				">tiempo en selects de HASH: %lu,\n>tiempo en inserts de HASH: %lu,\n"
+				"cantidad inserts en HASH : %d,\ncantidad selects en HASH : %d\n",
+				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect);
+		log_info(logMetrics, "METRICS: STRONG\n"
+				">tiempo en selects de STRONG: %lu,\n>tiempo en inserts de STRONG: %lu,\n"
+				"cantidad inserts en STRONG : %d,\ncantidad selects en STRONG : %d\n",
+				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect);
+		log_info(logMetrics, "METRICS: EVENTUAL\n"
+				">tiempo en selects de EVENTUAL: %lu,\n>tiempo en inserts de EVENTUAL: %lu,\n"
 				"cantidad inserts en EVENTUAL : %d,\ncantidad selects en EVENTUAL : %d\n",
-				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect,
-				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect,
 				eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_unlock(&mLogMetrics);
 		return true;

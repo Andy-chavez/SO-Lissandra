@@ -31,8 +31,8 @@ typedef struct{
 	consistencia unCriterio;
 	int cantidadSelects;
 	int cantidadInserts;
-	time_t tiempoSelects; //aca es el tiempo total, realizar division cuando loggee
-	time_t tiempoInserts;
+	unsigned long tiempoSelects; //aca es el tiempo total, realizar division cuando loggee
+	unsigned long tiempoInserts;
 	t_list* memorias;
 }criterio;
 typedef struct{

@@ -133,7 +133,6 @@ void actualizarListaMetadata(metadata* met){
 	t->nombreDeTabla = string_duplicate(met->nombreTabla);
 	t->consistenciaDeTabla = met->tipoConsistencia;
 	agregarTablaVerificandoSiLaTengo(t);
-	//liberarMetadata(met);
 }
 //------ TIMED ---------
 void kernel_gossiping(){
@@ -148,6 +147,9 @@ void kernel_gossiping(){
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 		recibirYDeserializarTablaDeGossipRealizando(socket,guardarMemorias);
 		cerrarConexion(socket);
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "@@ Gossip hecho");
+		pthread_mutex_unlock(&mLog);
 		usleep(timedGossip*1000);
 	}
 
@@ -188,7 +190,6 @@ void describeTimeado(){
 int enviarOperacion(operacionLQL* opAux,int index, int thread){
 	int socket = obtenerSocketAlQueSeEnvio(opAux,index);
 	if(socket != -1){
-		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
 			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
@@ -365,12 +366,15 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	return socket;
 }
 int obtenerSocketAlQueSeEnvio(operacionLQL* opAux, int index){
-	if(index == EVENTUAL)
+	if(index == EVENTUAL){
 		return eventual_obtenerSocketAlQueSeEnvio(opAux);
-	else if(index == STRONG)
+	}
+	else if(index == STRONG){
 		return strong_obtenerSocketAlQueSeEnvio(opAux);
-	else if (index == HASH)
+	}
+	else if (index == HASH){
 		return hash_obtenerSocketAlQueSeEnvio(opAux);
+	}
 	return -1;
 }
 int obtenerIndiceDeConsistencia(consistencia unaConsistencia){
@@ -428,7 +432,7 @@ void guardarTablaCreada(char* parametros){
 }
 void agregarTablaVerificandoSiLaTengo(tabla* t){
 	bool yaGuardeTabla(tabla* tab){
-		return string_equals_ignore_case(t->nombreDeTabla,tab->nombreDeTabla);
+		return string_equals_ignore_case(t->nombreDeTabla,tab->nombreDeTabla) && t->consistenciaDeTabla == tab->consistenciaDeTabla;
 	}
 	pthread_mutex_lock(&mTablas);
 	bool boleanFind = list_find(tablas,(void*)yaGuardeTabla);
