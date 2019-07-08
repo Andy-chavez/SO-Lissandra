@@ -9,6 +9,7 @@
 #include "structsYVariablesGlobales.h"
 #include <unistd.h>
 #include <stdarg.h>
+#include <fcntl.h>
 
 // DECLARACIONES //
 void inicializarProcesoMemoria();
@@ -117,8 +118,8 @@ void inicializarTablaMarcos() {
 
 void inicializarTablaGossip() {
 	seed* seedPropia = malloc(sizeof(seed));
-	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
-	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
+	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
+	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 	seedPropia->numero = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
 
 	TABLA_GOSSIP = list_create();
@@ -1000,8 +1001,8 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 
 void intentarConexiones() {
 	seed* seedPropia = malloc(sizeof(seed));
-	seedPropia->ip = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA");
-	seedPropia->puerto = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO");
+	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
+	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 
 	void intentarConexion(void* seedEnTablaGossip) {
 		seed* unaSeed = (seed*) seedEnTablaGossip;
@@ -1038,6 +1039,7 @@ void intentarConexiones() {
 	sem_wait(&MUTEX_TABLA_GOSSIP);
 	list_iterate(TABLA_GOSSIP, intentarConexion);
 	sem_post(&MUTEX_TABLA_GOSSIP);
+	liberarSeed(seedPropia);
 }
 
 void* timedGossip() {
