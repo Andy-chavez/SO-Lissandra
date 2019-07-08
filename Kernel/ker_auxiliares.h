@@ -93,11 +93,13 @@ int random_int(int min, int max)
 void guardarMemorias(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
+	//memAux->puerto = malloc(sizeof(unaSeed->puerto));
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
 	memAux->cantidadIns = 0;
 	memAux->cantidadSel = 0;
 	agregarMemoriaVerificandoSiLaTengo(memAux);
+	liberarSeed(unaSeed);
 }
 void agregarMemoriaVerificandoSiLaTengo(memoria* memAux){
 	bool yaGuardeMemoria(memoria* mem){
@@ -404,6 +406,8 @@ void enviarJournal(int socket){
 		pthread_mutex_lock(&mLog);
 		log_info(kernel_configYLog->log, "@ RECIDIBO:DESCONEXION/ERROR EN MEMORIA");
 		pthread_mutex_unlock(&mLog);
+		free(recibido);
+		liberarOperacionLQL(opAux);
 		return;
 	}
 	pthread_mutex_lock(&mLog);
