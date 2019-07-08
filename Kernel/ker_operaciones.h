@@ -395,8 +395,8 @@ void kernel_roundRobin(int threadProcesador){
 				continue;
 			}
 			else if(ERROR ==-1){
-				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 				usleep(sleep);
 				continue;
 			}
@@ -420,8 +420,7 @@ void kernel_almacenar_en_new(char*operacion){
 	pthread_mutex_unlock(&mLog);
 }
 void kernel_consola(){
-	printf(">> Welcome to Kernel <<\n"
-			"> Ingrese alguna de las siguientes operaciones:\n"
+	printf(">> Welcome to Kernel, ingrese alguna de las siguientes operaciones: \n"
 			"> SELECT [TABLA] [KEY]\n"
 			"> INSERT [TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] \n"
 			"> CREATE [TABLA] [SC/SHC/EC] [NUMERO_PARTICIONES] [COMPACTATION_TIME]\n"
@@ -437,10 +436,7 @@ void kernel_consola(){
 	while(!destroy){
 		printf(" ");
 		linea = readline("");
-//		if(string_equals_ignore_case(linea,"CERRAR")){
-//			kernel_semFinalizar();
-//			break;
-//		}
+
 		kernel_almacenar_en_new(linea);
 	}
 	free(linea);

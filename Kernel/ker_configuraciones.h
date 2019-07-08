@@ -156,17 +156,23 @@ void liberarColas(pcb* element){
 }
 void liberarPCB(pcb* elemento) {
 
-	if(elemento == NULL)
-		return;
 	void liberarInstrucciones(instruccion* instrucc) {
 		if(instrucc == NULL)
 			return;
 		free(instrucc->operacion);
 		free(instrucc);
 	}
-	list_iterate(elemento->instruccion,(void*) liberarInstrucciones);
-	free(elemento->operacion);
-	free(elemento);
+	if(elemento == NULL)
+		return;
+	else if (elemento->instruccion ==NULL){
+		free(elemento->operacion);
+		free(elemento);
+	}
+	else{
+		list_iterate(elemento->instruccion,(void*) liberarInstrucciones);
+		free(elemento->operacion);
+		free(elemento);
+	}
 }
 void liberarMemoria(memoria* elemento) {
 	free(elemento->ip);
@@ -190,9 +196,9 @@ void liberarListas(){
 	list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	pthread_mutex_unlock(&colaListos);
 
-//	pthread_mutex_lock(&colaTerminados);
-//	list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
-//	pthread_mutex_unlock(&colaTerminados);
+	pthread_mutex_lock(&colaTerminados);
+	list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
+	pthread_mutex_unlock(&colaTerminados);
 
 	pthread_mutex_lock(&mMemorias);
 	list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
