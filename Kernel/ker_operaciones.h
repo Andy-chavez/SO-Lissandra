@@ -43,12 +43,14 @@ bool kernel_insert(char* operacion, int thread){
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
 	if(consist == -1){
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		tiempo = time(NULL) - tiempo;
 		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	tiempo = time(NULL) - tiempo;
