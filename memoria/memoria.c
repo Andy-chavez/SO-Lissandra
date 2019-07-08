@@ -93,6 +93,12 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
 	}
+	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
+		sem_post(&BINARIO_FINALIZACION_PROCESO);
+		int test;
+		sem_getvalue(&BINARIO_FINALIZACION_PROCESO, &test);
+		printf("%d\n", test);
+	}
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
@@ -202,6 +208,7 @@ void *servidorMemoria() {
 		cerrarConexion(socketServidorMemoria);
 
 		enviarYLogearMensajeError(-1, "No se pudo inicializar el servidor de memoria");
+		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		pthread_exit(0);
 	}
 
@@ -341,7 +348,7 @@ int main() {
 	liberarTablaMarcos();
 	liberarTablaGossip();
 
-	system("reset");
+	// system("reset");
 	return 0;
 
 }
