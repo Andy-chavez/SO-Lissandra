@@ -158,10 +158,10 @@ void kernel_gossiping(){
 
 }
 void describeTimeado(){
-	operacionLQL* opAux = malloc(sizeof(operacionLQL));
-	opAux ->operacion = "DESCRIBE";
-	opAux->parametros = "ALL";
 	while(destroy==0){
+		operacionLQL* opAux = malloc(sizeof(operacionLQL));
+		opAux ->operacion = "DESCRIBE";
+		opAux->parametros = "ALL";
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
@@ -185,9 +185,9 @@ void describeTimeado(){
 			pthread_mutex_unlock(&mLog);
 			cerrarConexion(socket);
 		}
+		liberarOperacionLQL(opAux);
 		usleep(metadataRefresh*1000);
 	}
-	//liberarOperacionLQL(opAux);
 }
 //------ ENVIOS Y SOCKETS ---------
 int enviarOperacion(operacionLQL* opAux,int index, int thread){
@@ -504,6 +504,11 @@ void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, ope
 void thread_loggearInfo(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
+	pthread_mutex_unlock(&mLog);
+}
+void thread_loggearInfoInstruccion(char* estado, int threadProcesador,char* archivoRun, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log," %s[%d] de %s, %s",estado,threadProcesador,archivoRun, operacion);
 	pthread_mutex_unlock(&mLog);
 }
 //------ LISTAS ---------

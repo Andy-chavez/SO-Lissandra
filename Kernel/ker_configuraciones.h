@@ -155,11 +155,16 @@ void liberarColas(pcb* element){
 	free(element);
 }
 void liberarPCB(pcb* elemento) {
+
+	if(elemento == NULL)
+		return;
 	void liberarInstrucciones(instruccion* instrucc) {
+		if(instrucc == NULL)
+			return;
 		free(instrucc->operacion);
 		free(instrucc);
 	}
-	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
+	list_iterate(elemento->instruccion,(void*) liberarInstrucciones);
 	free(elemento->operacion);
 	free(elemento);
 }
@@ -172,7 +177,11 @@ void liberarTabla(tabla* t) {
 	free(t->nombreDeTabla);
 	free(t);
 }
-void liberarListas(){ //todo agregar RR
+void liberarThreads(t_thread* t){
+	free(t->thread);
+	free(t);
+}
+void liberarListas(){
 	pthread_mutex_lock(&colaNuevos);
 	list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	pthread_mutex_unlock(&colaNuevos);
@@ -181,9 +190,9 @@ void liberarListas(){ //todo agregar RR
 	list_destroy_and_destroy_elements(cola_proc_listos,(void*) liberarPCB);
 	pthread_mutex_unlock(&colaListos);
 
-	pthread_mutex_lock(&colaTerminados);
-	list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
-	pthread_mutex_unlock(&colaTerminados);
+//	pthread_mutex_lock(&colaTerminados);
+//	list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
+//	pthread_mutex_unlock(&colaTerminados);
 
 	pthread_mutex_lock(&mMemorias);
 	list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
@@ -206,7 +215,7 @@ void liberarListas(){ //todo agregar RR
 	pthread_mutex_unlock(&mTablas);
 
 	pthread_mutex_lock(&mThread);
-	list_destroy(rrThreads);//, (void*)realizarCancel);
+	list_destroy_and_destroy_elements(rrThreads,(void*) liberarThreads);//, (void*)realizarCancel);
 	pthread_mutex_unlock(&mThread);
 }
 void kernel_finalizar(){

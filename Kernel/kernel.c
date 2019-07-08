@@ -53,6 +53,7 @@ int main(int argc, char *argv[]){
 	sem_wait(&finalizar);
 
 	pthread_cancel(threadConsola);
+	pthread_cancel(threadInotify);
 	pthread_cancel(threadNew_Ready);
 	pthread_cancel(threadDescribe);
 	pthread_cancel(threadMetrics);
@@ -60,6 +61,7 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i<multiprocesamiento;i++){
 		cancelThreadRR();
 	}
+	pthread_join(threadInotify,NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadDescribe,NULL);

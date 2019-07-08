@@ -348,12 +348,13 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
+			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			if(kernel_api(pcb_auxiliar->operacion,threadProcesador)== false){
-				thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 				usleep(sleep);
 				continue;
 			}
-			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 			thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
 			usleep(sleep);
@@ -364,12 +365,12 @@ void kernel_roundRobin(int threadProcesador){
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
+					thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					if(kernel_api(pcb_auxiliar->operacion,threadProcesador)==false){
-						thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
+//						thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
-					thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 					usleep(sleep);
 					continue;
 				}
@@ -378,12 +379,12 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
+				thread_loggearInfoInstruccion("EXEC",threadProcesador, pcb_auxiliar->operacion, instruc->operacion);
 				if(kernel_api(instruc->operacion, threadProcesador)==false){
-					thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 					ERROR = -1;
 					break;
 				}
-				thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
+				//thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
@@ -468,7 +469,8 @@ void kernel_pasar_a_ready(){
 		else if(string_contains(operacion, "SELECT") || string_contains(operacion, "INSERT") ||
 				string_contains(operacion, "CREATE") || string_contains(operacion, "DESCRIBE") ||
 				string_contains(operacion, "DROP") ||  string_contains(operacion, "JOURNAL") ||
-				string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")){
+				string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")
+				|| string_contains(operacion, "CERRAR")){
 			kernel_crearPCB(operacion);
 		}
 		else{
@@ -519,10 +521,7 @@ void kernel_run(char* operacion){
 }
 bool kernel_api(char* operacionAParsear, int thread){
 	if(esOperacionEjecutable(operacionAParsear)){
-		if(string_contains(operacionAParsear, "CERRAR")) {
-			return kernel_insert(operacionAParsear,thread);
-		}
-		else if(string_contains(operacionAParsear, "INSERT")) {
+		if(string_contains(operacionAParsear, "INSERT")) {
 			return kernel_insert(operacionAParsear,thread);
 		}
 		else if (string_contains(operacionAParsear, "SELECT")) {
@@ -545,6 +544,10 @@ bool kernel_api(char* operacionAParsear, int thread){
 		}
 		else if (string_contains(operacionAParsear, "METRICS")) {
 			return kernel_metrics(1);
+		}
+		else if (string_contains(operacionAParsear, "CERRAR")) {
+			kernel_semFinalizar();
+			return true;
 		}
 		else
 			return false;
