@@ -315,6 +315,14 @@ void crearThreadRR(int numero){
 	pthread_create(t->thread, NULL,(void*) kernel_roundRobin, (void*)t->numero);
 	agregarALista(rrThreads,t,mThread);
 }
+void cancelThreadRR(){
+	void realizarCancel(t_thread* t){
+		pthread_cancel(*(t->thread));
+	}
+	pthread_mutex_lock(&mThread);
+	list_iterate(rrThreads, (void*)realizarCancel);
+	pthread_mutex_unlock(&mThread);
+}
 void joinThreadRR(){
 	void realizarJoin(t_thread* t){
 		pthread_join(*(t->thread),NULL);
@@ -428,10 +436,10 @@ void kernel_consola(){
 	while(!destroy){
 		printf(" ");
 		linea = readline("");
-		if(string_equals_ignore_case(linea,"cls")){
-			kernel_semFinalizar();
-			break;
-		}
+//		if(string_equals_ignore_case(linea,"CERRAR")){
+//			kernel_semFinalizar();
+//			break;
+//		}
 		kernel_almacenar_en_new(linea);
 	}
 	free(linea);
@@ -511,7 +519,10 @@ void kernel_run(char* operacion){
 }
 bool kernel_api(char* operacionAParsear, int thread){
 	if(esOperacionEjecutable(operacionAParsear)){
-		if(string_contains(operacionAParsear, "INSERT")) {
+		if(string_contains(operacionAParsear, "CERRAR")) {
+			return kernel_insert(operacionAParsear,thread);
+		}
+		else if(string_contains(operacionAParsear, "INSERT")) {
 			return kernel_insert(operacionAParsear,thread);
 		}
 		else if (string_contains(operacionAParsear, "SELECT")) {

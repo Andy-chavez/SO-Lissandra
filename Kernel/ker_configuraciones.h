@@ -204,6 +204,10 @@ void liberarListas(){ //todo agregar RR
 	pthread_mutex_lock(&mTablas);
 	list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);
 	pthread_mutex_unlock(&mTablas);
+
+	pthread_mutex_lock(&mThread);
+	list_destroy(rrThreads);//, (void*)realizarCancel);
+	pthread_mutex_unlock(&mThread);
 }
 void kernel_finalizar(){
 	liberarConfigYLogs();

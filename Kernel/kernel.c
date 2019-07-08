@@ -43,6 +43,23 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i<multiprocesamiento;i++){
 		crearThreadRR(i);
 	}
+
+//	struct sigaction terminar;
+//	terminar.sa_handler = kernel_semFinalizar;
+//	sigemptyset(&terminar.sa_mask);
+//	terminar.sa_flags = SA_RESTART;
+//	sigaction(SIGINT, &terminar, NULL);
+
+	sem_wait(&finalizar);
+
+	pthread_cancel(threadConsola);
+	pthread_cancel(threadNew_Ready);
+	pthread_cancel(threadDescribe);
+	pthread_cancel(threadMetrics);
+	pthread_cancel(threadGossip);
+	for(int i = 0; i<multiprocesamiento;i++){
+		cancelThreadRR();
+	}
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadDescribe,NULL);
@@ -51,13 +68,6 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i<multiprocesamiento;i++){
 		joinThreadRR();
 	}
-//	struct sigaction terminar;
-//	terminar.sa_handler = kernel_semFinalizar;
-//	sigemptyset(&terminar.sa_mask);
-//	terminar.sa_flags = SA_RESTART;
-//	sigaction(SIGINT, &terminar, NULL);
-
-	sem_wait(&finalizar);
 	kernel_finalizar();
 
 	return EXIT_SUCCESS;
