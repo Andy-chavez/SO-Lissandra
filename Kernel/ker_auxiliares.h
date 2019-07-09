@@ -1,17 +1,6 @@
 #ifndef KER_AUXILIARES_H_
 #define KER_AUXILIARES_H_
-#include <commons/log.h>
-#include <commons/config.h>
-#include <commons/collections/list.h>
-#include <commons/string.h>
-#include <commonsPropias/serializacion.h>
-#include <commonsPropias/conexiones.h>
-#include <stdlib.h>
-#include <semaphore.h>
-#include <stdbool.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <unistd.h>
+
 #include "ker_structs.h"
 
 

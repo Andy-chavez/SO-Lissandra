@@ -5,10 +5,7 @@
  Description :
  ============================================================================
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <commons/config.h>
-#include <pthread.h>
+
 #include <string.h>
 #include "ker_operaciones.h"
 #include <signal.h>

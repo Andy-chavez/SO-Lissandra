@@ -3,17 +3,20 @@
 
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/string.h>
 #include <commons/collections/list.h>
 #include <stdlib.h>
 #include <semaphore.h>
-#include <commons/string.h>
 #include <commonsPropias/serializacion.h>
+#include <commonsPropias/conexiones.h>
 #include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
 
 #define HASH 2
 #define STRONG 1

@@ -1,11 +1,10 @@
 #ifndef KER_CONFIGURACIONES_H_
 #define KER_CONFIGURACIONES_H_
 
+
+#include "ker_auxiliares.h"
 #include <sys/types.h>
 #include <sys/inotify.h>
-#include "ker_auxiliares.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1 * EVENT_SIZE_CONFIG)

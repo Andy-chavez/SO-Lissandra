@@ -144,8 +144,7 @@ bool kernel_drop(char* operacion, int thread){
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
-		guardarTablaCreada(opAux->parametros);
-		//todo arreglar seg fault porque enviarOp ya libera los parametros y no se puede volver a agregar
+		guardarTablaCreada(*(parametros+1));
 		return false;
 	}
 	eliminarTablaCreada(*(parametros+1));
@@ -412,17 +411,18 @@ void kernel_almacenar_en_new(char*operacion){
 }
 void kernel_consola(){
 	pthread_mutex_lock(&consola);
-	printf(">> Welcome to Kernel, ingrese alguna de las siguientes operaciones: \n"
+	printf(">> ¡Welcome to Kernel! Ingrese alguna de las siguientes operaciones: \n"
 			"> SELECT [TABLA] [KEY]\n"
 			"> INSERT [TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] \n"
 			"> CREATE [TABLA] [SC/SHC/EC] [NUMERO_PARTICIONES] [COMPACTATION_TIME]\n"
 			"> DESCRIBE [TABLA] \n"
-			"> DROP [NOMBRE_TABLA]\n"
+			"> DROP [TABLA]\n"
 			"> METRICS\n"
 			"> JOURNAL\n"
 			"> ADD MEMORY [NUMERO] TO [SC/SHC/EC]\n"
 			"> DROP [NOMBRE_TABLA]\n"
 			"> RUN [PATH_ARCHIVO]\n"
+			"> CERRAR\n"
 			"> Y siga su ejecucion mediante el archivo Kernel.log\n");
 	pthread_mutex_unlock(&consola);
 	char* linea= NULL;
