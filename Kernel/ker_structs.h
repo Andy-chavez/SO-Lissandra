@@ -13,6 +13,7 @@
 #include <readline/history.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define HASH 2
 #define STRONG 1
@@ -70,6 +71,7 @@ sem_t hayReady;
 sem_t finalizar;
 sem_t modificables;
 
+pthread_mutex_t consola;
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
 pthread_mutex_t mMetadataRefresh;
@@ -100,5 +102,65 @@ int timedGossip;
 int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
+/******************************CONFIGURACIONES******************************************/
+void kernel_inicializarSemaforos();
+void kernel_crearListas();
+void liberarConfigYLogs();
+void kernel_inicializarVariablesYListas();
+void kernel_finalizar();
+int kernel_inicializarMemoria();
+/******************************OPERACIONES******************************************/
+void liberarMemoria(memoria* elemento);
+/* TODO metrics-> time
+ */
+bool kernel_create(char* operacion,int thread);
+bool kernel_describe(char* operacion,int thread);
+bool kernel_journal();
+bool kernel_metrics(int consola);
+bool kernel_api(char* operacionAParsear,int thread);
+bool kernel_add(char* operacion);
+bool kernel_drop(char* operacion,int thread);
+bool kernel_select(char* operacion,int thread);
+bool kernel_insert(char* operacion,int thread);
 
+void journal_consistencia(int consistencia);
+void kernel_almacenar_en_new(char*operacion);
+void kernel_crearPCB(char* operacion);
+void kernel_run(char* operacion);
+void kernel_pasar_a_ready();
+void kernel_consola();
+void kernel_roundRobin(int threadProcesador);
+void joinThreadRR();
+void crearThreadRR(int numero);
+void metrics();
+/******************************AUXILIARES******************************************/
+bool recibidoContiene(char* recibido, char* contiene);
+bool instruccion_no_ejecutada(instruccion* instruc);
+
+void describeTimeado();
+void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux);
+void thread_loggearInfo(char* estado, int threadProcesador, char* operacion);
+void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
+void guardarTablaCreada(char* parametros);
+void eliminarTablaCreada(char* parametros);
+void enviarJournal(int socket);
+void guardarMemorias(seed* unaSeed);
+void agregarTablaVerificandoSiLaTengo(tabla* t);
+void agregarTablaVerificandoSiLaTengo(tabla* t);
+void agregarMemoriaVerificandoSiLaTengo(memoria* memAux);
+
+int socketMemoriaSolicitada(consistencia criterio);
+int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
+int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
+int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
+int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
+int obtenerSocketAlQueSeEnvio(operacionLQL* opAux, int index);
+int enviarOperacion(operacionLQL* opAux,int index,int thread);
+int random_int(int min, int max);
+
+tabla* encontrarTablaPorNombre(char* nombre);
+
+memoria* encontrarMemoria(int numero);
+
+consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 #endif /* KER_STRUCTS_H_ */

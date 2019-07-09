@@ -9,13 +9,7 @@
 
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1 * EVENT_SIZE_CONFIG)
-/******************************DECLARACIONES******************************************/
-void kernel_inicializarSemaforos();
-void kernel_crearListas();
-void liberarConfigYLogs();
-void kernel_inicializarVariablesYListas();
-void kernel_finalizar();
-int kernel_inicializarMemoria();
+
 /******************************IMPLEMENTACIONES******************************************/
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 //-----------------RESETEAR VARIABLES-----------------------------
@@ -63,6 +57,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&mStrong,NULL);
 	pthread_mutex_init(&mHash,NULL);
 	pthread_mutex_init(&mConexion,NULL);
+	pthread_mutex_init(&consola,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&finalizar,0,0);
@@ -136,6 +131,7 @@ void destruirSemaforos(){
 	sem_destroy(&finalizar);
 	sem_destroy(&hayReady);
 	sem_destroy(&modificables);
+	pthread_mutex_destroy(&consola);
 	pthread_mutex_destroy(&colaNuevos);
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
@@ -155,15 +151,28 @@ void liberarColas(pcb* element){
 	free(element);
 }
 void liberarPCB(pcb* elemento) {
+
 	void liberarInstrucciones(instruccion* instrucc) {
+		if(instrucc == NULL)
+			return;
 		free(instrucc->operacion);
 		free(instrucc);
 	}
-	list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
-	free(elemento->operacion);
-	free(elemento);
+	if(elemento == NULL)
+		return;
+	else if (elemento->instruccion ==NULL){
+		free(elemento->operacion);
+		free(elemento);
+	}
+	else{
+		list_iterate(elemento->instruccion,(void*) liberarInstrucciones);
+		free(elemento->operacion);
+		free(elemento);
+	}
 }
 void liberarMemoria(memoria* elemento) {
+	if (elemento == NULL)
+		return;
 	free(elemento->ip);
 	free(elemento->puerto);
 	free(elemento);
@@ -172,7 +181,11 @@ void liberarTabla(tabla* t) {
 	free(t->nombreDeTabla);
 	free(t);
 }
-void liberarListas(){ //todo agregar RR
+void liberarThreads(t_thread* t){
+	free(t->thread);
+	free(t);
+}
+void liberarListas(){
 	pthread_mutex_lock(&colaNuevos);
 	list_destroy_and_destroy_elements(cola_proc_nuevos,free);
 	pthread_mutex_unlock(&colaNuevos);
@@ -185,9 +198,6 @@ void liberarListas(){ //todo agregar RR
 	list_destroy_and_destroy_elements(cola_proc_terminados,(void*) liberarPCB);
 	pthread_mutex_unlock(&colaTerminados);
 
-	pthread_mutex_lock(&mMemorias);
-	list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
-	pthread_mutex_unlock(&mMemorias);
 
 	pthread_mutex_lock(&mHash);
 	list_destroy_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
@@ -201,9 +211,17 @@ void liberarListas(){ //todo agregar RR
 	list_destroy_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
 	pthread_mutex_unlock(&mEventual);
 
+	pthread_mutex_lock(&mMemorias);
+	list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mMemorias);
+
 	pthread_mutex_lock(&mTablas);
 	list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);
 	pthread_mutex_unlock(&mTablas);
+
+	pthread_mutex_lock(&mThread);
+	list_destroy_and_destroy_elements(rrThreads,(void*) liberarThreads);//, (void*)realizarCancel);
+	pthread_mutex_unlock(&mThread);
 }
 void kernel_finalizar(){
 	liberarConfigYLogs();
@@ -246,13 +264,13 @@ void* cambiosConfig(){
  		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
- 			if (event->mask & IN_MODIFY) {
+ 			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "QUANTUM") && config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION") && config_get_int_value(configConNuevosDatos, "METADATA_REFRESH") ) {
  				pthread_mutex_lock(&mLog);
 				log_info(kernel_configYLog->log,"Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 				pthread_mutex_unlock(&mLog);
 
 				pthread_mutex_lock(&quantum);
- 				quantumMax = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
+ 				quantumMax = config_get_int_value(configConNuevosDatos, "QUANTUM");
  				pthread_mutex_unlock(&quantum);
 				pthread_mutex_lock(&sleepExec);
  				sleepEjecucion = config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION");
