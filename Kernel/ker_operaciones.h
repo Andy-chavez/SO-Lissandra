@@ -140,11 +140,13 @@ bool kernel_drop(char* operacion, int thread){
 	char** parametros = string_n_split(operacion,2," ");
 	consistencia consist =encontrarConsistenciaDe(opAux->parametros);
 	if(consist == -1){
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		guardarTablaCreada(*(parametros+1));
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	eliminarTablaCreada(*(parametros+1));
