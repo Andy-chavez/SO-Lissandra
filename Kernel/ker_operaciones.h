@@ -87,6 +87,13 @@ bool kernel_describe(char* operacion, int thread){
 		if(socket != -1){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			void* bufferProtocolo = recibir(socket);
+			if(bufferProtocolo == NULL){
+				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log, " @ DESCONEXION DE MEMORIA: No se realizo describe all");
+				pthread_mutex_unlock(&mLog);
+				free(bufferProtocolo);
+				return false;
+			}
 			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
 			if(protocolo == METADATA){
 				metadata * met = deserializarMetadata(bufferProtocolo);
@@ -103,6 +110,7 @@ bool kernel_describe(char* operacion, int thread){
 			log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado");
 			pthread_mutex_unlock(&mLog);
 			cerrarConexion(socket);
+			free(bufferProtocolo);
 			return true;
 		}
 		return false;
@@ -125,6 +133,7 @@ bool kernel_describe(char* operacion, int thread){
 		return false;
 	void* buffer =recibir(socket);
 	if(buffer == NULL){
+		free(buffer);
 		return false;
 	}
 	actualizarListaMetadata(deserializarMetadata(buffer));
@@ -132,6 +141,7 @@ bool kernel_describe(char* operacion, int thread){
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
+	free(buffer);
 	liberarOperacionLQL(operacionAux);
 	return true;
 }
