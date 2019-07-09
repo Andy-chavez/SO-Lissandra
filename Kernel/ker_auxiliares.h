@@ -14,36 +14,6 @@
 #include <unistd.h>
 #include "ker_structs.h"
 
-/******************************DECLARACIONES******************************************/
-bool recibidoContiene(char* recibido, char* contiene);
-bool instruccion_no_ejecutada(instruccion* instruc);
-
-void describeTimeado();
-void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux);
-void thread_loggearInfo(char* estado, int threadProcesador, char* operacion);
-void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
-void guardarTablaCreada(char* parametros);
-void eliminarTablaCreada(char* parametros);
-void enviarJournal(int socket);
-void guardarMemorias(seed* unaSeed);
-void agregarTablaVerificandoSiLaTengo(tabla* t);
-void agregarTablaVerificandoSiLaTengo(tabla* t);
-void agregarMemoriaVerificandoSiLaTengo(memoria* memAux);
-
-int socketMemoriaSolicitada(consistencia criterio);
-int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
-int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
-int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
-int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
-int obtenerSocketAlQueSeEnvio(operacionLQL* opAux, int index);
-int enviarOperacion(operacionLQL* opAux,int index,int thread);
-int random_int(int min, int max);
-
-tabla* encontrarTablaPorNombre(char* nombre);
-
-memoria* encontrarMemoria(int numero);
-
-consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------

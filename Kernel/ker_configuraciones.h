@@ -9,13 +9,6 @@
 
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1 * EVENT_SIZE_CONFIG)
-/******************************DECLARACIONES******************************************/
-void kernel_inicializarSemaforos();
-void kernel_crearListas();
-void liberarConfigYLogs();
-void kernel_inicializarVariablesYListas();
-void kernel_finalizar();
-int kernel_inicializarMemoria();
 
 /******************************IMPLEMENTACIONES******************************************/
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________

@@ -4,29 +4,6 @@
 #include "ker_configuraciones.h"
 #include "ker_structs.h"
 
-/******************************DECLARACIONES******************************************/
-/* TODO metrics-> time
- */
-bool kernel_create(char* operacion,int thread);
-bool kernel_describe(char* operacion,int thread);
-bool kernel_journal();
-bool kernel_metrics(int consola);
-bool kernel_api(char* operacionAParsear,int thread);
-bool kernel_add(char* operacion);
-bool kernel_drop(char* operacion,int thread);
-bool kernel_select(char* operacion,int thread);
-bool kernel_insert(char* operacion,int thread);
-
-void journal_consistencia(int consistencia);
-void kernel_almacenar_en_new(char*operacion);
-void kernel_crearPCB(char* operacion);
-void kernel_run(char* operacion);
-void kernel_pasar_a_ready();
-void kernel_consola();
-void kernel_roundRobin(int threadProcesador);
-void joinThreadRR();
-void crearThreadRR(int numero);
-void metrics();
 /******************************IMPLEMENTACIONES******************************************/
 void metrics(){
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
