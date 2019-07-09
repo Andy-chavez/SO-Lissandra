@@ -16,6 +16,7 @@ void liberarConfigYLogs();
 void kernel_inicializarVariablesYListas();
 void kernel_finalizar();
 int kernel_inicializarMemoria();
+
 /******************************IMPLEMENTACIONES******************************************/
 // _________________________________________.: LLENAR/VACIAR VARIABLES GLOBALES :.____________________________________________
 //-----------------RESETEAR VARIABLES-----------------------------
@@ -270,13 +271,13 @@ void* cambiosConfig(){
  		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
- 			if (event->mask & IN_MODIFY) {
+ 			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "QUANTUM") && config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION") && config_get_int_value(configConNuevosDatos, "METADATA_REFRESH") ) {
  				pthread_mutex_lock(&mLog);
 				log_info(kernel_configYLog->log,"Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 				pthread_mutex_unlock(&mLog);
 
 				pthread_mutex_lock(&quantum);
- 				quantumMax = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
+ 				quantumMax = config_get_int_value(configConNuevosDatos, "QUANTUM");
  				pthread_mutex_unlock(&quantum);
 				pthread_mutex_lock(&sleepExec);
  				sleepEjecucion = config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION");

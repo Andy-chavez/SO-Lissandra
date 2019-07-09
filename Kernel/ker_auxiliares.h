@@ -99,7 +99,6 @@ void guardarMemorias(seed* unaSeed){
 	memAux->cantidadIns = 0;
 	memAux->cantidadSel = 0;
 	agregarMemoriaVerificandoSiLaTengo(memAux);
-	liberarSeed(unaSeed);
 }
 void agregarMemoriaVerificandoSiLaTengo(memoria* memAux){
 	bool yaGuardeMemoria(memoria* mem){
@@ -111,6 +110,8 @@ void agregarMemoriaVerificandoSiLaTengo(memoria* memAux){
 	if(!boleanFind){
 		agregarALista(memorias,memAux,mMemorias);
 	}
+	else
+		liberarMemoria(memAux);
 }
 void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex_t semaphore){
 	bool yaGuardeMemoria(memoria* mem){
@@ -138,6 +139,7 @@ void actualizarListaMetadata(metadata* met){
 }
 //------ TIMED ---------
 void kernel_gossiping(){
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	while(destroy==0){
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
@@ -146,6 +148,7 @@ void kernel_gossiping(){
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, "@@ Gossip no se pudo realizar");
 			pthread_mutex_unlock(&mLog);
+			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 			continue;
 		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
@@ -155,21 +158,28 @@ void kernel_gossiping(){
 		pthread_mutex_lock(&mLog);
 		log_info(kernel_configYLog->log, "@@ Gossip hecho");
 		pthread_mutex_unlock(&mLog);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(timedGossip*1000);
 	}
 
 }
-void describeTimeado(){
+void describeTimeado(){ //set a disabled, enabled en donde quiero que corte
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	while(destroy==0){
 		operacionLQL* opAux = malloc(sizeof(operacionLQL));
-		opAux ->operacion = "DESCRIBE";
-		opAux->parametros = "ALL";
+		opAux ->operacion = string_duplicate("DESCRIBE");
+		opAux->parametros = string_duplicate("ALL");
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket != -1){
 			serializarYEnviarOperacionLQL(socket, opAux);
 			void* bufferProtocolo = recibir(socket);
+			if(bufferProtocolo == NULL){
+				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+				usleep(metadataRefresh*1000);
+				pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+			}
 			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
 			if(protocolo == METADATA){
 				metadata * met = deserializarMetadata(bufferProtocolo);
@@ -186,9 +196,12 @@ void describeTimeado(){
 			log_info(kernel_configYLog->log, " RECIBIDO[TIMED]: Describe realizado");
 			pthread_mutex_unlock(&mLog);
 			cerrarConexion(socket);
+			free(bufferProtocolo);
 		}
 		liberarOperacionLQL(opAux);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(metadataRefresh*1000);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	}
 }
 //------ ENVIOS Y SOCKETS ---------

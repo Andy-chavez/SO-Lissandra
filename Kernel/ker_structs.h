@@ -13,6 +13,7 @@
 #include <readline/history.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define HASH 2
 #define STRONG 1
@@ -102,4 +103,6 @@ int quantumMax;
 int metadataRefresh;
 int sleepEjecucion;
 
+/******************************DECLARACIONES******************************************/
+void liberarMemoria(memoria* elemento);
 #endif /* KER_STRUCTS_H_ */

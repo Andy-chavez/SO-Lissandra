@@ -29,11 +29,14 @@ void crearThreadRR(int numero);
 void metrics();
 /******************************IMPLEMENTACIONES******************************************/
 void metrics(){
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	metrics_resetVariables();
 	while(!destroy){
 		kernel_metrics(0);
 		metrics_resetVariables();
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(30000*1000);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	}
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
@@ -337,6 +340,7 @@ void joinThreadRR(){
 }
 void kernel_roundRobin(int threadProcesador){
 	while(!destroy){
+		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		sem_wait(&hayReady);
 		pcb* pcb_auxiliar;
 		pthread_mutex_lock(&colaListos);
@@ -356,11 +360,13 @@ void kernel_roundRobin(int threadProcesador){
 			if(kernel_api(pcb_auxiliar->operacion,threadProcesador)== false){
 				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
+				//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 				usleep(sleep);
 				continue;
 			}
 			agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 			thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+			//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 			usleep(sleep);
 			continue;
 		}
@@ -395,18 +401,21 @@ void kernel_roundRobin(int threadProcesador){
 				thread_loggearInfo("NEW",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
+				//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 				usleep(sleep);
 				continue;
 			}
 			else if(ERROR ==-1){
 				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
+				//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 				usleep(sleep);
 				continue;
 			}
 			else{
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
 				thread_loggearInfo("FINISHED",threadProcesador, pcb_auxiliar->operacion);
+				//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 				usleep(sleep);
 				continue;
 			}
@@ -422,8 +431,10 @@ void kernel_almacenar_en_new(char*operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " NEW: %s", operacion);
 	pthread_mutex_unlock(&mLog);
+	//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 }
 void kernel_consola(){
+	pthread_mutex_lock(&consola);
 	printf(">> Welcome to Kernel, ingrese alguna de las siguientes operaciones: \n"
 			"> SELECT [TABLA] [KEY]\n"
 			"> INSERT [TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] \n"
@@ -436,14 +447,17 @@ void kernel_consola(){
 			"> DROP [NOMBRE_TABLA]\n"
 			"> RUN [PATH_ARCHIVO]\n"
 			"> Y siga su ejecucion mediante el archivo Kernel.log\n");
+	pthread_mutex_unlock(&consola);
 	char* linea= NULL;
 	while(!destroy){
-		printf(" ");
+		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+		pthread_mutex_lock(&consola);
+		printf(">");
 		linea = readline("");
-
+		pthread_mutex_unlock(&consola);
 		kernel_almacenar_en_new(linea);
 	}
-	free(linea);
+	//free(linea);
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){
@@ -456,6 +470,7 @@ void kernel_crearPCB(char* operacion){
 }
 void kernel_pasar_a_ready(){
 	while(!destroy){
+		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		sem_wait(&hayNew);
 		pthread_mutex_lock(&colaNuevos);
 		char* operacion = NULL;
@@ -478,6 +493,7 @@ void kernel_pasar_a_ready(){
 			log_info(kernel_configYLog->log,"@ NEW: %s Operacion Invalida", operacion);
 			pthread_mutex_unlock(&mLog);
 		}
+		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	}
 }
 void kernel_run(char* operacion){
