@@ -1009,6 +1009,7 @@ bool sonSeedsIguales(seed* unaSeed, seed* otraSeed) {
 void pedirTablaGossip(int socketMemoria) {
 	operacionProtocolo protocolo = TABLAGOSSIP;
 	enviar(socketMemoria, (void*) &protocolo, sizeof(operacionProtocolo));
+	serializarYEnviarTablaGossip(socketMemoria,TABLA_GOSSIP)
 }
 
 void recibirYGuardarEnTablaGossip(int socketMemoria) {
