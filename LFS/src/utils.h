@@ -126,24 +126,24 @@ void soloLoggearResultados(int socket,int error,char *mensaje, ...){
 			if(error==1){ //error=1 significa que hubo algun error
 				pthread_mutex_lock(&mutexResultadosConsola);
 				log_error(loggerResultadosConsola, mensajeTotal);
-				pthread_mutex_unlock(&mutexLoggerConsola);
+				pthread_mutex_unlock(&mutexResultadosConsola);
 			}
 			else{
 				pthread_mutex_lock(&mutexResultadosConsola);
 				log_info(loggerResultadosConsola, mensajeTotal);
-				pthread_mutex_unlock(&mutexLoggerConsola);
+				pthread_mutex_unlock(&mutexResultadosConsola);
 			}
 		}
 		else{
 			if(error==1){
 				pthread_mutex_lock(&mutexResultados);
 				log_error(loggerResultados, mensajeTotal);
-				pthread_mutex_unlock(&mutexLogger);
+				pthread_mutex_unlock(&mutexResultados);
 			}
 			else{
 				pthread_mutex_lock(&mutexResultados);
 				log_info(loggerResultados, mensajeTotal);
-				pthread_mutex_unlock(&mutexLogger);
+				pthread_mutex_unlock(&mutexResultados);
 			}
 		}
 		free(mensajeTotal);

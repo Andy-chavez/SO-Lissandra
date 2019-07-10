@@ -20,6 +20,7 @@ pthread_mutex_t mutexTiempoDump;
 pthread_mutex_t mutexRetardo;
 pthread_mutex_t mutexResultadosConsola;
 pthread_mutex_t mutexResultados;
+sem_t binarioSocket;
 
 
 t_log* logger;

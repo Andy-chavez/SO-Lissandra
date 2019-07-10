@@ -31,6 +31,7 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexRetardo,NULL);
 		pthread_mutex_init(&mutexResultadosConsola,NULL);
 		pthread_mutex_init(&mutexResultados,NULL);
+		sem_init(&binarioSocket,0,1);
 
 }
 
@@ -102,8 +103,8 @@ void inicializarListas(){
 void inicializarLog(){
 	logger = log_create("lisandra.log", "LISANDRA", 0, LOG_LEVEL_INFO);
 	loggerConsola = log_create("lisandraConsola.log","LISANDRA_CONSOLA",0,LOG_LEVEL_INFO);
-	loggerResultados = log_create("lisandraResultados.log","LISANDRA_CONSOLA",0,LOG_LEVEL_INFO);
-	loggerResultadosConsola = log_create("lisandraResultadosConsola.log","LISANDRA_CONSOLA",0,LOG_LEVEL_INFO);
+	loggerResultados = log_create("lisandraResultados.log","LISANDRA_RESULTADO",0,LOG_LEVEL_INFO);
+	loggerResultadosConsola = log_create("lisandraResultadosConsola.log","LISANDRA_CONSOLA_RESULTADO",0,LOG_LEVEL_INFO);
 }
 
 // ------------------------------------------------------------------------ //
