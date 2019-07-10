@@ -60,6 +60,7 @@ typedef struct {
 } t_thread;
 
 t_log* logMetrics;
+t_log* logResultados;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;
 t_list* cola_proc_listos;
@@ -90,6 +91,7 @@ pthread_mutex_t mLog;
 pthread_mutex_t mThread;
 pthread_mutex_t mConexion;
 pthread_mutex_t mLogMetrics;
+pthread_mutex_t mLogResultados;
 //char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 
 char* pathConfig;

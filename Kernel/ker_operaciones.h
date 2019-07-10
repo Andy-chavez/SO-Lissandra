@@ -86,6 +86,12 @@ bool kernel_describe(char* operacion, int thread){
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		if(socket != -1){
 			serializarYEnviarOperacionLQL(socket, opAux);
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+			pthread_mutex_unlock(&mLog);
+			pthread_mutex_lock(&mLogResultados);
+			log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux ->parametros);
+			pthread_mutex_unlock(&mLogResultados);
 			void* bufferProtocolo = recibir(socket);
 			if(bufferProtocolo == NULL){
 				pthread_mutex_lock(&mLog);
@@ -300,6 +306,15 @@ bool kernel_add(char* operacion){
 		liberarParametrosSpliteados(opAux);
 		return false;
 	}
+}
+bool kernel_memories(int thread){
+	void printearMemories(memoria* mem){
+		printf(">MEMORIA %d IP %s PUERTO %s\n",mem->numero,mem->ip, mem->puerto);
+	}
+	pthread_mutex_lock(&consola);
+	list_iterate(memorias,(void*)printearMemories);
+	pthread_mutex_unlock(&consola);
+	return true;
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
 // ---------------.: THREAD ROUND ROBIN :.---------------
@@ -531,6 +546,9 @@ bool kernel_api(char* operacionAParsear, int thread){
 		}
 		else if (string_contains(operacionAParsear, "SELECT")) {
 			return kernel_select(operacionAParsear,thread);
+		}
+		else if (string_contains(operacionAParsear, "MEMORIES")) {
+			return kernel_memories(thread);
 		}
 		else if (string_contains(operacionAParsear, "DESCRIBE")) {
 			return kernel_describe(operacionAParsear,thread);
