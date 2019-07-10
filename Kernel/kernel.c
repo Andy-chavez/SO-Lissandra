@@ -34,15 +34,34 @@ int main(int argc, char *argv[]){
 		return EXIT_FAILURE;
 	}
 	kernel_inicializarEstructuras();
-	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
+	pthread_create(&threadDescribe, NULL,(void*)describeTimeado, NULL);
 	pthread_create(&threadGossip, NULL,(void*)kernel_gossiping, NULL);
 	pthread_create(&threadMetrics, NULL,(void*)metrics, NULL);
-	pthread_create(&threadDescribe, NULL,(void*)describeTimeado, NULL);
 	pthread_create(&threadInotify, NULL,(void*)cambiosConfig, NULL);
 	pthread_create(&threadNew_Ready, NULL,(void*) kernel_pasar_a_ready, NULL);
+	pthread_create(&threadConsola, NULL,(void*)kernel_consola, NULL);
 	for(int i = 0; i<multiprocesamiento;i++){
 		crearThreadRR(i);
 	}
+
+//	struct sigaction terminar;
+//	terminar.sa_handler = kernel_semFinalizar;
+//	sigemptyset(&terminar.sa_mask);
+//	terminar.sa_flags = SA_RESTART;
+//	sigaction(SIGINT, &terminar, NULL);
+
+	sem_wait(&finalizar);
+
+	pthread_cancel(threadConsola);
+	pthread_cancel(threadInotify);
+	pthread_cancel(threadNew_Ready);
+	pthread_cancel(threadDescribe);
+	pthread_cancel(threadMetrics);
+	pthread_cancel(threadGossip);
+	for(int i = 0; i<multiprocesamiento;i++){
+		cancelThreadRR();
+	}
+	pthread_join(threadInotify,NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadDescribe,NULL);
@@ -51,13 +70,6 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i<multiprocesamiento;i++){
 		joinThreadRR();
 	}
-	struct sigaction terminar;
-	terminar.sa_handler = kernel_semFinalizar;
-	sigemptyset(&terminar.sa_mask);
-	terminar.sa_flags = SA_RESTART;
-	sigaction(SIGINT, &terminar, NULL);
-
-	sem_wait(&finalizar);
 	kernel_finalizar();
 
 	return EXIT_SUCCESS;

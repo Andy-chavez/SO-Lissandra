@@ -38,7 +38,7 @@ typedef struct {
 
 typedef enum {
 	SC,
-	SH,
+	SHC,
 	EC
 }consistencia;
 

@@ -641,6 +641,9 @@ int esOperacionEjecutable(char* unaOperacion) {
 	else if (string_starts_with(unaOperacion, "DESCRIBE")) {
 		return 1; // no hace falta verificar el describe
 	}
+	else if (string_starts_with(unaOperacion, "METRICS")) {
+			return 1;
+	}
 	else if (string_starts_with(unaOperacion, "CREATE")) {
 		return esCreateEjecutable(unaOperacion);
 	}
@@ -696,11 +699,7 @@ operacionLQL* splitear_operacion(char* operacion){
 }
 
 void liberarParametrosSpliteados(char** parametrosSpliteados) {
-	int i = 0;
-	while(*(parametrosSpliteados + i)) {
-		free(*(parametrosSpliteados + i));
-		i++;
-	}
+	string_iterate_lines(parametrosSpliteados, free);
 	free(parametrosSpliteados);
 }
 

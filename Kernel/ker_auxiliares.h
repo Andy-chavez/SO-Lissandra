@@ -14,71 +14,40 @@
 #include <unistd.h>
 #include "ker_structs.h"
 
-/******************************DECLARACIONES******************************************/
-bool recibidoEmpiezaCon(char* recibido, char* contiene);
-bool instruccion_no_ejecutada(instruccion* instruc);
-
-void describeTimeado();
-void kernel_destroy();
-void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux);
-void thread_loggearInfo(char* estado, int threadProcesador, char* operacion);
-void agregarALista(t_list* lista, void* elemento, pthread_mutex_t semaphore);
-void guardarTablaCreada(char* parametros);
-void eliminarTablaCreada(char* parametros);
-void enviarJournal(int socket);
-void guardarMemorias(seed* unaSeed);
-void agregarTablaVerificandoSiLaTengo(tabla* t);
-void agregarTablaVerificandoSiLaTengo(tabla* t);
-void agregarMemoriaVerificandoSiLaTengo(memoria* memAux);
-
-int socketMemoriaSolicitada(consistencia criterio);
-int obtenerIndiceDeConsistencia(consistencia unaConsistencia);
-int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
-int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
-int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux);
-int obtenerSocketAlQueSeEnvio(operacionLQL* opAux, int index);
-int enviarOperacion(operacionLQL* opAux,int index,int thread);
-int random_int(int min, int max);
-
-tabla* encontrarTablaPorNombre(char* nombre);
-
-memoria* encontrarMemoria(int numero);
-
-consistencia encontrarConsistenciaDe(char* nombreTablaBuscada);
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
-void actualizarTiemposInsert(int index, clock_t tiempo){
+void actualizarTiemposInsert(int index, time_t tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoInserts += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mEventual);
 	}
 }
-void actualizarTiemposSelect(int index, clock_t tiempo){
+void actualizarTiemposSelect(int index, unsigned long tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoSelects += ((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mEventual);
 	}
 }
@@ -94,6 +63,7 @@ int random_int(int min, int max)
 void guardarMemorias(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
+	//memAux->puerto = malloc(sizeof(unaSeed->puerto));
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
 	memAux->cantidadIns = 0;
@@ -110,6 +80,8 @@ void agregarMemoriaVerificandoSiLaTengo(memoria* memAux){
 	if(!boleanFind){
 		agregarALista(memorias,memAux,mMemorias);
 	}
+	else
+		liberarMemoria(memAux);
 }
 void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex_t semaphore){
 	bool yaGuardeMemoria(memoria* mem){
@@ -124,74 +96,104 @@ void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex
 }
 void actualizarListaMetadata(metadata* met){
 	tabla* t = malloc(sizeof(tabla));
-	bool tablaYaGuardada(tabla* t){
-		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
-	}
-	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
-		liberarMetadata(met);
-		return;
-	}
+//	bool tablaYaGuardada(tabla* t){
+//		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
+//	}
+//	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
+//		//liberarMetadata(met);
+//		return;
+//	}
 	t->nombreDeTabla = string_duplicate(met->nombreTabla);
 	t->consistenciaDeTabla = met->tipoConsistencia;
 	agregarTablaVerificandoSiLaTengo(t);
-	liberarMetadata(met);
 }
 //------ TIMED ---------
 void kernel_gossiping(){
-	while(!destroy){
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+	while(destroy==0){
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket==-1){
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, "@@ Gossip no se pudo realizar");
+			pthread_mutex_unlock(&mLog);
+			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 			continue;
 		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 		recibirYDeserializarTablaDeGossipRealizando(socket,guardarMemorias);
 		cerrarConexion(socket);
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "@@ Gossip hecho");
+		pthread_mutex_unlock(&mLog);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(timedGossip*1000);
 	}
 
 }
-void describeTimeado(){
-	operacionLQL* opAux = malloc(sizeof(operacionLQL));
-	opAux ->operacion = "DESCRIBE";
-	opAux->parametros = "ALL";
-	while(!destroy){
+void describeTimeado(){ //set a disabled, enabled en donde quiero que corte
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+	while(destroy==0){
+		operacionLQL* opAux = malloc(sizeof(operacionLQL));
+		opAux ->operacion = string_duplicate("DESCRIBE");
+		opAux->parametros = string_duplicate("ALL");
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(ipMemoria,puertoMemoria);
 		pthread_mutex_unlock(&mConexion);
 		if(socket != -1){
-			recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			serializarYEnviarOperacionLQL(socket, opAux);
+			void* bufferProtocolo = recibir(socket);
+			if(bufferProtocolo == NULL){
+				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+				usleep(metadataRefresh*1000);
+				pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+			}
+			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
+			if(protocolo == METADATA){
+				metadata * met = deserializarMetadata(bufferProtocolo);
+				actualizarListaMetadata(met);
+			}
+			if(protocolo == PAQUETEMETADATAS)
+				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+			if(protocolo == ERROR){
+				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log, "@ RECIBIDO: Describe realizado");
+				pthread_mutex_unlock(&mLog);
+			}
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " RECIBIDO[TIMED]: Describe realizado");
 			pthread_mutex_unlock(&mLog);
 			cerrarConexion(socket);
+			free(bufferProtocolo);
 		}
+		liberarOperacionLQL(opAux);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(metadataRefresh*1000);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	}
-	liberarOperacionLQL(opAux);
 }
 //------ ENVIOS Y SOCKETS ---------
 int enviarOperacion(operacionLQL* opAux,int index, int thread){
 	int socket = obtenerSocketAlQueSeEnvio(opAux,index);
 	if(socket != -1){
-		//serializarYEnviarOperacionLQL(socket, opAux);
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
+			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
 			return -1;
 		}
-		if(recibidoEmpiezaCon(recibido, "ERROR")){
+		if(recibidoContiene(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
 			cerrarConexion(socket);
 			return -1;
 		}
 		else{
-			while(recibidoEmpiezaCon(recibido, "FULL")){
+			while(recibidoContiene(recibido, "FULL")){
 				enviarJournal(socket);
 				serializarYEnviarOperacionLQL(socket, opAux);
 				recibido = (char*) recibir(socket);
-				if(recibidoEmpiezaCon(recibido, "ERROR")){
+				if(recibidoContiene(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);
 					cerrarConexion(socket);
 					return -1;
@@ -352,12 +354,15 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 	return socket;
 }
 int obtenerSocketAlQueSeEnvio(operacionLQL* opAux, int index){
-	if(index == EVENTUAL)
+	if(index == EVENTUAL){
 		return eventual_obtenerSocketAlQueSeEnvio(opAux);
-	else if(index == STRONG)
+	}
+	else if(index == STRONG){
 		return strong_obtenerSocketAlQueSeEnvio(opAux);
-	else if (index == HASH)
+	}
+	else if (index == HASH){
 		return hash_obtenerSocketAlQueSeEnvio(opAux);
+	}
 	return -1;
 }
 int obtenerIndiceDeConsistencia(consistencia unaConsistencia){
@@ -367,7 +372,7 @@ int obtenerIndiceDeConsistencia(consistencia unaConsistencia){
 	else if(unaConsistencia == EC){
 		return EVENTUAL;
 	}
-	else if(unaConsistencia == SH){
+	else if(unaConsistencia == SHC){
 		return HASH;
 	}
 	return -1;
@@ -380,8 +385,16 @@ void enviarJournal(int socket){
 	log_info(kernel_configYLog->log, " ENVIADO: JOURNAL");
 	pthread_mutex_unlock(&mLog);
 	char* recibido = (char*) recibir(socket);
+	if(recibido == NULL){
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "@ RECIDIBO:DESCONEXION/ERROR EN MEMORIA");
+		pthread_mutex_unlock(&mLog);
+		free(recibido);
+		liberarOperacionLQL(opAux);
+		return;
+	}
 	pthread_mutex_lock(&mLog);
-	log_error(kernel_configYLog->log, "RECIBIDO: %s",recibido);
+	log_info(kernel_configYLog->log, "RECIBIDO: %s",recibido);
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
@@ -394,21 +407,22 @@ bool instruccion_no_ejecutada(instruccion* instruc){
 void guardarTablaCreada(char* parametros){
 	char** opAux =string_n_split(parametros,3," ");
 	tabla* tablaAux = malloc(sizeof(tabla));
-	tablaAux->nombreDeTabla= *opAux;
+	tablaAux->nombreDeTabla= string_duplicate(*opAux);
 	if(string_equals_ignore_case(*(opAux+1),"SC")){
 		tablaAux->consistenciaDeTabla = SC;
 	}
-	else if(string_equals_ignore_case(*(opAux+1),"SH")){
-		tablaAux->consistenciaDeTabla = SH;
+	else if(string_equals_ignore_case(*(opAux+1),"SHC")){
+		tablaAux->consistenciaDeTabla = SHC;
 	}
 	else if(string_equals_ignore_case(*(opAux+1),"EC")){
 		tablaAux->consistenciaDeTabla = EC;
 	}
 	agregarTablaVerificandoSiLaTengo(tablaAux);
+
 }
 void agregarTablaVerificandoSiLaTengo(tabla* t){
 	bool yaGuardeTabla(tabla* tab){
-		return string_equals_ignore_case(t->nombreDeTabla,tab->nombreDeTabla);
+		return string_equals_ignore_case(t->nombreDeTabla,tab->nombreDeTabla) && t->consistenciaDeTabla == tab->consistenciaDeTabla;
 	}
 	pthread_mutex_lock(&mTablas);
 	bool boleanFind = list_find(tablas,(void*)yaGuardeTabla);
@@ -457,14 +471,11 @@ consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
 	return c;
 }
 //------ ERRORES ---------
-bool recibidoEmpiezaCon(char* recibido, char* contiene){
+bool recibidoContiene(char* recibido, char* contiene){
 	string_to_upper(recibido);
-	return string_starts_with(recibido, contiene);
+	return string_contains(recibido, contiene);
 }
 //------ CERRAR ---------
-void kernel_destroy(){
-	destroy = 1;
-}
 void kernel_semFinalizar() {
 	sem_post(&finalizar);
 	destroy = 1;
@@ -480,6 +491,11 @@ void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, ope
 void thread_loggearInfo(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
+	pthread_mutex_unlock(&mLog);
+}
+void thread_loggearInfoInstruccion(char* estado, int threadProcesador,char* archivoRun, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log," %s[%d] de %s, %s",estado,threadProcesador,archivoRun, operacion);
 	pthread_mutex_unlock(&mLog);
 }
 //------ LISTAS ---------

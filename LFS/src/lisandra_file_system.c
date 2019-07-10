@@ -19,7 +19,7 @@
 #include <readline/history.h>
 #include <commons/string.h>
 #include <pthread.h>
-#include <commons/config.h>
+#include <commons/config.h>//hacerlo por tabla!! y que reciba el nombre de la tabla
 #include <commons/log.h>
 #include "dump.h"
 #include <semaphore.h>
@@ -58,6 +58,7 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 				soloLoggear(socket,"Se recibio un DUMP");
 				dump();
 			}
+
 	else {
 		soloLoggear(socket,"no entendi xD\n");
 	}
@@ -86,8 +87,6 @@ int APIProtocolo(void* buffer, int socket) {
 		soloLoggear(socket,"Recibi una operacion");
 		parserGeneral(deserializarOperacionLQL(buffer), socket);
 		return 1;
-	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
-	// por ahora va a ser el default, ver como arreglarlo
 	case PAQUETEOPERACIONES:
 		soloLoggear(socket,"Recibi un paquete de operacion");
 		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
@@ -124,7 +123,6 @@ void* servidorLisandra(){
 		log_error(logger, "No se pudo crear el servidor lissandra");
 	}
 
-
 	while(1){
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
@@ -147,6 +145,10 @@ void* servidorLisandra(){
 
 }
 
+void cerrar() {
+	sem_post(&binarioLFS);
+}
+
 void leerConsola() {
 		int socket = -1;
 		char *linea = NULL;
@@ -157,14 +159,16 @@ void leerConsola() {
 	    printf("-------CREATE [NOMBRE_TABLA] [TIPO_CONSISTENCIA] [NUMERO_PARTICIONES] [COMPACTION_TIME]---------\n");
 	    printf("-------DESCRIBE [NOMBRE_TABLA] ---------\n");
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
+	    printf("-------CERRAR---------\n");
 	    printf ("Ingresa operacion\n");
-
-    	//ESTA ROMPIENDO EL INSERT POR EL FREE DE PARAMETROS SPLITEADOS, COMENTO POR AHORA PA PROBAR
-
 
 	    while ((linea = readline(""))){
 	    			string_to_upper(linea);
-	    	    	if(esOperacionEjecutable(linea)){
+	    			if(string_equals_ignore_case(linea,"Cerrar"))
+	    			{
+	    			cerrar();
+	    			}
+	    			else if(esOperacionEjecutable(linea)){
 	    	    		parserGeneral(splitear_operacion(linea),socket);
 	    	    	}
 	    	    		else{
@@ -180,7 +184,8 @@ void leerConsola() {
 void* cambiosConfig() {
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
-	char* path = "lisandra.config";
+	char* path = "../lisandra.config";
+	//char* path = "lisandra.config";
 
 	if(fdConfig < 0) {
 		soloLoggearError(-1, "Hubo un error con el inotify_init");
@@ -208,7 +213,7 @@ void* cambiosConfig() {
 
 			if (event->mask & IN_MODIFY) {
 
-				soloLoggear(-1,"hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos y tiempo de dump...");
+				soloLoggear(-1,"Cambios en config, cambiando retardo y dump");
 
 				pthread_mutex_lock(&mutexTiempoDump);
 				tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
@@ -230,11 +235,11 @@ void terminarTodo() {
 
 int main(int argc, char* argv[]) {
 
-		//leerConfig("../lisandra.config"); esto es para la entrega pero por eclipse rompe
-		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+		//leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
-		inicializarLog("lisandraConsola.log");
+		inicializarLog();
 
 		inicializarBloques();
 		inicializarSemaforos();
@@ -246,8 +251,7 @@ int main(int argc, char* argv[]) {
 
 		log_info(loggerConsola,"Inicializando FS");
 
-		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d\n",bitarray_get_max_bit(bitarray));
-
+		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d",bitarray_get_max_bit(bitarray));
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
@@ -261,7 +265,6 @@ int main(int argc, char* argv[]) {
 
 		sem_init(&binarioLFS, 0, 0);
 
-
 		struct sigaction terminar;
 			terminar.sa_handler = terminarTodo;
 			sigemptyset(&terminar.sa_mask);
@@ -270,9 +273,7 @@ int main(int argc, char* argv[]) {
 
 		sem_wait(&binarioLFS);
 
-//		pthread_cancel(threadServer);
-
-		int res = pthread_cancel(threadServer);
+		pthread_cancel(threadServer);
 		pthread_cancel(threadConsola);
 		pthread_cancel(threadDump);
 		pthread_cancel(threadCambiosConfig);
@@ -282,10 +283,6 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadDump,NULL);
 		pthread_join(threadCambiosConfig,NULL);
 
-		if (res) printf("que haces pa");
-
-		//create y despues cancel y join
-		//enviar logear mensaje de error
 		liberarVariablesGlobales();
-		return EXIT_SUCCESS;
+return EXIT_SUCCESS;
 }
