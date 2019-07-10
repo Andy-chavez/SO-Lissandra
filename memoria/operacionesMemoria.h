@@ -167,6 +167,7 @@ void inicializarArchivos() {
 }
 
 void inicializarSemaforos() {
+	sem_init(&MUTEX_JOURNAL, 0, 1);
 	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
 	sem_init(&MUTEX_RETARDO_FS, 0, 1);
 	sem_init(&MUTEX_LOG, 0, 1);
@@ -727,11 +728,14 @@ void marcarHiloComoSemaforoRealizado(sem_t *semaforo) {
 }
 
 void journalLQL(int socketKernel) {
+	// TODO nuevo semaforo para mutexear journals
+	sem_wait(&MUTEX_JOURNAL); // Para que no se ejecute el timeado con otro que se ejecuto por kernel o consola
 	modificarValorJournalRealizandose(1);
 
 	esperarAHilosEjecutandose(esperarSemaforoDeHilo);
 	t_log* logJournal = log_create("journal_inserts_enviados.log", "JOURNAL", 0, LOG_LEVEL_INFO);
 	t_list* insertsAEnviar = list_create();
+	log_info(logJournal, "Comenzando Journal, se enviaran los siguientes inserts:");
 
 	void armarPaqueteParaEnviarALFS(void* segmentoParaArmar) {
 		segmento* unSegmento = (segmento*) segmentoParaArmar;
@@ -740,7 +744,7 @@ void journalLQL(int socketKernel) {
 			paginaEnTabla* unaPagina = (paginaEnTabla*) paginaParaArmar;
 				if(unaPagina->flag) {
 					operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unSegmento->nombreTabla, unaPagina);
-					log_info(logJournal, "Se enviara el siguiente insert: %s %s", unaOperacion->operacion, unaOperacion->parametros);
+					log_info(logJournal, "%s %s", unaOperacion->operacion, unaOperacion->parametros);
 					list_add(insertsAEnviar, unaOperacion);
 				}
 			}
@@ -762,10 +766,12 @@ void journalLQL(int socketKernel) {
 	list_destroy_and_destroy_elements(insertsAEnviar, liberarOperacionLQL);
 	enviarOMostrarYLogearInfo(socketKernel, "Se realizo el Journal exitosamente.");
 
+	log_info(logJournal, "Journal Realizado.");
 	log_destroy(logJournal);
 
 	modificarValorJournalRealizandose(0);
 	dejarEjecutarOperacionesDeNuevo();
+	sem_post(&MUTEX_JOURNAL);
 }
 
 void liberarRecursosSelectLQL(char* nombreTabla, char *key) {
@@ -832,7 +838,6 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 	}
-	// TODO else journal();
 
 
 	liberarRecursosSelectLQL(nombreTabla, keyString);
@@ -901,7 +906,6 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 		};
 	}
-	// TODO else journal();
 	free(value);
 	if(timestamp) free(timestamp);
 	free(key);
