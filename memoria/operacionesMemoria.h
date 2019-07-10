@@ -702,7 +702,7 @@ void journalLQL(int socketKernel) {
 	modificarValorJournalRealizandose(1);
 
 	esperarAHilosEjecutandose(esperarSemaforoDeHilo);
-
+	t_log* logJournal = log_create("journal_inserts_enviados.log", "JOURNAL", 0, LOG_LEVEL_INFO);
 	t_list* insertsAEnviar = list_create();
 
 	void armarPaqueteParaEnviarALFS(void* segmentoParaArmar) {
@@ -712,6 +712,7 @@ void journalLQL(int socketKernel) {
 			paginaEnTabla* unaPagina = (paginaEnTabla*) paginaParaArmar;
 				if(unaPagina->flag) {
 					operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unSegmento->nombreTabla, unaPagina);
+					log_info(logJournal, "Se enviara el siguiente insert: %s %s", unaOperacion->operacion, unaOperacion->parametros);
 					list_add(insertsAEnviar, unaOperacion);
 				}
 			}
@@ -732,6 +733,8 @@ void journalLQL(int socketKernel) {
 
 	list_destroy_and_destroy_elements(insertsAEnviar, liberarOperacionLQL);
 	enviarOMostrarYLogearInfo(socketKernel, "Se realizo el Journal exitosamente.");
+
+	log_destroy(logJournal);
 
 	modificarValorJournalRealizandose(0);
 	dejarEjecutarOperacionesDeNuevo();
@@ -1051,7 +1054,7 @@ bool seedEnTablaGossip(void* seedAComprobar){
 	return list_any_satisfy(TABLA_GOSSIP,esIgualA);
 }
 
-void intentarConexiones() {
+void intentarConexiones(t_log* logGossip) {
 	seed* seedPropia = malloc(sizeof(seed));
 	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
 	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
@@ -1069,15 +1072,11 @@ void intentarConexiones() {
 
 		int socketMemoria = crearSocketCliente(unaSeed->ip, unaSeed->puerto);
 
-		sem_wait(&MUTEX_LOG_CONSOLA);
-		log_info(LOGGER_CONSOLA, "Intentando conexion con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
-		sem_post(&MUTEX_LOG_CONSOLA);
+		log_info(logGossip, "Intentando conexion con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
 
 		if(socketMemoria == -1) {
 			if(tabla==1){
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
-			sem_post(&MUTEX_LOG_CONSOLA);
+			log_info(logGossip, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 
 			seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
 
@@ -1085,13 +1084,11 @@ void intentarConexiones() {
 
 			return;
 			}
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
-			sem_post(&MUTEX_LOG_CONSOLA);
+			log_info(logGossip, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
 			return;
 		}
 
-		log_info(LOGGER_CONSOLA, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
+		log_info(logGossip, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
 		recibirYGuardarEnTablaGossip(socketMemoria);
 		cerrarConexion(socketMemoria);
 	}
@@ -1119,9 +1116,10 @@ void intentarConexiones() {
 void* timedGossip() {
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
+	t_log* logGossip = log_create("memoria_gossip.log", "GOSSIP", 0, LOG_LEVEL_INFO);
 
 	while(1) {
-		intentarConexiones();
+		intentarConexiones(logGossip);
 
 		sem_wait(&MUTEX_RETARDO_GOSSIP);
 		int retardoGossip = RETARDO_GOSSIP * 1000;
