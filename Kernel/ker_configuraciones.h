@@ -98,7 +98,11 @@ int kernel_inicializarMemoria(){
 	}
 	operacionProtocolo protocoloGossip = TABLAGOSSIP;
 	enviar(socketClienteKernel,(void*)&protocoloGossip, sizeof(operacionProtocolo));
+	t_list* tabla = list_create();
+	serializarYEnviarTablaGossip(socketClienteKernel,tabla);
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarMemorias);
+	cerrarConexion(socketClienteKernel);
+	free(tabla);
 	return 0;
 }
 void kernel_inicializarVariablesYListas(){
@@ -106,7 +110,7 @@ void kernel_inicializarVariablesYListas(){
 	logResultados = log_create("Resultados.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
-	kernel_configYLog->log = log_create("Kernel.log", "KERNEL", 0, LOG_LEVEL_INFO);
+	kernel_configYLog->log = log_create("Ejecucion.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 	multiprocesamiento =config_get_int_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
@@ -122,6 +126,7 @@ void kernel_inicializarEstructuras(){
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
+	log_destroy(logResultados);
 	log_destroy(logMetrics);
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);

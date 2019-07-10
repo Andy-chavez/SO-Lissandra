@@ -307,11 +307,12 @@ bool kernel_add(char* operacion){
 		return false;
 	}
 }
-bool kernel_memories(int thread){
+bool kernel_memories(){
 	void printearMemories(memoria* mem){
 		printf(">MEMORIA %d IP %s PUERTO %s\n",mem->numero,mem->ip, mem->puerto);
 	}
 	pthread_mutex_lock(&consola);
+	printf("MEMORIES:\n");
 	list_iterate(memorias,(void*)printearMemories);
 	pthread_mutex_unlock(&consola);
 	return true;
@@ -461,7 +462,7 @@ void kernel_consola(){
 		pthread_mutex_unlock(&consola);
 		kernel_almacenar_en_new(linea);
 	}
-	//free(linea);
+	free(linea);
 }
 // ---------------.: THREAD NEW A READY :.---------------
 void kernel_crearPCB(char* operacion){
@@ -489,7 +490,7 @@ void kernel_pasar_a_ready(){
 				string_contains(operacion, "CREATE") || string_contains(operacion, "DESCRIBE") ||
 				string_contains(operacion, "DROP") ||  string_contains(operacion, "JOURNAL") ||
 				string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")
-				|| string_contains(operacion, "CERRAR")){
+				|| string_contains(operacion, "CERRAR")|| string_contains(operacion, "MEMORIES")){
 			kernel_crearPCB(operacion);
 		}
 		else{
@@ -548,7 +549,7 @@ bool kernel_api(char* operacionAParsear, int thread){
 			return kernel_select(operacionAParsear,thread);
 		}
 		else if (string_contains(operacionAParsear, "MEMORIES")) {
-			return kernel_memories(thread);
+			return kernel_memories();
 		}
 		else if (string_contains(operacionAParsear, "DESCRIBE")) {
 			return kernel_describe(operacionAParsear,thread);

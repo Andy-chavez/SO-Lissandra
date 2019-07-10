@@ -117,7 +117,10 @@ void kernel_gossiping(){
 		}
 		operacionProtocolo protocoloGossip = TABLAGOSSIP;
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
+		t_list* tabla = list_create();
+		serializarYEnviarTablaGossip(socket,tabla);
 		recibirYDeserializarTablaDeGossipRealizando(socket,guardarMemorias);
+		free(tabla);
 		cerrarConexion(socket);
 		pthread_mutex_lock(&mLog);
 		log_info(kernel_configYLog->log, "@@ Gossip hecho");
