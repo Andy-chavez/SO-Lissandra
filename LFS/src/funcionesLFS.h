@@ -462,7 +462,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 			if(!registroBuscado) {
 				if(socket!=-1) enviarError(socket);
-				soloLoggearError(socket,"SELECT %s %d: No se encontro el registro");
+				soloLoggearError(socket,"SELECT %s %d: No se encontro el registro",nombreTabla,key);
 				soloLoggearResultados(socket,1,"RESULTADO SELECT %s %d es: ERROR",nombreTabla,key);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 				liberarDoblePuntero(argSeparados);

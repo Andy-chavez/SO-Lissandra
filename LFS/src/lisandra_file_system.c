@@ -241,7 +241,7 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
+		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/1C2019-Scripts-lql-entrega/scripts/compactacion_larga.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
@@ -253,12 +253,15 @@ void runearScript(){
 
 		while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
 			operacionLQL* operacion = malloc(sizeof(operacionLQL));
+			if(*(lineaLeida + leer - 1) == '\n') {
+						*(lineaLeida + leer - 1) = '\0';
+					}
 			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
 			operacion->operacion = *(operacionLQL + 0);
 			operacion->parametros = *(operacionLQL + 1);
 
 			parserGeneral(operacion, -1);
-
+			usleep(10000);
 
 		}
 
