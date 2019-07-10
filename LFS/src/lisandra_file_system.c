@@ -84,15 +84,15 @@ int APIProtocolo(void* buffer, int socket) {
 
 	switch(operacion){
 	case OPERACIONLQL:
-		soloLoggear(socket,"Recibi una operacion");
+		soloLoggear(socket,"Recibi una operacion/n");
 		parserGeneral(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	case PAQUETEOPERACIONES:
-		soloLoggear(socket,"Recibi un paquete de operacion");
+		soloLoggear(socket,"Recibi un paquete de operacion/n");
 		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
 		return 1;
 	case DESCONEXION:
-		soloLoggearError(1,"Se cierra la conexion");
+		soloLoggearError(1,"Se cierra la conexion/n");
 		cerrarConexion(socket);
 		return 0;
 	}
@@ -102,6 +102,7 @@ int APIProtocolo(void* buffer, int socket) {
 
 void trabajarConexion(void* socket){
 	int socketMemoria = *(int*) socket;
+	sem_post(&binarioSocket);
 	int hayMensaje = 1;
 	while(hayMensaje) {
 			void* bufferRecepcion = recibir(socketMemoria);
@@ -124,6 +125,7 @@ void* servidorLisandra(){
 	}
 
 	while(1){
+		sem_wait(&binarioSocket);
 		int socketMemoria = aceptarCliente(socketServidorLisandra);
 
 		if(socketMemoria == -1) {
@@ -175,8 +177,6 @@ void leerConsola() {
 	    	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
 	    	    		}
 	    	    }
-
-
 	    free (linea);
 }
 

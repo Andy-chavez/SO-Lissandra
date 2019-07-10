@@ -462,21 +462,23 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 			if(!registroBuscado) {
 				if(socket!=-1) enviarError(socket);
-				soloLoggearResultados(socket,1,"Resultado SELECT %s %d es: ERROR",nombreTabla,key);
+				soloLoggearError(socket,"SELECT %s %d: No se encontro el registro");
+				soloLoggearResultados(socket,1,"RESULTADO SELECT %s %d es: ERROR",nombreTabla,key);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 				liberarDoblePuntero(argSeparados);
 				return;
 			}
 			else {
-				soloLoggearResultados(socket,0,"Resultado SELECT %s %d es: %s ",nombreTabla,registroBuscado->key,registroBuscado->value);
+				soloLoggear(socket,"RESULTADO SELECT %s %d; value: %s ",nombreTabla,registroBuscado->key,registroBuscado->value);
+				soloLoggearResultados(socket,0,"RESULTADO SELECT %s %d es: %s ",nombreTabla,registroBuscado->key,registroBuscado->value);
 				if(socket!=-1){
 					registroConNombreTabla* registroAMandar = armarRegistroConNombreTabla(registroBuscado,nombreTabla);
 					serializarYEnviarRegistro(socket,registroAMandar);
 					liberarRegistroConNombreTabla(registroAMandar);
-					list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
-					liberarDoblePuntero(argSeparados);
 				}
-					return;
+				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
+				liberarDoblePuntero(argSeparados);
+				return;
 			}
 	}
 }
@@ -500,15 +502,16 @@ void funcionInsert(char* argumentos,int socket) {
 		soloLoggearError(socket,"El tamanio del value es mayor al maximo");
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
+		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR",nombreTabla,key,value);
 		return;
 	}
 	if (!verificarExistenciaDirectorioTabla(nombreTabla,socket)){
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
+		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR",nombreTabla,key,value);
 		if(socket!=-1) enviarError(socket);
 		return;
 	}
-	soloLoggear(socket,"Directorio de tabla valido");
 
 	if (valorTimestamp == NULL) {
 		timestamp = (unsigned long)time(NULL);
@@ -527,7 +530,7 @@ void funcionInsert(char* argumentos,int socket) {
 	guardarRegistro(registroAGuardar, nombreTabla);
 	pthread_mutex_unlock(&semaforoDeTablaMemtable);
 	soloLoggear(socket,"Se guardo el registro con value: %s y key igual a: %d",registroAGuardar->value,registroAGuardar->key);
-	soloLoggearResultados(socket,0,"Resultado Insert %s %d %s :EXITOSA",nombreTabla,key,value);
+	soloLoggearResultados(socket,0,"RESULTADO INSERT %s %d %s :EXITOSA",nombreTabla,key,value);
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
@@ -632,7 +635,7 @@ void serializarMetadataConSemaforo(int socket){
 
 void funcionDescribe(char* argumentos,int socket) {
 	void loggearYMostrarTabla(metadataConSemaforo* unMetadata){
-		soloLoggearResultados(socket,0,"Resultado DESCRIBE: La tabla: %s, tiene %d particion/es, consistencia= %d "
+		soloLoggearResultados(socket,0,"RESULTADO DESCRIBE: La tabla: %s, tiene %d particion/es, consistencia= %d "
 				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
 				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
 	}
