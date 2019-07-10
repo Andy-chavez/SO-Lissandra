@@ -93,6 +93,12 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
 	}
+	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
+		sem_post(&BINARIO_FINALIZACION_PROCESO);
+		int test;
+		sem_getvalue(&BINARIO_FINALIZACION_PROCESO, &test);
+		printf("%d\n", test);
+	}
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
 	}
@@ -161,6 +167,8 @@ int crearSocketLFS() {
 void* manejarConsola() {
 	agregarHiloAListaDeHilos();
 
+	pthread_cleanup_push(eliminarHiloDeListaDeHilos, NULL);
+
 	system("clear");
 	printf("------ ¡Bienvenid@ al proceso Memoria! ------\n\n");
 	printf("------ Esta es la memoria N°%d ------\n\n", config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER"));
@@ -191,6 +199,7 @@ void* manejarConsola() {
 
 		printf("Por favor, ingrese otro comando LQL:\n");
 	}
+	pthread_cleanup_pop(0);
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
 }
 
@@ -202,6 +211,7 @@ void *servidorMemoria() {
 		cerrarConexion(socketServidorMemoria);
 
 		enviarYLogearMensajeError(-1, "No se pudo inicializar el servidor de memoria");
+		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		pthread_exit(0);
 	}
 
@@ -229,6 +239,7 @@ void *servidorMemoria() {
 }
 
 void* cambiosConfig() {
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
 
@@ -239,9 +250,9 @@ void* cambiosConfig() {
 	inotify_add_watch(fdConfig, "memoria.config", IN_MODIFY);
 
 	while(1) {
-		sem_post(&BINARIO_CERRANDO_CONFIG);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
-		sem_wait(&BINARIO_CERRANDO_CONFIG);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 		if(size<0) {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
@@ -258,7 +269,7 @@ void* cambiosConfig() {
 		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
-			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING") && config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL") && config_get_int_value(configConNuevosDatos, "RETARDO_MEM")) {
+			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
 				sem_wait(&MUTEX_RETARDO_GOSSIP);
@@ -341,7 +352,7 @@ int main() {
 	liberarTablaMarcos();
 	liberarTablaGossip();
 
-	system("reset");
+	// system("reset");
 	return 0;
 
 }
