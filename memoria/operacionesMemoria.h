@@ -432,6 +432,9 @@ void* pedirALFS(operacionLQL *operacion) {
 	sem_post(&MUTEX_RETARDO_FS);
 	usleep(retardo);
 
+	int valor;
+	sem_getvalue(&MUTEX_SOCKET_LFS, &valor);
+	printf("valor mutex socketlfs %d\n", valor);
 	sem_wait(&MUTEX_SOCKET_LFS);
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
 	void* buffer = recibir(SOCKET_LFS);
