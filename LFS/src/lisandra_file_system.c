@@ -233,10 +233,44 @@ void terminarTodo() {
 	sem_post(&binarioLFS);
 }
 
+typedef struct{
+	char* operacion;
+	t_list* instruccion;
+}runearScripts;
+
+void runearScript(){
+
+		FILE *archivoALeer;
+		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
+
+		char *lineaLeida;
+		size_t limite = 250;
+		ssize_t leer;
+		lineaLeida = NULL;
+//		runearScripts* instrucciones = malloc(sizeof(runearScripts));
+//		instrucciones->instruccion = list_create();
+
+
+		while((leer = getline(&lineaLeida, &limite, archivoALeer)) != -1){
+			operacionLQL* operacion = malloc(sizeof(operacionLQL));
+			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
+			operacion->operacion = *(operacionLQL + 0);
+			operacion->parametros = *(operacionLQL + 1);
+
+			parserGeneral(operacion, -1);
+
+
+		}
+
+}
+
+
+
+
 int main(int argc, char* argv[]) {
 
-		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
-		//leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		//leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
 		inicializarLog();
@@ -248,6 +282,7 @@ int main(int argc, char* argv[]) {
 
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
+
 
 		log_info(loggerConsola,"Inicializando FS");
 
@@ -262,6 +297,9 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadConsola, NULL,(void*) leerConsola, NULL);
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
+
+		runearScript();
+
 
 		sem_init(&binarioLFS, 0, 0);
 
