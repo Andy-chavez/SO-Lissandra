@@ -84,15 +84,15 @@ int APIProtocolo(void* buffer, int socket) {
 
 	switch(operacion){
 	case OPERACIONLQL:
-		soloLoggear(socket,"Recibi una operacion/n");
+		soloLoggear(socket,"Recibi una operacion\n");
 		parserGeneral(deserializarOperacionLQL(buffer), socket);
 		return 1;
 	case PAQUETEOPERACIONES:
-		soloLoggear(socket,"Recibi un paquete de operacion/n");
+		soloLoggear(socket,"Recibi un paquete de operacion\n");
 		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
 		return 1;
 	case DESCONEXION:
-		soloLoggearError(1,"Se cierra la conexion/n");
+		soloLoggearError(1,"Se cierra la conexion\n");
 		cerrarConexion(socket);
 		return 0;
 	}
