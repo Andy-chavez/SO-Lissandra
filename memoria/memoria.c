@@ -95,9 +95,6 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
 		sem_post(&BINARIO_FINALIZACION_PROCESO);
-		int test;
-		sem_getvalue(&BINARIO_FINALIZACION_PROCESO, &test);
-		printf("%d\n", test);
 	}
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
@@ -277,7 +274,7 @@ void* cambiosConfig() {
 		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
-			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
+			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_FS") && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
 				sem_wait(&MUTEX_RETARDO_GOSSIP);
@@ -289,6 +286,10 @@ void* cambiosConfig() {
 				sem_wait(&MUTEX_RETARDO_MEMORIA);
 				RETARDO_MEMORIA = config_get_int_value(configConNuevosDatos, "RETARDO_MEM");
 				sem_post(&MUTEX_RETARDO_MEMORIA);
+				sem_wait(&MUTEX_RETARDO_FS);
+				RETARDO_FS = config_get_int_value(configConNuevosDatos, "RETARDO_FS");
+				sem_post(&MUTEX_RETARDO_FS);
+
 			}
 
 			config_destroy(configConNuevosDatos);

@@ -100,6 +100,7 @@ void inicializarRetardos() {
 	RETARDO_GOSSIP = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_GOSSIPING");
 	RETARDO_JOURNAL = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_JOURNAL");
 	RETARDO_MEMORIA = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM");
+	RETARDO_FS = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_FS");
 }
 
 void inicializarTablaMarcos() {
@@ -167,6 +168,7 @@ void inicializarArchivos() {
 
 void inicializarSemaforos() {
 	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
+	sem_init(&MUTEX_RETARDO_FS, 0, 1);
 	sem_init(&MUTEX_LOG, 0, 1);
 	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
 	sem_init(&MUTEX_RETARDO_MEMORIA, 0, 1);
@@ -424,6 +426,11 @@ void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNu
 // 3) OPERACIONES CON LISSANDRA FILE SYSTEM //
 
 void* pedirALFS(operacionLQL *operacion) {
+	sem_wait(&MUTEX_RETARDO_FS);
+	int retardo = RETARDO_FS*1000;
+	sem_post(&MUTEX_RETARDO_FS);
+	usleep(retardo);
+
 	sem_wait(&MUTEX_SOCKET_LFS);
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
 	void* buffer = recibir(SOCKET_LFS);
@@ -1033,7 +1040,7 @@ bool sonSeedsIguales(seed* unaSeed, seed* otraSeed) {
 void pedirTablaGossip(int socketMemoria) {
 	operacionProtocolo protocolo = TABLAGOSSIP;
 	enviar(socketMemoria, (void*) &protocolo, sizeof(operacionProtocolo));
-	serializarYEnviarTablaGossip(socketMemoria,TABLA_GOSSIP)
+	serializarYEnviarTablaGossip(socketMemoria,TABLA_GOSSIP);
 }
 
 void recibirYGuardarEnTablaGossip(int socketMemoria) {
@@ -1141,6 +1148,7 @@ void* timedGossip() {
 	t_log* logGossip = log_create("memoria_gossip.log", "GOSSIP", 0, LOG_LEVEL_INFO);
 
 	while(1) {
+		log_info(logGossip, "Gossip Realizandose...");
 		intentarConexiones(logGossip);
 
 		sem_wait(&MUTEX_RETARDO_GOSSIP);
@@ -1150,6 +1158,8 @@ void* timedGossip() {
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		usleep(retardoGossip);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
+		log_info(logGossip, "Gossip Realizado");
 	}
 }
 
