@@ -126,6 +126,10 @@ void inicializarTablaGossip() {
 	list_add(TABLA_GOSSIP, seedPropia);
 }
 
+void inicializarTablaSeedsConfig(){
+	TABLA_SEEDS_CONFIG = list_create();
+}
+
 memoria* inicializarMemoria(datosInicializacion* datosParaInicializar) {
 	memoria* nuevaMemoria = malloc(sizeof(memoria));
 	int tamanioMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
@@ -144,6 +148,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar) {
 	}
 
 	inicializarTablaGossip();
+	inicializarTablaSeedsConfig();
 	TABLA_THREADS = list_create();
 
 	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Memoria inicializada.");
@@ -169,15 +174,13 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_RETARDO_JOURNAL, 0, 1);
 	sem_init(&MUTEX_LOG_CONSOLA, 0, 1);
 	sem_init(&MUTEX_TABLA_GOSSIP, 0, 1);
+	sem_init(&MUTEX_TABLA_SEEDS_CONFIG, 0, 1);
 	sem_init(&BINARIO_FINALIZACION_PROCESO, 0, 0);
 	sem_init(&MUTEX_TABLA_THREADS, 0, 1);
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
 	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
-	sem_init(&BINARIO_CERRANDO_JOURNALTIMEADO, 0, 0);
-	sem_init(&BINARIO_CERRANDO_GOSSIPINGTIMEADO, 0, 0);
-	sem_init(&BINARIO_CERRANDO_CONFIG, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 }
 
@@ -281,8 +284,10 @@ marco* algoritmoLRU() {
 			return NULL;
 		}
 
-	return encontrarMarcoEscrito(paginaACambiar->marco);
+	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
+	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
 
+	return encontrarMarcoEscrito(paginaACambiar->marco);
 }
 
 marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
@@ -401,7 +406,10 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
-	} else if(empezarDeserializacion(&buffer) == ERROR) return NULL;
+	} else if(empezarDeserializacion(&buffer) == ERROR) {
+		sem_post(&MUTEX_SOCKET_LFS);
+		return NULL;
+	}
 	sem_post(&MUTEX_SOCKET_LFS);
 	return buffer;
 }
@@ -511,21 +519,19 @@ void* obtenerValorDe(char** parametros, int lugarDelParametroBuscado) {
 registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamanioMaximoValue) {
 	registro* nuevoRegistro = malloc(sizeof(registro));
 
-	nuevoRegistro->value = string_trim_quotation(value);
-	if(strlen(nuevoRegistro->value) > tamanioMaximoValue){
+	nuevoRegistro->value = string_duplicate(value);
+	if(strlen(nuevoRegistro->value) >= tamanioMaximoValue){
 		liberarRegistro(nuevoRegistro);
 		return NULL;
-	};
+	}
 
 	if(timestamp != NULL) {
 		nuevoRegistro->timestamp = atoi(timestamp);
 	} else {
 		nuevoRegistro->timestamp = time(NULL);
 	}
-
 	nuevoRegistro->key = atoi(key);
 
-	free(key);
 	return nuevoRegistro;
 }
 
@@ -718,7 +724,7 @@ void journalLQL(int socketKernel) {
 	operacionProtocolo protocoloJournal = PAQUETEOPERACIONES;
 
 	sem_wait(&MUTEX_SOCKET_LFS);
-	enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo));
+	enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo)); // TODO VERIFICAR SI SOCKETLFS NO EXISTE YA
 	serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
 	sem_post(&MUTEX_SOCKET_LFS);
 
@@ -812,13 +818,15 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
 	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
 	verSiHayJournalEjecutandose(semaforoDeOperacion);
-
+	char* timestamp = NULL;
 	bool seEjecutaraJournal = false;
 
 	char** parametrosSpliteadosPorComillas = string_split(operacionInsert->parametros, "\"");
 	char* value = string_duplicate(*(parametrosSpliteadosPorComillas + 1));
-	char* timestamp = string_duplicate(*(parametrosSpliteadosPorComillas + 2));
-	char** tablaYKey = string_split((*parametrosSpliteadosPorComillas + 1), " ");
+	if(*(parametrosSpliteadosPorComillas + 2) != NULL) {
+		timestamp = string_duplicate(*(parametrosSpliteadosPorComillas + 2));
+	}
+	char** tablaYKey = string_split(*(parametrosSpliteadosPorComillas + 0), " ");
 	char* tabla = string_duplicate(*tablaYKey);
 	char* key = string_duplicate(*(tablaYKey + 1));
 
@@ -864,9 +872,10 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 	// TODO else journal();
 	free(value);
-	free(timestamp);
+	if(timestamp) free(timestamp);
 	free(key);
 	liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
+	liberarParametrosSpliteados(tablaYKey);
 	liberarRecursosInsertLQL(tabla, registroNuevo);
 	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
 }
@@ -889,16 +898,41 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 	void* bufferMetadata = pedirALFS(operacionDescribe);
 
 	if(!bufferMetadata) {
-		enviarYLogearMensajeError(socketKernel, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE %s", operacionDescribe->parametros);
+		enviarYLogearMensajeError(-1, "ERROR: Hubo un error al pedir al LFS que realizara DESCRIBE %s", operacionDescribe->parametros);
+		enviarError(socketKernel);
 		return;
 	}
 
-	metadata* unaMetadata = deserializarMetadata(bufferMetadata);
+	operacionProtocolo tipoDeMetadata = empezarDeserializacion(&bufferMetadata);
 
-	serializarYEnviarMetadata(socketKernel, unaMetadata);
+	if(tipoDeMetadata == METADATA){
+		metadata* unaMetadata = deserializarMetadata(bufferMetadata);
+		serializarYEnviarMetadata(socketKernel, unaMetadata);
+		free(unaMetadata->nombreTabla);
+		free(unaMetadata);
+	} else if(tipoDeMetadata == PAQUETEMETADATAS) {
+		t_list* metadatas = list_create();
 
-	free(unaMetadata->nombreTabla);
-	free(unaMetadata);
+		void guardarMetadata(void* unaMetadata) {
+			metadata* auxMetadata = (metadata*) unaMetadata;
+			metadata* metadataAEnviar = malloc(sizeof(metadata));
+
+			metadataAEnviar->cantParticiones = auxMetadata->cantParticiones;
+			metadataAEnviar->nombreTabla = string_duplicate(auxMetadata->nombreTabla);
+			metadataAEnviar->tiempoCompactacion = auxMetadata->tiempoCompactacion;
+			metadataAEnviar->tipoConsistencia = auxMetadata->tipoConsistencia;
+
+			list_add(metadatas, metadataAEnviar);
+		}
+
+		sem_wait(&MUTEX_SOCKET_LFS);
+		recibirYDeserializarPaqueteDeMetadatasRealizando(SOCKET_LFS, guardarMetadata);
+		sem_post(&MUTEX_SOCKET_LFS);
+
+		enviar(socketKernel, (void*) &tipoDeMetadata, sizeof(operacionProtocolo));
+		serializarYEnviarPaqueteMetadatas(socketKernel, metadatas);
+		list_destroy_and_destroy_elements(metadatas, liberarMetadata);
+	}
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
@@ -940,14 +974,24 @@ void cargarSeeds() {
 
 	int i = 0;
 	while(*(IPs + i) != NULL && *(puertos + i) != NULL) {
-		seed *unaSeed = malloc(sizeof(seed));
-		unaSeed->ip = string_duplicate(*(IPs + i));
-		unaSeed->puerto = string_duplicate(*(puertos + i));
-		unaSeed->numero = -1;
+		seed *unaSeedParaTablaGossip = malloc(sizeof(seed));
+		unaSeedParaTablaGossip->ip = string_duplicate(*(IPs + i));
+		unaSeedParaTablaGossip->puerto = string_duplicate(*(puertos + i));
+		unaSeedParaTablaGossip->numero = -1;
+
+		seed* unaSeedParaTablaDeSeeds = malloc(sizeof(seed)); // YEAH THIS FUCKING SUCKS
+		unaSeedParaTablaDeSeeds->ip = string_duplicate(*(IPs + i));
+		unaSeedParaTablaDeSeeds->puerto = string_duplicate(*(puertos + i));
+		unaSeedParaTablaDeSeeds->numero = -1;
 
 		sem_wait(&MUTEX_TABLA_GOSSIP);
-		list_add(TABLA_GOSSIP, unaSeed);
+		list_add(TABLA_GOSSIP, unaSeedParaTablaGossip);
 		sem_post(&MUTEX_TABLA_GOSSIP);
+
+		sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
+		list_add(TABLA_SEEDS_CONFIG, unaSeedParaTablaDeSeeds);
+		sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
+
 
 		free(*(IPs + i));
 		free(*(puertos + i));
@@ -999,13 +1043,21 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
 
+bool seedEnTablaGossip(void* seedAComprobar){
+	seed* unaSeed = (seed*) seedAComprobar;
+	bool esIgualA(void* otraSeed) {
+		return sonSeedsIguales(unaSeed,(seed*) otraSeed);
+	}
+	return list_any_satisfy(TABLA_GOSSIP,esIgualA);
+}
+
 void intentarConexiones() {
 	seed* seedPropia = malloc(sizeof(seed));
 	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
 	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 
-	void intentarConexion(void* seedEnTablaGossip) {
-		seed* unaSeed = (seed*) seedEnTablaGossip;
+	void intentarConexion(void* seedEnTabla, int tabla) {
+		seed* unaSeed = (seed*) seedEnTabla;
 
 		bool esIgualA(void* otraSeed) {
 			return sonSeedsIguales(unaSeed,(seed*) otraSeed);
@@ -1022,8 +1074,9 @@ void intentarConexiones() {
 		sem_post(&MUTEX_LOG_CONSOLA);
 
 		if(socketMemoria == -1) {
+			if(tabla==1){
 			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
+			log_info(LOGGER_CONSOLA, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 			sem_post(&MUTEX_LOG_CONSOLA);
 
 			seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
@@ -1031,22 +1084,41 @@ void intentarConexiones() {
 			liberarSeed(seedRemovida);
 
 			return;
+			}
+			sem_wait(&MUTEX_LOG_CONSOLA);
+			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
+			sem_post(&MUTEX_LOG_CONSOLA);
+			return;
 		}
 
-		log_info(LOGGER_CONSOLA, "recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
+		log_info(LOGGER_CONSOLA, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
 		recibirYGuardarEnTablaGossip(socketMemoria);
 		cerrarConexion(socketMemoria);
 	}
 
+	void intentarConexionTablaGossip(void* seedEnTablaGossip){
+		intentarConexion(seedEnTablaGossip,1);
+	}
+
+	void intentarConexionTablaConfig(void* seedEnTablaConfig){
+		if(!seedEnTablaGossip(seedEnTablaConfig)){
+			intentarConexion(seedEnTablaConfig,0);
+		}
+	}
+
 	sem_wait(&MUTEX_TABLA_GOSSIP);
-	list_iterate(TABLA_GOSSIP, intentarConexion);
+	list_iterate(TABLA_GOSSIP, intentarConexionTablaGossip);
 	sem_post(&MUTEX_TABLA_GOSSIP);
+
+	sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
+	list_iterate(TABLA_SEEDS_CONFIG, intentarConexionTablaConfig);
+	sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
 	liberarSeed(seedPropia);
 }
 
 void* timedGossip() {
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
-	pthread_cleanup_push(cancelarGossiping, NULL);
 
 	while(1) {
 		intentarConexiones();
@@ -1055,14 +1127,14 @@ void* timedGossip() {
 		int retardoGossip = RETARDO_GOSSIP * 1000;
 		sem_post(&MUTEX_RETARDO_GOSSIP);
 
-		sem_post(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		usleep(retardoGossip);
-		sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	}
-	pthread_cleanup_pop(0);
 }
 
 void* timedJournal(){
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 	while(1){
 
@@ -1070,9 +1142,9 @@ void* timedJournal(){
 		int retardoJournal = RETARDO_JOURNAL * 1000;
 		sem_post(&MUTEX_RETARDO_JOURNAL);
 
-		sem_post(&BINARIO_CERRANDO_JOURNALTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		usleep(retardoJournal);
-		sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 
 		journalLQL(-1);
 	}
@@ -1099,6 +1171,8 @@ void eliminarHiloDeListaDeHilos() {
 	bool esElPropioThread(void* hiloEnLaTabla) {
 		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
 		if(pthread_equal(unHilo->thread, pthread_self())) {
+			free(unHilo->cancelarThread);
+			free(unHilo->semaforoOperacion);
 			free(unHilo);
 			return true;
 		}
@@ -1130,13 +1204,18 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	t_list* listaHilosEsperandoSemaforos = list_create();
 
 	void esperarHiloEsperando(void* hiloEsperando) {
-		pthread_join(*(pthread_t*) hiloEsperando, NULL);
+		hiloQueEspera* unHiloEsperando = (hiloQueEspera*) hiloEsperando;
+		pthread_join(unHiloEsperando->thread, NULL);
+		free(unHiloEsperando);
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
-		pthread_t *hiloQueEspera = malloc(sizeof(pthread_t));
-		pthread_create(hiloQueEspera, NULL, esperarSemaforoParticular, unHilo);
-		list_add(listaHilosEsperandoSemaforos, hiloQueEspera);
+		hiloQueEspera* unHiloQueEspera = malloc(sizeof(hiloQueEspera));
+		int error = pthread_create(&unHiloQueEspera->thread, NULL, esperarSemaforoParticular, unHilo);
+		if(error) {
+			printf("Hubo un error al crear un hilo para esperar\n");
+		}
+		list_add(listaHilosEsperandoSemaforos, unHiloQueEspera);
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
@@ -1144,7 +1223,7 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
-	list_destroy_and_destroy_elements(listaHilosEsperandoSemaforos, free);
+	list_destroy(listaHilosEsperandoSemaforos);
 }
 
 void dejarEjecutarOperacionesDeNuevo() {
@@ -1177,16 +1256,4 @@ void cleanupTrabajarConConexion() {
 void esperarParaCancelarConsola(pthread_t hiloConsola){
 	hiloEnTabla* hilo = obtenerHiloEnTabla(hiloConsola);
 	sem_wait(hilo->cancelarThread);
-}
-
-void cancelarJournal(){
-	sem_wait(&BINARIO_CERRANDO_JOURNALTIMEADO);
-}
-
-void cancelarGossiping(){
-	sem_wait(&BINARIO_CERRANDO_GOSSIPINGTIMEADO);
-}
-
-void cancelarCambiosConfig(){
-	sem_wait(&BINARIO_CERRANDO_CONFIG);
 }
