@@ -71,7 +71,7 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel);
 void cargarSeeds();
 bool sonSeedsIguales(seed* unaSeed, seed* otraSeed);
 void pedirTablaGossip(int socketMemoria);
-void recibirYGuardarEnTablaGossip(int socketMemoria);
+void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo);
 void intentarConexiones();
 void* timedGossip();
 void* timedJournal();
@@ -1050,7 +1050,7 @@ void pedirTablaGossip(int socketMemoria) {
 	serializarYEnviarTablaGossip(socketMemoria,TABLA_GOSSIP);
 }
 
-void recibirYGuardarEnTablaGossip(int socketMemoria) {
+void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 	void guardarEnTablaGossip(seed* unaSeed) {
 		// Duplicamos strings de IP y Puerto ya que la funcion de recibir libera la seed
 
@@ -1078,7 +1078,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 
 	}
 
-	pedirTablaGossip(socketMemoria);
+	if(estoyPidiendo) {
+		pedirTablaGossip(socketMemoria);
+	}
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
 
@@ -1125,7 +1127,7 @@ void intentarConexiones(t_log* logGossip) {
 		}
 
 		log_info(logGossip, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
-		recibirYGuardarEnTablaGossip(socketMemoria);
+		recibirYGuardarEnTablaGossip(socketMemoria, 1);
 		cerrarConexion(socketMemoria);
 	}
 
