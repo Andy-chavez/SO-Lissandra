@@ -18,10 +18,14 @@ pthread_mutex_t mutexListaDeTablas;
 pthread_mutex_t mutexBitarray;
 pthread_mutex_t mutexTiempoDump;
 pthread_mutex_t mutexRetardo;
+pthread_mutex_t mutexResultadosConsola;
+pthread_mutex_t mutexResultados;
 
 
 t_log* logger;
 t_log* loggerConsola;
+t_log* loggerResultados;
+t_log* loggerResultadosConsola;
 
 int tamanioBloques;
 int cantDeBloques;

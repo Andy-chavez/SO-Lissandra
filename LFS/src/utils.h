@@ -62,6 +62,7 @@ void soloLoggearError(int socket,char* mensaje,...);
 pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla);
 pthread_mutex_t devolverSemaforoDeTablaMemtable(char* nombreTabla);
 void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer);
+void soloLoggearResultados(int socket,int caso,char *mensaje, ...);
 
 void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer) {
 
@@ -116,6 +117,37 @@ void soloLoggearError(int socket,char* mensaje,...){
 	}
 	free(mensajeTotal);
 	va_end(parametrosAdicionales);
+}
+void soloLoggearResultados(int socket,int error,char *mensaje, ...){
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
+	if(socket==-1){
+			if(error==1){ //error=1 significa que hubo algun error
+				pthread_mutex_lock(&mutexResultadosConsola);
+				log_error(loggerResultadosConsola, mensajeTotal);
+				pthread_mutex_unlock(&mutexLoggerConsola);
+			}
+			else{
+				pthread_mutex_lock(&mutexResultadosConsola);
+				log_info(loggerResultadosConsola, mensajeTotal);
+				pthread_mutex_unlock(&mutexLoggerConsola);
+			}
+		}
+		else{
+			if(error==1){
+				pthread_mutex_lock(&mutexResultados);
+				log_error(loggerResultados, mensajeTotal);
+				pthread_mutex_unlock(&mutexLogger);
+			}
+			else{
+				pthread_mutex_lock(&mutexResultados);
+				log_info(loggerResultados, mensajeTotal);
+				pthread_mutex_unlock(&mutexLogger);
+			}
+		}
+		free(mensajeTotal);
+		va_end(parametrosAdicionales);
 }
 
 void soloLoggear(int socket, char *mensaje, ...){

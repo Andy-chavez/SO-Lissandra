@@ -269,7 +269,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 	configMetadata = config_create(ruta);
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
-	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY"); //delegar a funcion con strcmp
+	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY");
 	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTION_TIME"); //OJO ES COMPACTION TIME Y NO COMPACTATION
 
 	unaMetadata->cantParticiones = cantParticiones;
@@ -462,13 +462,13 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 			if(!registroBuscado) {
 				if(socket!=-1) enviarError(socket);
-				soloLoggearError(socket,"No se encontro el registro");
+				soloLoggearResultados(socket,1,"Resultado SELECT %s %d es: ERROR",nombreTabla,key);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 				liberarDoblePuntero(argSeparados);
 				return;
 			}
 			else {
-				soloLoggear(socket,"El value del registro buscado es: %s ",registroBuscado->value);
+				soloLoggearResultados(socket,0,"Resultado SELECT %s %d es: %s ",nombreTabla,registroBuscado->key,registroBuscado->value);
 				if(socket!=-1){
 					registroConNombreTabla* registroAMandar = armarRegistroConNombreTabla(registroBuscado,nombreTabla);
 					serializarYEnviarRegistro(socket,registroAMandar);
@@ -527,6 +527,7 @@ void funcionInsert(char* argumentos,int socket) {
 	guardarRegistro(registroAGuardar, nombreTabla);
 	pthread_mutex_unlock(&semaforoDeTablaMemtable);
 	soloLoggear(socket,"Se guardo el registro con value: %s y key igual a: %d",registroAGuardar->value,registroAGuardar->key);
+	soloLoggearResultados(socket,0,"Resultado Insert %s %d %s :EXITOSA",nombreTabla,key,value);
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
@@ -631,7 +632,7 @@ void serializarMetadataConSemaforo(int socket){
 
 void funcionDescribe(char* argumentos,int socket) {
 	void loggearYMostrarTabla(metadataConSemaforo* unMetadata){
-		soloLoggear(-1,"La tabla: %s, tiene %d particion/es, consistencia= %d "
+		soloLoggearResultados(socket,0,"Resultado DESCRIBE: La tabla: %s, tiene %d particion/es, consistencia= %d "
 				"y tiempo de compactacion= %d \n",unMetadata->nombreTabla,unMetadata->cantParticiones,
 				unMetadata->tipoConsistencia,unMetadata->tiempoCompactacion);
 	}
@@ -684,7 +685,7 @@ void funcionDescribe(char* argumentos,int socket) {
 						liberarMetadata(metadataBuscado);
 						return;
 					}
-					soloLoggear(socket,"La tabla: %s, tiene %d particion/es, consistencia= %d "
+					soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d "
 									"y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,
 									metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 					liberarMetadata(metadataBuscado);
