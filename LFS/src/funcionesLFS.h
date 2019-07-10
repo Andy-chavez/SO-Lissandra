@@ -688,9 +688,7 @@ void funcionDescribe(char* argumentos,int socket) {
 						liberarMetadata(metadataBuscado);
 						return;
 					}
-					soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d "
-									"y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,
-									metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
+					soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 					liberarMetadata(metadataBuscado);
 		}
 		else {
