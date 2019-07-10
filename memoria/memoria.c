@@ -203,6 +203,12 @@ void* manejarConsola() {
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
 }
 
+void cancelarServidor(void* bufferSocket) {
+	int socket = *(int*) bufferSocket;
+	cerrarConexion(socket);
+	cancelarListaHilos();
+}
+
 void *servidorMemoria() {
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 	pthread_t threadConexion;
@@ -214,6 +220,8 @@ void *servidorMemoria() {
 		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		pthread_exit(0);
 	}
+
+	pthread_cleanup_push(cancelarServidor, &socketServidorMemoria);
 
 	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
 	while(1){
@@ -233,7 +241,7 @@ void *servidorMemoria() {
 
 	}
 
-	cerrarConexion(socketServidorMemoria);
+	pthread_cleanup_pop(cancelarListaHilos);
 	pthread_exit(0);
 
 }

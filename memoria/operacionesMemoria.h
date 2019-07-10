@@ -38,7 +38,7 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina);
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo);
 void* pedirALFS(operacionLQL *operacion);
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion);
-paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
+paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
 int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
 int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo, bool* seEjecutaraJournal);
@@ -182,6 +182,7 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
 	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
+	sem_init(&BINARIO_ALGORITMO_LRU, 0, 1);
 }
 
 void liberarSegmento(void* segmentoEnMemoria) {
@@ -274,19 +275,25 @@ marco* algoritmoLRU() {
 	}
 
 	void iterarSegmento(void* unSegmento){
-		list_iterate(((segmento*) unSegmento)->tablaPaginas, compararTimestamp);
+		segmento* segmentoAIterar = (segmento*) unSegmento;
+		sem_wait(&segmentoAIterar->mutexSegmento);
+		list_iterate(segmentoAIterar->tablaPaginas, compararTimestamp);
+		sem_post(&segmentoAIterar->mutexSegmento);
 	}
 
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, iterarSegmento);
-
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 		if(paginaACambiar == NULL){
+			sem_post(&BINARIO_ALGORITMO_LRU);
 			return NULL;
 		}
 
 	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
 	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
 
+	sem_post(&BINARIO_ALGORITMO_LRU);
 	return encontrarMarcoEscrito(paginaACambiar->marco);
 }
 
@@ -296,7 +303,19 @@ marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 	}
 	marco* marcoLibre;
 
+	int valorSemBinario;
+	int valorSemMutex;
+	sem_getvalue(&BINARIO_ALGORITMO_LRU, &valorSemBinario);
+	sem_getvalue(&MUTEX_TABLA_MARCOS, &valorSemMutex);
+	printf("%d\n", valorSemBinario);
+	printf("%d\n", valorSemMutex);
+
+	sem_wait(&BINARIO_ALGORITMO_LRU);
+	printf("pase el binario \n");
+	sem_wait(&MUTEX_TABLA_MARCOS);
+	printf("pase el mutex \n");
 	if(!(marcoLibre = list_find(TABLA_MARCOS, encontrarLibreEnTablaMarcos))) {
+		sem_post(&MUTEX_TABLA_MARCOS);
 		enviarOMostrarYLogearInfo(-1, "No se encontro espacio libre en la tabla de marcos. Empezando algoritmo LRU");
 		if(!(marcoLibre = algoritmoLRU())) {
 			if(socketKernel == -1) {
@@ -310,6 +329,9 @@ marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 			enviar(socketKernel, (void*) lleno , strlen(lleno) + 1);
 			return NULL;
 		}
+	} else {
+		sem_post(&BINARIO_ALGORITMO_LRU); // funca como mutex tambien pero es necesario
+		sem_post(&MUTEX_TABLA_MARCOS);
 	}
 
 	return marcoLibre;
@@ -349,6 +371,7 @@ marco* guardar(registroConNombreTabla* unRegistro,int socketKernel, bool* seEjec
 	marco *guardarEn = encontrarEspacio(socketKernel, seEjecutaraJournal);
 
 	if(!guardarEn) {
+		free(bufferAGuardar);
 		return NULL;
 	}
 
@@ -433,20 +456,17 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 // ------------------------------------------------------------------------ //
 // 4) OPERACIONES SOBRE LISTAS, SEGMENTOS Y PAGINAS //
 
-paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
+paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 
-	sem_wait(&MUTEX_TABLA_MARCOS); //TODO Este semaforo es muy gordo xdxd
 	int marco = guardarEnMemoria((registroConNombreTabla*) unRegistro, socketKernel, seEjecutaraJournal);
-	sem_post(&MUTEX_TABLA_MARCOS);
 
 	if(marco == -1) {
-		// TODO Avisar que no se pudo guardar en memoria.
+		free(pagina);
 		return NULL;
 	};
 
 	pagina->marco = marco;
-	pagina->numeroPagina = numeroPagina;
 	pagina->timestamp = time(NULL);
 
 	if(deDondeVengo == 0){ // es un select
@@ -460,7 +480,7 @@ paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, i
 
 int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal){
 
-	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(0, primerRegistro,deDondeVengo, socketKernel, seEjecutaraJournal);
+	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(primerRegistro,deDondeVengo, socketKernel, seEjecutaraJournal);
 
 	if(!primeraPagina) {
 		return 0;
@@ -470,6 +490,8 @@ int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int 
 	segmentoNuevo->nombreTabla = string_duplicate(tabla);
 	segmentoNuevo->tablaPaginas = list_create();
 	sem_init(&segmentoNuevo->mutexSegmento, 0, 1);
+
+	primeraPagina->numeroPagina = 0;
 
 	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
@@ -485,9 +507,7 @@ int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDon
 }
 
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo, bool* seEjecutaraJournal) {
-	sem_wait(&unSegmento->mutexSegmento);
-	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(list_size(unSegmento->tablaPaginas), unRegistro, deDondeVengo, socketKernel, seEjecutaraJournal);
-	sem_post(&unSegmento->mutexSegmento);
+	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(unRegistro, deDondeVengo, socketKernel, seEjecutaraJournal);
 
 	if(!paginaParaAgregar) {
 		enviarYLogearMensajeError(-1, "ERROR: No se pudo guardar el registro en la memoria");
@@ -495,6 +515,7 @@ bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int soc
 	}
 
 	sem_wait(&unSegmento->mutexSegmento);
+	paginaParaAgregar->numeroPagina = list_size(unSegmento->tablaPaginas);
 	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
 	sem_post(&unSegmento->mutexSegmento);
 
