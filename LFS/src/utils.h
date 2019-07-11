@@ -348,11 +348,17 @@ void marcarBloquesComoLibre(char** arrayDeBloques){
 	int pos =0;
 	while(*(arrayDeBloques+pos)!=NULL){
 			int posicionActual = atoi(*(arrayDeBloques+pos));
-
+			char* ruta = string_new();
+			string_append(&ruta,puntoMontaje);
+			string_append(&ruta,"Bloques/");
+			string_append(&ruta,*(arrayDeBloques+pos));
+			string_append(&ruta,".bin");
+			guardarInfoEnArchivo(ruta,"\0");
 			pthread_mutex_lock(&mutexBitarray);
 			bitarray_clean_bit(bitarray, posicionActual);
 			pthread_mutex_unlock(&mutexBitarray);
 			pos++;
+			free(ruta);
 		}
 }
 
