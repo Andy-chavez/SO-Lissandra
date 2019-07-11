@@ -241,7 +241,7 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/1C2019-Scripts-lql-entrega/scripts/compactacion_larga.lql", "r");
+		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
