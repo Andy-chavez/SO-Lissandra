@@ -647,6 +647,9 @@ int esOperacionEjecutable(char* unaOperacion) {
 	else if (string_starts_with(unaOperacion, "METRICS")) {
 			return 1;
 	}
+	else if (string_starts_with(unaOperacion, "MEMORIES")) {
+			return 1;
+	}
 	else if (string_starts_with(unaOperacion, "CREATE")) {
 		return esCreateEjecutable(unaOperacion);
 	}

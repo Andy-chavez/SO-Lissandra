@@ -3,17 +3,20 @@
 
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/string.h>
 #include <commons/collections/list.h>
 #include <stdlib.h>
 #include <semaphore.h>
-#include <commons/string.h>
 #include <commonsPropias/serializacion.h>
+#include <commonsPropias/conexiones.h>
 #include <stdbool.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
 
 #define HASH 2
 #define STRONG 1
@@ -57,6 +60,7 @@ typedef struct {
 } t_thread;
 
 t_log* logMetrics;
+t_log* logResultados;
 /******************************VARIABLES GLOBALES******************************************/
 t_list* cola_proc_nuevos;
 t_list* cola_proc_listos;
@@ -87,6 +91,7 @@ pthread_mutex_t mLog;
 pthread_mutex_t mThread;
 pthread_mutex_t mConexion;
 pthread_mutex_t mLogMetrics;
+pthread_mutex_t mLogResultados;
 //char * pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KERNEL_CONFIG_EJEMPLO";
 
 char* pathConfig;
