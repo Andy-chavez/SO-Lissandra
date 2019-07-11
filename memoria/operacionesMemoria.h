@@ -38,7 +38,7 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina);
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo);
 void* pedirALFS(operacionLQL *operacion);
 registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion);
-paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
+paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
 int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
 int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal);
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo, bool* seEjecutaraJournal);
@@ -71,7 +71,7 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel);
 void cargarSeeds();
 bool sonSeedsIguales(seed* unaSeed, seed* otraSeed);
 void pedirTablaGossip(int socketMemoria);
-void recibirYGuardarEnTablaGossip(int socketMemoria);
+void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo);
 void intentarConexiones();
 void* timedGossip();
 void* timedJournal();
@@ -100,6 +100,7 @@ void inicializarRetardos() {
 	RETARDO_GOSSIP = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_GOSSIPING");
 	RETARDO_JOURNAL = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_JOURNAL");
 	RETARDO_MEMORIA = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_MEM");
+	RETARDO_FS = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "RETARDO_FS");
 }
 
 void inicializarTablaMarcos() {
@@ -166,7 +167,9 @@ void inicializarArchivos() {
 }
 
 void inicializarSemaforos() {
+	sem_init(&MUTEX_JOURNAL, 0, 1);
 	sem_init(&BINARIO_SOCKET_KERNEL, 0, 1);
+	sem_init(&MUTEX_RETARDO_FS, 0, 1);
 	sem_init(&MUTEX_LOG, 0, 1);
 	sem_init(&MUTEX_SOCKET_LFS, 0, 1);
 	sem_init(&MUTEX_RETARDO_MEMORIA, 0, 1);
@@ -182,6 +185,7 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
 	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
+	sem_init(&BINARIO_ALGORITMO_LRU, 0, 1);
 }
 
 void liberarSegmento(void* segmentoEnMemoria) {
@@ -274,19 +278,25 @@ marco* algoritmoLRU() {
 	}
 
 	void iterarSegmento(void* unSegmento){
-		list_iterate(((segmento*) unSegmento)->tablaPaginas, compararTimestamp);
+		segmento* segmentoAIterar = (segmento*) unSegmento;
+		sem_wait(&segmentoAIterar->mutexSegmento);
+		list_iterate(segmentoAIterar->tablaPaginas, compararTimestamp);
+		sem_post(&segmentoAIterar->mutexSegmento);
 	}
 
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, iterarSegmento);
-
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 		if(paginaACambiar == NULL){
+			sem_post(&BINARIO_ALGORITMO_LRU);
 			return NULL;
 		}
 
 	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
 	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
 
+	sem_post(&BINARIO_ALGORITMO_LRU);
 	return encontrarMarcoEscrito(paginaACambiar->marco);
 }
 
@@ -296,7 +306,19 @@ marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 	}
 	marco* marcoLibre;
 
+	int valorSemBinario;
+	int valorSemMutex;
+	sem_getvalue(&BINARIO_ALGORITMO_LRU, &valorSemBinario);
+	sem_getvalue(&MUTEX_TABLA_MARCOS, &valorSemMutex);
+	printf("%d\n", valorSemBinario);
+	printf("%d\n", valorSemMutex);
+
+	sem_wait(&BINARIO_ALGORITMO_LRU);
+	printf("pase el binario \n");
+	sem_wait(&MUTEX_TABLA_MARCOS);
+	printf("pase el mutex \n");
 	if(!(marcoLibre = list_find(TABLA_MARCOS, encontrarLibreEnTablaMarcos))) {
+		sem_post(&MUTEX_TABLA_MARCOS);
 		enviarOMostrarYLogearInfo(-1, "No se encontro espacio libre en la tabla de marcos. Empezando algoritmo LRU");
 		if(!(marcoLibre = algoritmoLRU())) {
 			if(socketKernel == -1) {
@@ -310,6 +332,9 @@ marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 			enviar(socketKernel, (void*) lleno , strlen(lleno) + 1);
 			return NULL;
 		}
+	} else {
+		sem_post(&BINARIO_ALGORITMO_LRU); // funca como mutex tambien pero es necesario
+		sem_post(&MUTEX_TABLA_MARCOS);
 	}
 
 	return marcoLibre;
@@ -349,6 +374,7 @@ marco* guardar(registroConNombreTabla* unRegistro,int socketKernel, bool* seEjec
 	marco *guardarEn = encontrarEspacio(socketKernel, seEjecutaraJournal);
 
 	if(!guardarEn) {
+		free(bufferAGuardar);
 		return NULL;
 	}
 
@@ -401,6 +427,14 @@ void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNu
 // 3) OPERACIONES CON LISSANDRA FILE SYSTEM //
 
 void* pedirALFS(operacionLQL *operacion) {
+	sem_wait(&MUTEX_RETARDO_FS);
+	int retardo = RETARDO_FS*1000;
+	sem_post(&MUTEX_RETARDO_FS);
+	usleep(retardo);
+
+	int valor;
+	sem_getvalue(&MUTEX_SOCKET_LFS, &valor);
+	printf("valor mutex socketlfs %d\n", valor);
 	sem_wait(&MUTEX_SOCKET_LFS);
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
 	void* buffer = recibir(SOCKET_LFS);
@@ -433,20 +467,17 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 // ------------------------------------------------------------------------ //
 // 4) OPERACIONES SOBRE LISTAS, SEGMENTOS Y PAGINAS //
 
-paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
+paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 
-	sem_wait(&MUTEX_TABLA_MARCOS); //TODO Este semaforo es muy gordo xdxd
 	int marco = guardarEnMemoria((registroConNombreTabla*) unRegistro, socketKernel, seEjecutaraJournal);
-	sem_post(&MUTEX_TABLA_MARCOS);
 
 	if(marco == -1) {
-		// TODO Avisar que no se pudo guardar en memoria.
+		free(pagina);
 		return NULL;
 	};
 
 	pagina->marco = marco;
-	pagina->numeroPagina = numeroPagina;
 	pagina->timestamp = time(NULL);
 
 	if(deDondeVengo == 0){ // es un select
@@ -460,7 +491,7 @@ paginaEnTabla* crearPaginaParaSegmento(int numeroPagina, registro* unRegistro, i
 
 int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal){
 
-	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(0, primerRegistro,deDondeVengo, socketKernel, seEjecutaraJournal);
+	paginaEnTabla* primeraPagina = crearPaginaParaSegmento(primerRegistro,deDondeVengo, socketKernel, seEjecutaraJournal);
 
 	if(!primeraPagina) {
 		return 0;
@@ -470,6 +501,8 @@ int agregarSegmento(registro* primerRegistro,char* tabla, int deDondeVengo, int 
 	segmentoNuevo->nombreTabla = string_duplicate(tabla);
 	segmentoNuevo->tablaPaginas = list_create();
 	sem_init(&segmentoNuevo->mutexSegmento, 0, 1);
+
+	primeraPagina->numeroPagina = 0;
 
 	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_add(MEMORIA_PRINCIPAL->tablaSegmentos, segmentoNuevo);
@@ -485,9 +518,7 @@ int agregarSegmentoConNombreDeLFS(registroConNombreTabla* registroLFS, int deDon
 }
 
 bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int socketKernel, int deDondeVengo, bool* seEjecutaraJournal) {
-	sem_wait(&unSegmento->mutexSegmento);
-	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(list_size(unSegmento->tablaPaginas), unRegistro, deDondeVengo, socketKernel, seEjecutaraJournal);
-	sem_post(&unSegmento->mutexSegmento);
+	paginaEnTabla* paginaParaAgregar = crearPaginaParaSegmento(unRegistro, deDondeVengo, socketKernel, seEjecutaraJournal);
 
 	if(!paginaParaAgregar) {
 		enviarYLogearMensajeError(-1, "ERROR: No se pudo guardar el registro en la memoria");
@@ -495,6 +526,7 @@ bool agregarPaginaEnSegmento(segmento* unSegmento, registro* unRegistro, int soc
 	}
 
 	sem_wait(&unSegmento->mutexSegmento);
+	paginaParaAgregar->numeroPagina = list_size(unSegmento->tablaPaginas);
 	list_add(unSegmento->tablaPaginas, paginaParaAgregar);
 	sem_post(&unSegmento->mutexSegmento);
 
@@ -699,11 +731,14 @@ void marcarHiloComoSemaforoRealizado(sem_t *semaforo) {
 }
 
 void journalLQL(int socketKernel) {
+	// TODO nuevo semaforo para mutexear journals
+	sem_wait(&MUTEX_JOURNAL); // Para que no se ejecute el timeado con otro que se ejecuto por kernel o consola
 	modificarValorJournalRealizandose(1);
 
 	esperarAHilosEjecutandose(esperarSemaforoDeHilo);
-
+	t_log* logJournal = log_create("journal_inserts_enviados.log", "JOURNAL", 0, LOG_LEVEL_INFO);
 	t_list* insertsAEnviar = list_create();
+	log_info(logJournal, "Comenzando Journal, se enviaran los siguientes inserts:");
 
 	void armarPaqueteParaEnviarALFS(void* segmentoParaArmar) {
 		segmento* unSegmento = (segmento*) segmentoParaArmar;
@@ -712,6 +747,7 @@ void journalLQL(int socketKernel) {
 			paginaEnTabla* unaPagina = (paginaEnTabla*) paginaParaArmar;
 				if(unaPagina->flag) {
 					operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unSegmento->nombreTabla, unaPagina);
+					log_info(logJournal, "%s %s", unaOperacion->operacion, unaOperacion->parametros);
 					list_add(insertsAEnviar, unaOperacion);
 				}
 			}
@@ -733,8 +769,12 @@ void journalLQL(int socketKernel) {
 	list_destroy_and_destroy_elements(insertsAEnviar, liberarOperacionLQL);
 	enviarOMostrarYLogearInfo(socketKernel, "Se realizo el Journal exitosamente.");
 
+	log_info(logJournal, "Journal Realizado.");
+	log_destroy(logJournal);
+
 	modificarValorJournalRealizandose(0);
 	dejarEjecutarOperacionesDeNuevo();
+	sem_post(&MUTEX_JOURNAL);
 }
 
 void liberarRecursosSelectLQL(char* nombreTabla, char *key) {
@@ -801,7 +841,6 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 	}
-	// TODO else journal();
 
 
 	liberarRecursosSelectLQL(nombreTabla, keyString);
@@ -870,7 +909,6 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 			enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
 		};
 	}
-	// TODO else journal();
 	free(value);
 	if(timestamp) free(timestamp);
 	free(key);
@@ -1009,9 +1047,10 @@ bool sonSeedsIguales(seed* unaSeed, seed* otraSeed) {
 void pedirTablaGossip(int socketMemoria) {
 	operacionProtocolo protocolo = TABLAGOSSIP;
 	enviar(socketMemoria, (void*) &protocolo, sizeof(operacionProtocolo));
+	serializarYEnviarTablaGossip(socketMemoria,TABLA_GOSSIP);
 }
 
-void recibirYGuardarEnTablaGossip(int socketMemoria) {
+void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 	void guardarEnTablaGossip(seed* unaSeed) {
 		// Duplicamos strings de IP y Puerto ya que la funcion de recibir libera la seed
 
@@ -1039,7 +1078,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 
 	}
 
-	pedirTablaGossip(socketMemoria);
+	if(estoyPidiendo) {
+		pedirTablaGossip(socketMemoria);
+	}
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
 
@@ -1051,7 +1092,7 @@ bool seedEnTablaGossip(void* seedAComprobar){
 	return list_any_satisfy(TABLA_GOSSIP,esIgualA);
 }
 
-void intentarConexiones() {
+void intentarConexiones(t_log* logGossip) {
 	seed* seedPropia = malloc(sizeof(seed));
 	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
 	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
@@ -1069,15 +1110,11 @@ void intentarConexiones() {
 
 		int socketMemoria = crearSocketCliente(unaSeed->ip, unaSeed->puerto);
 
-		sem_wait(&MUTEX_LOG_CONSOLA);
-		log_info(LOGGER_CONSOLA, "Intentando conexion con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
-		sem_post(&MUTEX_LOG_CONSOLA);
+		log_info(logGossip, "Intentando conexion con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
 
 		if(socketMemoria == -1) {
 			if(tabla==1){
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
-			sem_post(&MUTEX_LOG_CONSOLA);
+			log_info(logGossip, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 
 			seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
 
@@ -1085,14 +1122,12 @@ void intentarConexiones() {
 
 			return;
 			}
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
-			sem_post(&MUTEX_LOG_CONSOLA);
+			log_info(logGossip, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
 			return;
 		}
 
-		log_info(LOGGER_CONSOLA, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
-		recibirYGuardarEnTablaGossip(socketMemoria);
+		log_info(logGossip, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
+		recibirYGuardarEnTablaGossip(socketMemoria, 1);
 		cerrarConexion(socketMemoria);
 	}
 
@@ -1119,9 +1154,11 @@ void intentarConexiones() {
 void* timedGossip() {
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
+	t_log* logGossip = log_create("memoria_gossip.log", "GOSSIP", 0, LOG_LEVEL_INFO);
 
 	while(1) {
-		intentarConexiones();
+		log_info(logGossip, "Gossip Realizandose...");
+		intentarConexiones(logGossip);
 
 		sem_wait(&MUTEX_RETARDO_GOSSIP);
 		int retardoGossip = RETARDO_GOSSIP * 1000;
@@ -1130,6 +1167,8 @@ void* timedGossip() {
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		usleep(retardoGossip);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
+		log_info(logGossip, "Gossip Realizado");
 	}
 }
 
