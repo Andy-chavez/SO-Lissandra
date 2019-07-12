@@ -200,9 +200,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 		printf(">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
 	}
 	void loggearMetrics(memoria* mem){
-		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics,">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
-		pthread_mutex_unlock(&mLogMetrics);
 	}
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
@@ -538,8 +536,11 @@ void kernel_run(char* operacion){
 		}
 		instruccion_auxiliar->operacion= string_duplicate(lineaLeida);
 		list_add(pcb_auxiliar->instruccion,instruccion_auxiliar);
+		free(lineaLeida);
+		lineaLeida = NULL;
 	}
 	agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
+	free(lineaLeida);
 	free(*(opYArg+1));
 	free(*(opYArg));
 	free(opYArg);

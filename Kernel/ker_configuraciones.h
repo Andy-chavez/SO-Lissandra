@@ -170,7 +170,7 @@ void liberarPCB(pcb* elemento) {
 		free(elemento);
 	}
 	else{
-		list_iterate(elemento->instruccion,(void*) liberarInstrucciones);
+		list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 		free(elemento->operacion);
 		free(elemento);
 	}

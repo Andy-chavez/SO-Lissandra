@@ -59,6 +59,7 @@ typedef struct {
 	int numero;
 } t_thread;
 
+t_log* logGLOBAL;
 t_log* logMetrics;
 t_log* logResultados;
 /******************************VARIABLES GLOBALES******************************************/

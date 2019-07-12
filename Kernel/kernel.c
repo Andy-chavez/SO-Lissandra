@@ -63,18 +63,14 @@ int main(int argc, char *argv[]){
 	pthread_cancel(threadDescribe);
 	pthread_cancel(threadMetrics);
 	pthread_cancel(threadGossip);
-	for(int i = 0; i<multiprocesamiento;i++){
-		cancelThreadRR();
-	}
+	cancelThreadRR();
 	pthread_join(threadInotify,NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadDescribe,NULL);
 	pthread_join(threadMetrics, NULL);
 	pthread_join(threadGossip, NULL);
-	for(int i = 0; i<multiprocesamiento;i++){
-		joinThreadRR();
-	}
+	joinThreadRR();
 	kernel_finalizar();
 
 	return EXIT_SUCCESS;

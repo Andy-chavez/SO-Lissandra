@@ -47,9 +47,8 @@ void freeMemoria(memoria* mem3){
 }
 int random_int(int min, int max)
 {
-	int randomInt = min + rand() % (max - min);
-	printf(" ############## el random fue %d", randomInt);
-	return randomInt;
+	//printf(" ############## el random fue %d", randomInt);
+	return min + rand() % (max - min);
 }
 void guardarMemorias(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
