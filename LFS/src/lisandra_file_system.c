@@ -249,6 +249,7 @@ void runearScript(){
 
 		FILE *archivoALeer;
 		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
+	//	archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
@@ -266,11 +267,13 @@ void runearScript(){
 			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
 			operacion->operacion = *(operacionLQL + 0);
 			operacion->parametros = *(operacionLQL + 1);
+			puts(operacion->operacion);
+			puts(operacion->parametros);
 			parserGeneral(operacion, -1);
 //			liberarDoblePuntero(operacionLQL);
 			free(operacionLQL);
 	//		free(lineaLeida);
-			usleep(10000);
+			usleep(100000);
 
 		}
 
@@ -283,7 +286,7 @@ void runearScript(){
 
 int main(int argc, char* argv[]) {
 
-		//leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+//		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
 		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
@@ -296,16 +299,11 @@ int main(int argc, char* argv[]) {
 		inicializarBitmap();
 
 
-//		log_info(loggerConsola,"Inicializando FS");
-		log_info(loggerConsola,"Sopa");
-		log_info(loggerResultadosConsola,"de");
-		log_info(loggerResultados,"macaco");
-		log_info(logger,"una deliciaaa");
+		log_info(loggerConsola,"Inicializando FS");
+		log_info(loggerResultadosConsola,"Aqui iran los resultados de la consola");
+		log_info(loggerResultados,"Aqui iran los resultados de las requests");
+		log_info(logger,"Logger de memoria");
 		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
-
-
-
-		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d",bitarray_get_max_bit(bitarray));
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
@@ -317,6 +315,8 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
+		runearScript();
+
 		sem_init(&binarioLFS, 0, 0);
 
 		struct sigaction terminar;
@@ -325,19 +325,26 @@ int main(int argc, char* argv[]) {
 			terminar.sa_flags = SA_RESTART;
 			sigaction(SIGINT, &terminar, NULL);
 
-//		sem_wait(&binarioLFS);
+			sem_wait(&binarioLFS);
 
-		pthread_cancel(threadServer);
-		pthread_cancel(threadConsola);
-		pthread_cancel(threadDump);
-		pthread_cancel(threadCambiosConfig);
 
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);
+			pthread_cancel(threadServer);
+				pthread_cancel(threadConsola);
+			pthread_cancel(threadDump);
+				pthread_cancel(threadCambiosConfig);
 
-		runearScript();
+				pthread_join(threadServer,NULL);
+				pthread_join(threadConsola,NULL);
+				pthread_join(threadDump,NULL);
+				pthread_join(threadCambiosConfig,NULL);
+
+/*
+				pthread_create(&threadDump, NULL,(void*) dump, NULL);
+				pthread_cancel(threadDump);
+				pthread_join(threadDump,NULL);
+*/
+
+
 
 		liberarVariablesGlobales();
 		system("reset");

@@ -111,7 +111,7 @@ void crearParticiones(char* ruta, int numeroParticiones) {
 
 metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	pthread_mutex_t mutexFS;
-	pthread_mutex_t mutexMemtable;
+	pthread_mutex_t mutexMemtableTabla;
 	pthread_t threadCompactacion;
 	metadataConSemaforo* nuevoMetadata=malloc (sizeof(metadataConSemaforo));
 	nuevoMetadata->hiloDeCompactacion = threadCompactacion;
@@ -120,7 +120,7 @@ metadataConSemaforo* crearMetadataConSemaforo (metadata* unMetadata){
 	nuevoMetadata->tiempoCompactacion = unMetadata->tiempoCompactacion;
 	nuevoMetadata->tipoConsistencia = unMetadata->tipoConsistencia;
 	nuevoMetadata->semaforoFS = mutexFS;
-	nuevoMetadata->semaforoFS = mutexMemtable;
+	nuevoMetadata->semaforoFS = mutexMemtableTabla;
 	free(unMetadata->nombreTabla);
 	free(unMetadata);
 	return nuevoMetadata;
@@ -252,9 +252,9 @@ return registroDeMayorTimestamp;
 
 }
 int devolverConsistencia(char* consistencia){
-	if(string_contains(consistencia,"SC")) return 0;
-	if(string_contains(consistencia,"SHC")) return 1;
-	if(string_contains(consistencia,"EC")) return 2;
+	if(string_equals_ignore_case(consistencia,"SC")) return 0;
+	if(string_equals_ignore_case(consistencia,"SHC")) return 1;
+	if(string_equals_ignore_case(consistencia,"EC")) return 2;
 	return -1;
 }
 
@@ -284,8 +284,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 	unaMetadata->tiempoCompactacion = tiempoCompactacion;
 	unaMetadata->nombreTabla = string_duplicate(nombreTabla);
 
-//	free(consistencia);
-//	config_save(configMetadata);
+	//free(consistencia);
 	config_destroy(configMetadata);
 	free(ruta);
 
@@ -428,6 +427,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
 		pthread_mutex_t semaforoTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
 		soloLoggear(socket,"Buscando registro con key= %d",key);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&semaforoDeTabla);
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
@@ -456,8 +456,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 		} else{
 			pthread_mutex_lock(&semaforoTablaMemtable);
-			if (!(registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(nombreTabla, key,socket))){
+			registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(nombreTabla, key,socket);
 			pthread_mutex_unlock(&semaforoTablaMemtable);
+			if (!(registroBuscado)){
 			soloLoggear(socket,"El registro no se encuentra en la memtable");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket);
 			}
@@ -471,8 +472,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		free(particion);
 
 			if(!registroBuscado) {
-				//if(socket!=-1) enviarError(socket);
-				enviarYLogearMensajeError(socket,"SELECT %s %d: No se encontro el registro",nombreTabla,key);
+				if(socket!=-1) enviarError(socket);
+				soloLoggearError(socket,"SELECT %s %d: No se encontro el registro",nombreTabla,key);
 				soloLoggearResultados(socket,1,"RESULTADO SELECT %s %d es: ERROR",nombreTabla,key);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 				liberarDoblePuntero(argSeparados);
@@ -670,7 +671,10 @@ void funcionDescribe(char* argumentos,int socket) {
 			}
 
 		}
-		if(list_size(listaDeTablas)==0){
+		pthread_mutex_lock(&mutexListaDeTablas);
+		int cantElementos = list_size(listaDeTablas);
+		pthread_mutex_unlock(&mutexListaDeTablas);
+		if(cantElementos ==0){
 			soloLoggearError(socket,"No hay tablas en el FS"); //caso a revisar, que no haya tablas en LFS
 			if(socket!=-1) enviarError(socket);
 			closedir(dir);
@@ -699,7 +703,7 @@ void funcionDescribe(char* argumentos,int socket) {
 						return;
 					}
 					soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
-					soloLoggear("La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
+					soloLoggear(socket, "La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 					liberarMetadata(metadataBuscado);
 		}
 		else {

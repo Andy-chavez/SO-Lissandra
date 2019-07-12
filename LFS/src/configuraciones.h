@@ -128,16 +128,10 @@ void liberarConfigYLogs() {
 	log_destroy(loggerConsola);
 	log_destroy(loggerResultados);
 	log_destroy(loggerResultadosConsola);
-	//+config_save(archivoDeConfig);
-	//config_save(archivoMetadata);
 	config_destroy(archivoDeConfig);
 	config_destroy(archivoMetadata);
 }
 void liberarVariablesGlobales(){
-	//free(puntoMontaje);
-	//free(puertoLisandra);
-	//free(ipLisandra);
-	//free(magicNumber);
 	liberarSemaforos();
 	liberarMemtable();
 	liberarListaDeTablas();
