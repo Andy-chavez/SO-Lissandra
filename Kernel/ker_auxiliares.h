@@ -47,7 +47,9 @@ void freeMemoria(memoria* mem3){
 }
 int random_int(int min, int max)
 {
-   return min + rand() % (max - min);
+	int randomInt = min + rand() % (max - min);
+	printf(" ############## el random fue %d", randomInt);
+	return randomInt;
 }
 void guardarMemorias(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
@@ -85,13 +87,6 @@ void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex
 }
 void actualizarListaMetadata(metadata* met){
 	tabla* t = malloc(sizeof(tabla));
-//	bool tablaYaGuardada(tabla* t){
-//		return string_equals_ignore_case(t->nombreDeTabla,met->nombreTabla);
-//	}
-//	if(list_any_satisfy(tablas,(void*)tablaYaGuardada)){
-//		//liberarMetadata(met);
-//		return;
-//	}
 	pthread_mutex_lock(&mLogResultados);
 	log_info(logResultados, " [R] DESCRIBE %s %d %d %d", met->nombreTabla,
 			met->tipoConsistencia, met->cantParticiones, met->tiempoCompactacion);
@@ -196,8 +191,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 					return -1;
 				}
 			}
-			if(string_contains(opAux->operacion,"INSERT") ||
-					string_contains(opAux->operacion,"SELECT")){
+			if(string_contains(opAux->operacion,"SELECT")){
 				pthread_mutex_lock(&mLogResultados);
 				log_info(logResultados, " [R] %s", recibido);
 				pthread_mutex_unlock(&mLogResultados);
@@ -224,9 +218,7 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		if(socket){
 			if(string_contains(opAux->operacion,"INSERT")){
 				mem->cantidadIns ++;
-				pthread_mutex_lock(&mLogResultados);
-				log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
-				pthread_mutex_unlock(&mLogResultados);
+
 			}
 			else if(string_contains(opAux->operacion,"SELECT")){
 				mem->cantidadSel ++;
