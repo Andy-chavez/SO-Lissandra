@@ -57,7 +57,6 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&mStrong,NULL);
 	pthread_mutex_init(&mHash,NULL);
 	pthread_mutex_init(&mConexion,NULL);
-	pthread_mutex_init(&consola,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&finalizar,0,0);
@@ -137,7 +136,6 @@ void destruirSemaforos(){
 	sem_destroy(&finalizar);
 	sem_destroy(&hayReady);
 	sem_destroy(&modificables);
-	pthread_mutex_destroy(&consola);
 	pthread_mutex_destroy(&colaNuevos);
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);

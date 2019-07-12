@@ -237,7 +237,6 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 		return true;
 	}
 	else if (consolaOLog==1){
-		pthread_mutex_lock(&consola);
 		printf("METRICS: HASH\n"
 						">tiempo en selects de HASH: %lu,\n>tiempo en inserts de HASH: %lu,\n"
 						">cantidad inserts en HASH : %d,\n>cantidad selects en HASH : %d\n",
@@ -259,7 +258,6 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 		pthread_mutex_lock(&mEventual);
 		list_iterate(criterios[EVENTUAL].memorias,(void*)printearMetrics);
 		pthread_mutex_unlock(&mEventual);
-		pthread_mutex_unlock(&consola);
 		return true;
 	}
 	return 0;
@@ -446,7 +444,7 @@ void kernel_almacenar_en_new(char*operacion){
 	//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 }
 void kernel_consola(){
-	pthread_mutex_lock(&consola);
+
 	printf(">> ¡Welcome to Kernel! Ingrese alguna de las siguientes operaciones: \n"
 			"> SELECT [TABLA] [KEY]\n"
 			"> INSERT [TABLA] [KEY] \"[VALUE]\" [TIMESTAMP] \n"
@@ -460,14 +458,14 @@ void kernel_consola(){
 			"> RUN [PATH_ARCHIVO]\n"
 			"> CERRAR\n"
 			"> Y siga su ejecucion mediante el archivo Kernel.log\n");
-	pthread_mutex_unlock(&consola);
+
 	char* linea= NULL;
 	while(!destroy){
 		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
-		pthread_mutex_lock(&consola);
+
 		printf(">");
 		linea = readline("");
-		pthread_mutex_unlock(&consola);
+
 		kernel_almacenar_en_new(linea);
 	}
 	free(linea);

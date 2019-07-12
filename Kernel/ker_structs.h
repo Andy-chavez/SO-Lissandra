@@ -75,7 +75,6 @@ sem_t hayReady;
 sem_t finalizar;
 sem_t modificables;
 
-pthread_mutex_t consola;
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
 pthread_mutex_t mMetadataRefresh;
