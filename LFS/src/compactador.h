@@ -94,7 +94,7 @@ void ingresarNuevaInfo(char* rutaParticion, char* buffer, char** arrayDeBloques)
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, buffer);
 		config_set_value(particion, "SIZE", size);
 
-		config_save(particion);
+		//config_save(particion);
 		config_destroy(particion);
 	liberarDoblePuntero(arrayDeBloquesFinal);
 	free(size);
@@ -308,15 +308,15 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	enviarOMostrarYLogearInfo(-1,"Comenzando compactacion de la tabla: %s\n",metadataDeTabla->nombreTabla);
 
 	while(1){
-		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(metadataDeTabla->tiempoCompactacion*1000);
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		int i;
 		pthread_mutex_lock(&semaforoDeTabla);
 		int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
-		pthread_mutex_unlock(&semaforoDeTabla);
 
 		if(numeroTmp == 0){
+			pthread_mutex_unlock(&semaforoDeTabla);
 			continue;
 		}
 
@@ -335,7 +335,6 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	enviarOMostrarYLogearInfo(-1, "Se leeran los bloques de los archivos temporales");
 
 
-	pthread_mutex_lock(&semaforoDeTabla);
 	for (i = 0; i< numeroTmp; i++){
 
 
@@ -368,7 +367,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 			free(rutaTmpCompactar);
 			free(numeroDeTmp);
 			free(nombreDelTmpc);
-			config_destroy(archivoTmp);
+			//config_destroy(archivoTmp);
 			continue;
 		}
 
