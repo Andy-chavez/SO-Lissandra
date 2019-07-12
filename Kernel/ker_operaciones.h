@@ -90,7 +90,7 @@ bool kernel_describe(char* operacion, int thread){
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLog);
 			pthread_mutex_lock(&mLogResultados);
-			log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux ->parametros);
+			log_info(logResultados, " [E] %s %s", opAux->operacion, opAux ->parametros);
 			pthread_mutex_unlock(&mLogResultados);
 			void* bufferProtocolo = recibir(socket);
 			if(bufferProtocolo == NULL){
@@ -168,7 +168,7 @@ bool kernel_drop(char* operacion, int thread){
 	eliminarTablaCreada(*(parametros+1));
 	liberarParametrosSpliteados(parametros);
 	//liberarOperacionLQL(opAux);
-	return 0;
+	return true;
 }
 // _____________________________.: OPERACIONES DE API DIRECTAS:.____________________________________________
 bool kernel_journal(){
@@ -311,10 +311,10 @@ bool kernel_memories(){
 	void printearMemories(memoria* mem){
 		printf(">MEMORIA %d IP %s PUERTO %s\n",mem->numero,mem->ip, mem->puerto);
 	}
-	pthread_mutex_lock(&consola);
+	//pthread_mutex_lock(&consola);
 	printf("MEMORIES:\n");
 	list_iterate(memorias,(void*)printearMemories);
-	pthread_mutex_unlock(&consola);
+	//pthread_mutex_unlock(&consola);
 	return true;
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________

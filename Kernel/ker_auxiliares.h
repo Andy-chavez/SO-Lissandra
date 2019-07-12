@@ -93,7 +93,7 @@ void actualizarListaMetadata(metadata* met){
 //		return;
 //	}
 	pthread_mutex_lock(&mLogResultados);
-	log_info(logResultados, " RECIBIDO: DESCRIBE %s %d %d %d", met->nombreTabla,
+	log_info(logResultados, " [R] DESCRIBE %s %d %d %d", met->nombreTabla,
 			met->tipoConsistencia, met->cantParticiones, met->tiempoCompactacion);
 	pthread_mutex_unlock(&mLogResultados);
 	t->nombreDeTabla = string_duplicate(met->nombreTabla);
@@ -199,7 +199,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 			if(string_contains(opAux->operacion,"INSERT") ||
 					string_contains(opAux->operacion,"SELECT")){
 				pthread_mutex_lock(&mLogResultados);
-				log_info(logResultados, " RECIBIDO: %s", recibido);
+				log_info(logResultados, " [R] %s", recibido);
 				pthread_mutex_unlock(&mLogResultados);
 			}
 			thread_loggearInfoYLiberarParametrosRECIBIDO(thread,recibido,opAux);
@@ -225,13 +225,13 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			if(string_contains(opAux->operacion,"INSERT")){
 				mem->cantidadIns ++;
 				pthread_mutex_lock(&mLogResultados);
-				log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+				log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
 				pthread_mutex_unlock(&mLogResultados);
 			}
 			else if(string_contains(opAux->operacion,"SELECT")){
 				mem->cantidadSel ++;
 				pthread_mutex_lock(&mLogResultados);
-				log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+				log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
 				pthread_mutex_unlock(&mLogResultados);
 			}
 			serializarYEnviarOperacionLQL(socket, opAux);
@@ -298,13 +298,13 @@ int hash_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		if(string_contains(opAux->operacion,"INSERT")){
 			mem->cantidadIns += 1;
 			pthread_mutex_lock(&mLogResultados);
-			log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+			log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLogResultados);
 		}
 		else if(string_contains(opAux->operacion,"SELECT")){
 			mem->cantidadSel += 1;
 			pthread_mutex_lock(&mLogResultados);
-			log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+			log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLogResultados);
 		}
 		serializarYEnviarOperacionLQL(socket, opAux);
@@ -350,13 +350,13 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			if(string_contains(opAux->operacion,"INSERT")){
 				mem->cantidadIns += 1;
 				pthread_mutex_lock(&mLogResultados);
-				log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+				log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
 				pthread_mutex_unlock(&mLogResultados);
 			}
 			else if(string_contains(opAux->operacion,"SELECT")){
 				mem->cantidadSel += 1;
 				pthread_mutex_lock(&mLogResultados);
-				log_info(logResultados, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
+				log_info(logResultados, " [E] %s %s", opAux->operacion, opAux->parametros);
 				pthread_mutex_unlock(&mLogResultados);
 			}
 			serializarYEnviarOperacionLQL(socket, opAux);
