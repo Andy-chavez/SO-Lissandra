@@ -59,7 +59,7 @@ typedef struct {
 	int numero;
 } t_thread;
 
-t_log* logGLOBAL;
+
 t_log* logMetrics;
 t_log* logResultados;
 /******************************VARIABLES GLOBALES******************************************/
@@ -153,6 +153,7 @@ void guardarMemorias(seed* unaSeed);
 void agregarTablaVerificandoSiLaTengo(tabla* t);
 void agregarTablaVerificandoSiLaTengo(tabla* t);
 void agregarMemoriaVerificandoSiLaTengo(memoria* memAux);
+void liberarTabla(tabla* t);
 
 int socketMemoriaSolicitada(consistencia criterio);
 int obtenerIndiceDeConsistencia(consistencia unaConsistencia);

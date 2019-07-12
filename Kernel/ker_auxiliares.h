@@ -47,13 +47,11 @@ void freeMemoria(memoria* mem3){
 }
 int random_int(int min, int max)
 {
-	//printf(" ############## el random fue %d", randomInt);
 	return min + rand() % (max - min);
 }
 void guardarMemorias(seed* unaSeed){
 	memoria* memAux = malloc(sizeof(memoria));
 	memAux->numero = unaSeed->numero;
-	//memAux->puerto = malloc(sizeof(unaSeed->puerto));
 	memAux->puerto = string_duplicate(unaSeed->puerto);
 	memAux->ip = string_duplicate(unaSeed->ip);
 	memAux->cantidadIns = 0;
@@ -154,7 +152,7 @@ void describeTimeado(){ //set a disabled, enabled en donde quiero que corte
 				pthread_mutex_unlock(&mLog);
 			}
 			pthread_mutex_lock(&mLog);
-			log_info(kernel_configYLog->log, " RECIBIDO[TIMED]: Describe realizado");
+			log_info(kernel_configYLog->log, " @@ Describe realizado");
 			pthread_mutex_unlock(&mLog);
 			cerrarConexion(socket);
 			free(bufferProtocolo);
@@ -176,6 +174,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		}
 		if(recibidoContiene(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
+			free(recibido);
 			cerrarConexion(socket);
 			return -1;
 		}
@@ -186,6 +185,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 				recibido = (char*) recibir(socket);
 				if(recibidoContiene(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);
+					free(recibido);
 					cerrarConexion(socket);
 					return -1;
 				}
@@ -439,7 +439,7 @@ void guardarTablaCreada(char* parametros){
 		tablaAux->consistenciaDeTabla = EC;
 	}
 	agregarTablaVerificandoSiLaTengo(tablaAux);
-
+	liberarParametrosSpliteados(opAux); //cambie esto
 }
 void agregarTablaVerificandoSiLaTengo(tabla* t){
 	bool yaGuardeTabla(tabla* tab){
@@ -451,15 +451,23 @@ void agregarTablaVerificandoSiLaTengo(tabla* t){
 	if(!boleanFind){
 		agregarALista(tablas,t,mTablas);
 	}
+	else{
+		liberarTabla(t);
+	}
 }
 void eliminarTablaCreada(char* parametros){
 	bool tablaDeNombre(tabla* t){
-			return t->nombreDeTabla == parametros;
+			if(t->nombreDeTabla == parametros){
+				free(t->nombreDeTabla);
+				free(t);
+				return true;
+			}
+			return false;
 		}
 	pthread_mutex_lock(&mTablas);
-	tabla* tablaAux = list_remove_by_condition(tablas, (void*)tablaDeNombre);
+	list_remove_by_condition(tablas, (void*)tablaDeNombre);
 	pthread_mutex_unlock(&mTablas);
-	free(tablaAux);
+
 }
 tabla* encontrarTablaPorNombre(char* nombre){
 	bool tablaDeNombre(tabla* t){

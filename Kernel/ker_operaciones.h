@@ -29,12 +29,13 @@ bool kernel_insert(char* operacion, int thread){
 	int index =  obtenerIndiceDeConsistencia(consist);
 	if((enviarOperacion(opAux,index,thread))== -1){
 		tiempo = time(NULL) - tiempo;
-		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		actualizarTiemposInsert(index,tiempo); //((double)tiempo)/CLOCKS_PER_SEC;
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 	tiempo = time(NULL) - tiempo;
-	criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+	criterios[index].tiempoInserts +=  tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+	actualizarTiemposInsert(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
 }
