@@ -199,10 +199,10 @@ void liberarSegmento(void* segmentoEnMemoria) {
 	printf("se espera al segmento %s para liberarSegmento\n", unSegmento->nombreTabla);
 	sem_wait(&unSegmento->mutexSegmento);
 	printf("Se va a pasar a eliminar el segmento %s en liberarSegmento\n", unSegmento->nombreTabla);
-		free(unSegmento->nombreTabla);
-		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
+	free(unSegmento->nombreTabla);
+	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
 	sem_post(&unSegmento->mutexSegmento);
-		free(unSegmento);
+	free(unSegmento);
 
 }
 
@@ -306,6 +306,22 @@ marco* algoritmoLRU() {
 
 	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
 	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
+
+	bool eliminarPaginaSeleccionadaPorLRU(void* unaPagina) {
+		paginaEnTabla* paginaAEliminar = (paginaEnTabla*) unaPagina;
+		return paginaACambiar->marco == paginaAEliminar->marco;
+	}
+
+	void encontrarYEliminarPagina(void* unSegmento) {
+		segmento* segmentoConPaginaParaEliminar = (segmento*) unSegmento;
+		sem_wait(&segmentoConPaginaParaEliminar->mutexSegmento);
+		list_remove_by_condition(segmentoConPaginaParaEliminar->tablaPaginas, eliminarPaginaSeleccionadaPorLRU);
+		sem_post(&segmentoConPaginaParaEliminar->mutexSegmento);
+	}
+
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
+	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, encontrarYEliminarPagina);
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 	sem_post(&BINARIO_ALGORITMO_LRU);
 	return encontrarMarcoEscrito(paginaACambiar->marco);
@@ -859,7 +875,10 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel, &seEjecutaraJournal)){
-			enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
+			char *mensaje = string_new();
+			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
+			enviarOMostrarYLogearInfo(socketKernel, mensaje);
+			free(mensaje);
 			free(registroLFS->value);
 			free(registroLFS->nombreTabla);
 			free(registroLFS);

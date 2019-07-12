@@ -362,7 +362,7 @@ int main() {
 	liberarTablaMarcos();
 	liberarTablaGossip();
 
-	// system("reset");
+	system("reset");
 	return 0;
 
 }
