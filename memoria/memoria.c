@@ -50,7 +50,7 @@ bool APIProtocolo(void* buffer, int socket) {
 	case TABLAGOSSIP:
 		enviarOMostrarYLogearInfo(-1, "Una memoria o el kernel se comunico conmigo. Enviando mi tabla de gossip...");
 		sem_wait(&MUTEX_TABLA_GOSSIP);
-		recibirYGuardarEnTablaGossip(socket);
+		recibirYGuardarEnTablaGossip(socket, 0);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 		return true;

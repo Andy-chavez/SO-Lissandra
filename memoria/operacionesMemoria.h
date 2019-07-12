@@ -71,7 +71,7 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel);
 void cargarSeeds();
 bool sonSeedsIguales(seed* unaSeed, seed* otraSeed);
 void pedirTablaGossip(int socketMemoria);
-void recibirYGuardarEnTablaGossip(int socketMemoria);
+void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo);
 void intentarConexiones();
 void* timedGossip();
 void* timedJournal();
@@ -196,7 +196,9 @@ void liberarSegmento(void* segmentoEnMemoria) {
 		free((paginaEnTabla*) paginaEnLaTabla);
 	}
 
+	printf("se espera al segmento %s para liberarSegmento\n", unSegmento->nombreTabla);
 	sem_wait(&unSegmento->mutexSegmento);
+	printf("Se va a pasar a eliminar el segmento %s en liberarSegmento\n", unSegmento->nombreTabla);
 		free(unSegmento->nombreTabla);
 		list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarPaginas);
 	sem_post(&unSegmento->mutexSegmento);
@@ -227,7 +229,9 @@ void vaciarMemoria() {
 		marco* unMarco = (marco*) marcoAMarcar;
 		unMarco->estaEnUso = 0;
 	}
+	printf("Se va a esperar la tabla de marcos para vaciarMemoria\n");
 	sem_wait(&MUTEX_TABLA_MARCOS);
+	printf("Se va a pasar a liberar la tabla de marcos\n");
 	list_iterate(TABLA_MARCOS, marcarMarcoComoDisponible);
 	sem_post(&MUTEX_TABLA_MARCOS);
 
@@ -235,7 +239,9 @@ void vaciarMemoria() {
 
 	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria); // para que se vea lindo despues de hacer el journal tambien
 
+	printf("Se va a esperar a la tabla de segmentos para vaciarMemoria\n");
 	sem_wait(&MUTEX_TABLA_SEGMENTOS);
+	printf("Se va a pasar a liberar la tabla de segmentos en vaciarMemoria\n");
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
 	MEMORIA_PRINCIPAL->tablaSegmentos = list_create();
 	sem_post(&MUTEX_TABLA_SEGMENTOS);
@@ -279,12 +285,17 @@ marco* algoritmoLRU() {
 
 	void iterarSegmento(void* unSegmento){
 		segmento* segmentoAIterar = (segmento*) unSegmento;
+
+		printf("se va a esperar el semaforo del segmento %s para iterarlo\n", segmentoAIterar->nombreTabla);
 		sem_wait(&segmentoAIterar->mutexSegmento);
+		printf("se va a iterar el segmento %s\n", segmentoAIterar->nombreTabla);
 		list_iterate(segmentoAIterar->tablaPaginas, compararTimestamp);
 		sem_post(&segmentoAIterar->mutexSegmento);
 	}
 
+	printf("Se va a esperar a la tabla de segmentos para el algoritmoLRU\n");
 	sem_wait(&MUTEX_TABLA_SEGMENTOS);
+	printf("Se va a pasar a ejecutar el algoritmoLRU");
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, iterarSegmento);
 	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
@@ -307,11 +318,11 @@ marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 	marco* marcoLibre;
 
 	int valorSemBinario;
-	int valorSemMutex;
 	sem_getvalue(&BINARIO_ALGORITMO_LRU, &valorSemBinario);
+	printf("valor del semaforo binario algoritmo LRU en encontrarEspacio: %d\n", valorSemBinario);
+	int valorSemMutex;
 	sem_getvalue(&MUTEX_TABLA_MARCOS, &valorSemMutex);
-	printf("%d\n", valorSemBinario);
-	printf("%d\n", valorSemMutex);
+	printf("valor del semaforo mutex tablamarcos en encontrarEspacio: %d\n", valorSemMutex);
 
 	sem_wait(&BINARIO_ALGORITMO_LRU);
 	printf("pase el binario \n");
@@ -396,6 +407,10 @@ int guardarEnMemoria(registroConNombreTabla* unRegistro,int socketKernel, bool* 
 registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	registro* registroARetornar = malloc(sizeof(registro));
 
+	int valorSemMutex;
+	sem_getvalue(&MUTEX_TABLA_MARCOS, &valorSemMutex);
+	printf("valor del semaforo mutex tablamarcos en leerDatosEnMemoria: %d\n", valorSemMutex);
+
 	sem_wait(&MUTEX_TABLA_MARCOS);
 	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
 
@@ -414,6 +429,10 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
 	bufferDePagina* bufferParaCambio = armarBufferDePagina((registroConNombreTabla*) registroNuevo, MEMORIA_PRINCIPAL->tamanioMaximoValue);
+
+	int valorSemMutex;
+	sem_getvalue(&MUTEX_TABLA_MARCOS, &valorSemMutex);
+	printf("valor del semaforo mutex tablamarcos en encontrarEspacio: %d\n", valorSemMutex);
 
 	sem_wait(&MUTEX_TABLA_MARCOS);
 	marco* marcoACambiarValue = list_get(TABLA_MARCOS, registroACambiar->marco);
@@ -436,10 +455,12 @@ void* pedirALFS(operacionLQL *operacion) {
 	sem_getvalue(&MUTEX_SOCKET_LFS, &valor);
 	printf("valor mutex socketlfs %d\n", valor);
 	sem_wait(&MUTEX_SOCKET_LFS);
+	printf("Paso el wait del mutex de socketLFS\n");
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
+		SOCKET_LFS = -1;
 	} else if(empezarDeserializacion(&buffer) == ERROR) {
 		sem_post(&MUTEX_SOCKET_LFS);
 		return NULL;
@@ -579,8 +600,8 @@ void dropearSegmento(segmento* unSegmento) {
 		return unSegmento->nombreTabla == ((segmento*) otroSegmento)->nombreTabla;
 	}
 
-	sem_wait(&MUTEX_TABLA_MARCOS);
 	sem_wait(&unSegmento->mutexSegmento);
+	sem_wait(&MUTEX_TABLA_MARCOS);
 	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
 	sem_post(&unSegmento->mutexSegmento);
 	sem_post(&MUTEX_TABLA_MARCOS);
@@ -703,7 +724,12 @@ hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
 		return pthread_equal(hilo, ((hiloEnTabla*) unHilo)->thread);
 	}
 
+	int valorMutexTablaThreads;
+	sem_getvalue(&MUTEX_TABLA_THREADS, &valorMutexTablaThreads);
+	printf("valor Mutex Tabla Threads en obtenerHiloEnTabla: %d\n", valorMutexTablaThreads);
+
 	sem_wait(&MUTEX_TABLA_THREADS);
+	printf("Paso el mutex de tabla threads en obtenerHiloEnTabla\n");
 	hiloEnTabla* unHilo = (hiloEnTabla*) list_find(TABLA_THREADS, esHiloPropio);
 	sem_post(&MUTEX_TABLA_THREADS);
 
@@ -713,7 +739,7 @@ hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
 void marcarHiloRealizandoSemaforo(sem_t *semaforo) {
 	// En el caso en que el journal ya se esta ejecutando, tendra que esperar a que el journal termine de ejecutar. Por lo tanto espera de nuevo a su propio semaforo
 	// (El journal lo liberara)
-	sem_wait(semaforo);
+	sem_wait(semaforo); // yeah idk why this is here
 }
 
 void verSiHayJournalEjecutandose(sem_t *semaforo) {
@@ -745,7 +771,7 @@ void journalLQL(int socketKernel) {
 
 		void agregarAPaqueteSiModificado(void* paginaParaArmar) {
 			paginaEnTabla* unaPagina = (paginaEnTabla*) paginaParaArmar;
-				if(unaPagina->flag) {
+				if(unaPagina->flag == SI) {
 					operacionLQL* unaOperacion = armarInsertLQLParaPaquete(unSegmento->nombreTabla, unaPagina);
 					log_info(logJournal, "%s %s", unaOperacion->operacion, unaOperacion->parametros);
 					list_add(insertsAEnviar, unaOperacion);
@@ -804,6 +830,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			char* value = valueRegistro(paginaEncontrada);
 			char *mensaje = string_new();
 			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", value);
+			paginaEncontrada->timestamp = time(NULL);
 
 			enviarOMostrarYLogearInfo(socketKernel, mensaje);
 			free(value);
@@ -814,7 +841,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 			else if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0, &seEjecutaraJournal)) {
 				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
@@ -829,7 +856,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
 		if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
-			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un error al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel, &seEjecutaraJournal)){
 			enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
@@ -893,7 +920,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
-			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel,1, &seEjecutaraJournal)){
+			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel, 1, &seEjecutaraJournal)){
 				enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 			} else if(!seEjecutaraJournal){
 				enviarYLogearMensajeError(socketKernel, "ERROR: Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionInsert->operacion, operacionInsert->parametros);
@@ -1022,11 +1049,21 @@ void cargarSeeds() {
 		unaSeedParaTablaDeSeeds->puerto = string_duplicate(*(puertos + i));
 		unaSeedParaTablaDeSeeds->numero = -1;
 
+		int valorMutexTablaGossip;
+		sem_getvalue(&MUTEX_TABLA_GOSSIP, &valorMutexTablaGossip);
+		printf("valor Mutex Tabla Gossip en cargarSeeds: %d\n", valorMutexTablaGossip);
+
 		sem_wait(&MUTEX_TABLA_GOSSIP);
+		printf("Paso el valor del mutex de tabla gossip en cargarSeeds\n");
 		list_add(TABLA_GOSSIP, unaSeedParaTablaGossip);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 
+		int valorMutexSeedsConfig;
+		sem_getvalue(&MUTEX_TABLA_SEEDS_CONFIG, &valorMutexSeedsConfig);
+		printf("valor Mutex Tabla Seeds en cargarSeeds: %d\n", valorMutexSeedsConfig);
+
 		sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
+		printf("Paso el valor del mutex de seeds config en cargarSeeds\n");
 		list_add(TABLA_SEEDS_CONFIG, unaSeedParaTablaDeSeeds);
 		sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
 
@@ -1050,7 +1087,7 @@ void pedirTablaGossip(int socketMemoria) {
 	serializarYEnviarTablaGossip(socketMemoria,TABLA_GOSSIP);
 }
 
-void recibirYGuardarEnTablaGossip(int socketMemoria) {
+void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 	void guardarEnTablaGossip(seed* unaSeed) {
 		// Duplicamos strings de IP y Puerto ya que la funcion de recibir libera la seed
 
@@ -1078,7 +1115,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria) {
 
 	}
 
-	pedirTablaGossip(socketMemoria);
+	if(estoyPidiendo) {
+		pedirTablaGossip(socketMemoria);
+	}
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
 
@@ -1125,7 +1164,7 @@ void intentarConexiones(t_log* logGossip) {
 		}
 
 		log_info(logGossip, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
-		recibirYGuardarEnTablaGossip(socketMemoria);
+		recibirYGuardarEnTablaGossip(socketMemoria, 1);
 		cerrarConexion(socketMemoria);
 	}
 
@@ -1139,11 +1178,21 @@ void intentarConexiones(t_log* logGossip) {
 		}
 	}
 
+	int valorMutexTablaGossip;
+	sem_getvalue(&MUTEX_TABLA_GOSSIP, &valorMutexTablaGossip);
+	printf("valor Mutex Tabla Gossip en intentarConexiones: %d\n", valorMutexTablaGossip);
+
 	sem_wait(&MUTEX_TABLA_GOSSIP);
+	printf("paso el mutex de tabla gossip en intentarConexiones\n");
 	list_iterate(TABLA_GOSSIP, intentarConexionTablaGossip);
 	sem_post(&MUTEX_TABLA_GOSSIP);
 
+	int valorMutexSeedsConfig;
+	sem_getvalue(&MUTEX_TABLA_SEEDS_CONFIG, &valorMutexSeedsConfig);
+	printf("valor Mutex Tabla Seeds en intentarConexiones: %d\n", valorMutexSeedsConfig);
+
 	sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
+	printf("paso el mutex de tabla seeds en intentarConexiones\n");
 	list_iterate(TABLA_SEEDS_CONFIG, intentarConexionTablaConfig);
 	sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
 	liberarSeed(seedPropia);
@@ -1199,7 +1248,12 @@ void agregarHiloAListaDeHilos() {
 	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
 	sem_init(hiloPropio->cancelarThread, 0 , 0);
 
+	int valorMutexTablaThreads;
+	sem_getvalue(&MUTEX_TABLA_THREADS, &valorMutexTablaThreads);
+	printf("valor Mutex Tabla Threads en agregarHiloAListaDeHilos: %d\n", valorMutexTablaThreads);
+
 	sem_wait(&MUTEX_TABLA_THREADS);
+	printf("paso el mutex de tabla threads en agregarHiloAListaDeHilos\n");
 	list_add(TABLA_THREADS, hiloPropio);
 	sem_post(&MUTEX_TABLA_THREADS);
 }
@@ -1216,7 +1270,12 @@ void eliminarHiloDeListaDeHilos() {
 		return false;
 	}
 
+	int valorMutexTablaThreads;
+	sem_getvalue(&MUTEX_TABLA_THREADS, &valorMutexTablaThreads);
+	printf("valor Mutex Tabla Threads en eliminarHiloDeListaDeHilos: %d\n", valorMutexTablaThreads);
+
 	sem_wait(&MUTEX_TABLA_THREADS);
+	printf("paso el mutex de tabla threads en eliminarHiloDeListaDeHilos\n");
 	list_remove_by_condition(TABLA_THREADS, esElPropioThread);
 	sem_post(&MUTEX_TABLA_THREADS);
 }
@@ -1224,15 +1283,24 @@ void eliminarHiloDeListaDeHilos() {
 void* esperarSemaforoDeHilo(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
-		sem_wait(hiloAEsperar->semaforoOperacion);
+		int valorMutexOperacionDeHilo;
+		sem_getvalue(hiloAEsperar->semaforoOperacion, &valorMutexOperacionDeHilo);
+		printf("valor MutexOperacion del hilo %d en esperarSemaforoDeHilo: %d\n", hiloAEsperar->thread, valorMutexOperacionDeHilo);
 
+		sem_wait(hiloAEsperar->semaforoOperacion);
+		printf("paso el mutex de semaforoOperacion del thread %d en esperarSemaforoDeHilo\n", hiloAEsperar->thread);
 		pthread_exit(0);
 }
 
 void* esperarSemaforoDeCancelar(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
+		int valorMutexCancelacionDeHilo;
+		sem_getvalue(hiloAEsperar->cancelarThread, &valorMutexCancelacionDeHilo);
+		printf("valor MutexOperacion del hilo %d en esperarSemaforoDeHilo: %d\n", hiloAEsperar->thread, valorMutexCancelacionDeHilo);
+
 		sem_wait(hiloAEsperar->cancelarThread);
+		printf("paso el mutex de cancelarThread del thread %d en esperarSemaforoDeCancelar\n", hiloAEsperar->thread);
 
 		pthread_exit(0);
 }
@@ -1255,7 +1323,12 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 		list_add(listaHilosEsperandoSemaforos, unHiloQueEspera);
 	}
 
+	int valorMutexTablaThreads;
+	sem_getvalue(&MUTEX_TABLA_THREADS, &valorMutexTablaThreads);
+	printf("valor Mutex Tabla Threads en esperarHilosEjecutandose: %d\n", valorMutexTablaThreads);
+
 	sem_wait(&MUTEX_TABLA_THREADS);
+	printf("paso el mutex de tabla threads en esperarAHilosEjecutandose\n");
 	list_iterate(TABLA_THREADS, crearHiloParaEsperar);
 	sem_post(&MUTEX_TABLA_THREADS);
 
@@ -1265,10 +1338,16 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 
 void dejarEjecutarOperacionesDeNuevo() {
 	void postSemaforoDelHilo(void* hilo) {
+		printf("Se deja que siga el curso el hilo %d\n", ((hiloEnTabla*) hilo)->thread);
 		sem_post(((hiloEnTabla*) hilo)->semaforoOperacion);
 	}
 
+	int valorMutexTablaThreads;
+	sem_getvalue(&MUTEX_TABLA_THREADS, &valorMutexTablaThreads);
+	printf("valor Mutex Tabla Threads en dejarEjecutarOperacionesDeNuevo: %d\n", valorMutexTablaThreads);
+
 	sem_wait(&MUTEX_TABLA_THREADS);
+	printf("paso el mutex de tabla threads en dejarEjecutarOperacionesDeNuevo\n");
 	list_iterate(TABLA_THREADS, postSemaforoDelHilo);
 	sem_post(&MUTEX_TABLA_THREADS);
 }
@@ -1292,5 +1371,7 @@ void cleanupTrabajarConConexion() {
 
 void esperarParaCancelarConsola(pthread_t hiloConsola){
 	hiloEnTabla* hilo = obtenerHiloEnTabla(hiloConsola);
+	printf("se espera el hilo de consola para cancelarla\n");
 	sem_wait(hilo->cancelarThread);
+	printf("paso el wait, va a cancelar");
 }
