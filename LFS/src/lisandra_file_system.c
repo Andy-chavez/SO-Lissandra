@@ -163,18 +163,25 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf("-------CERRAR---------\n");
 	    printf ("Ingresa operacion\n");
-
 	    while ((linea = readline(""))){
-	    			string_to_upper(linea);
+	    	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+	    	string_to_upper(linea);
 	    			if(string_equals_ignore_case(linea,"Cerrar"))
 	    			{
-	    			cerrar();
+	    				free(linea);
+	    				cerrar();
+	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    			}
 	    			else if(esOperacionEjecutable(linea)){
-	    	    		parserGeneral(splitear_operacion(linea),socket);
+	    				free (linea);
+	    				pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+	    				parserGeneral(splitear_operacion(linea),socket);
+	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    	    	}
 	    	    		else{
-	    	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
+	    	    			free (linea);
+	    	    			soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
+	    	    			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    	    		}
 	    	    }
 	    free (linea);
@@ -301,7 +308,7 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		runearScript();
+		//runearScript();
 
 
 		sem_init(&binarioLFS, 0, 0);
@@ -325,5 +332,6 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadCambiosConfig,NULL);
 
 		liberarVariablesGlobales();
+		system("reset");
 return EXIT_SUCCESS;
 }
