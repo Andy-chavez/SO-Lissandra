@@ -210,18 +210,29 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 				">tiempo en selects de HASH: %lu,\n>tiempo en inserts de HASH: %lu,\n"
 				">cantidad inserts en HASH : %d,\n>cantidad selects en HASH : %d\n",
 				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect);
+		pthread_mutex_lock(&mHash);
+		list_iterate(criterios[HASH].memorias,(void*)loggearMetrics);
+		pthread_mutex_unlock(&mHash);
 		pthread_mutex_unlock(&mLogMetrics);
+
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: STRONG\n"
 				">tiempo en selects de STRONG: %lu,\n>tiempo en inserts de STRONG: %lu,\n"
 				">cantidad inserts en STRONG : %d,\n>cantidad selects en STRONG : %d\n",
 				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect);
+		pthread_mutex_lock(&mStrong);
+		list_iterate(criterios[STRONG].memorias,(void*)loggearMetrics);
+		pthread_mutex_unlock(&mStrong);
 		pthread_mutex_unlock(&mLogMetrics);
+
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: EVENTUAL\n"
 				">tiempo en selects de EVENTUAL: %lu,\n>tiempo en inserts de EVENTUAL: %lu,\n"
 				">cantidad inserts en EVENTUAL : %d,\n>cantidad selects en EVENTUAL : %d\n",
 				eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
+		pthread_mutex_lock(&mEventual);
+		list_iterate(criterios[EVENTUAL].memorias,(void*)loggearMetrics);
+		pthread_mutex_unlock(&mEventual);
 		pthread_mutex_unlock(&mLogMetrics);
 		return true;
 	}
@@ -270,7 +281,6 @@ bool kernel_add(char* operacion){
 	if((mem = encontrarMemoria(numero))){
 		if(string_contains(*(opAux+4),"SHC")){
 			agregarCriterioVerificandoSiLaTengo(mem,HASH,mHash);
-			//agregarALista(criterios[HASH].memorias, mem, mHash);
 			journal_consistencia(HASH);
 			liberarParametrosSpliteados(opAux);
 			return true;
@@ -278,7 +288,6 @@ bool kernel_add(char* operacion){
 		else if(string_contains(*(opAux+4),"SC")){
 			if(list_size(criterios[STRONG].memorias)==0){
 				agregarCriterioVerificandoSiLaTengo(mem,STRONG,mStrong);
-				//agregarALista(criterios[STRONG].memorias, mem, mStrong);
 				liberarParametrosSpliteados(opAux);
 				return true;
 			}
@@ -292,7 +301,6 @@ bool kernel_add(char* operacion){
 		}
 		else if(string_contains(*(opAux+4),"EC")){
 			agregarCriterioVerificandoSiLaTengo(mem,EVENTUAL,mEventual);
-			//agregarALista(criterios[EVENTUAL].memorias, mem, mEventual);
 			liberarParametrosSpliteados(opAux);
 			return true;
 		}
