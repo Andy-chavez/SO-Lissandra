@@ -452,7 +452,7 @@ void guardarTablaCreada(char* parametros){
 }
 void agregarTablaVerificandoSiLaTengo(tabla* t){
 	bool yaGuardeTabla(tabla* tab){
-		return string_equals_ignore_case(t->nombreDeTabla,tab->nombreDeTabla) && t->consistenciaDeTabla == tab->consistenciaDeTabla;
+		return string_equals_ignore_case(t->nombreDeTabla,tab->nombreDeTabla);// && t->consistenciaDeTabla == tab->consistenciaDeTabla;
 	}
 	pthread_mutex_lock(&mTablas);
 	bool boleanFind = list_find(tablas,(void*)yaGuardeTabla);
