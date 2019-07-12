@@ -51,8 +51,9 @@ void dump(){
 		pthread_mutex_lock(&mutexTiempoDump);
 		tiempoActual = tiempoDump;
 		pthread_mutex_unlock(&mutexTiempoDump);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(tiempoActual*1000);
-
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&mutexMemtable);
 		if(memtable->elements_count==0){
 			pthread_mutex_unlock(&mutexMemtable);

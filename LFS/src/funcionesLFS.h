@@ -251,6 +251,12 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int ke
 return registroDeMayorTimestamp;
 
 }
+int devolverConsistencia(char* consistencia){
+	if(string_contains(consistencia,"SC")) return 0;
+	if(string_contains(consistencia,"SHC")) return 1;
+	if(string_contains(consistencia,"EC")) return 2;
+	return -1;
+}
 
 metadata* obtenerMetadata(char* nombreTabla){
 	string_to_upper(nombreTabla);
@@ -269,7 +275,8 @@ metadata* obtenerMetadata(char* nombreTabla){
 	configMetadata = config_create(ruta);
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
-	tipoConsistencia = config_get_int_value(configMetadata, "CONSISTENCY");
+	char* consistencia = config_get_string_value(configMetadata, "CONSISTENCY");
+	tipoConsistencia = devolverConsistencia(consistencia);
 	tiempoCompactacion = config_get_int_value(configMetadata, "COMPACTION_TIME"); //OJO ES COMPACTION TIME Y NO COMPACTATION
 
 	unaMetadata->cantParticiones = cantParticiones;
@@ -277,6 +284,8 @@ metadata* obtenerMetadata(char* nombreTabla){
 	unaMetadata->tiempoCompactacion = tiempoCompactacion;
 	unaMetadata->nombreTabla = string_duplicate(nombreTabla);
 
+	free(consistencia);
+	config_save(configMetadata);
 	config_destroy(configMetadata);
 	free(ruta);
 
@@ -318,11 +327,13 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 		t_list* registrosConLaKeyEnListaRegistros = list_filter(listaRegistros, encontrarLaKey);
 					if (registrosConLaKeyEnListaRegistros->elements_count == 0){
 						soloLoggearError(socket,"No se encuentra la key en los bloques de tmp y particion\n");
+						list_destroy(registrosConLaKeyEnListaRegistros);
 						return NULL;
 						}
 					else{
 				registroBuscado= list_fold(registrosConLaKeyEnListaRegistros, list_get(registrosConLaKeyEnListaRegistros,0), cualEsElMayorTimestamp);
 				soloLoggear(socket,"Registro encontrado en bloques");
+				list_destroy(registrosConLaKeyEnListaRegistros);
 				}
 				return registroBuscado;
 }
@@ -408,7 +419,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 	}
 	if(verificarExistenciaDirectorioTabla(nombreTabla,socket) ==0){
-		soloLoggearError(socket,"No se encontro el directorio");
 		if(socket!=-1) {
 			enviarError(socket);
 		}
@@ -461,8 +471,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		free(particion);
 
 			if(!registroBuscado) {
-				if(socket!=-1) enviarError(socket);
-				soloLoggearError(socket,"SELECT %s %d: No se encontro el registro",nombreTabla,key);
+				//if(socket!=-1) enviarError(socket);
+				enviarYLogearMensajeError(socket,"SELECT %s %d: No se encontro el registro",nombreTabla,key);
 				soloLoggearResultados(socket,1,"RESULTADO SELECT %s %d es: ERROR",nombreTabla,key);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 				liberarDoblePuntero(argSeparados);
@@ -689,6 +699,7 @@ void funcionDescribe(char* argumentos,int socket) {
 						return;
 					}
 					soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
+					soloLoggear("La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 					liberarMetadata(metadataBuscado);
 		}
 		else {
