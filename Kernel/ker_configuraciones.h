@@ -57,7 +57,6 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&mStrong,NULL);
 	pthread_mutex_init(&mHash,NULL);
 	pthread_mutex_init(&mConexion,NULL);
-	pthread_mutex_init(&consola,NULL);
 	sem_init(&hayNew,0,0);
 	sem_init(&hayReady,0,0);
 	sem_init(&finalizar,0,0);
@@ -137,7 +136,6 @@ void destruirSemaforos(){
 	sem_destroy(&finalizar);
 	sem_destroy(&hayReady);
 	sem_destroy(&modificables);
-	pthread_mutex_destroy(&consola);
 	pthread_mutex_destroy(&colaNuevos);
 	pthread_mutex_destroy(&colaListos);
 	pthread_mutex_destroy(&colaTerminados);
@@ -172,7 +170,7 @@ void liberarPCB(pcb* elemento) {
 		free(elemento);
 	}
 	else{
-		list_iterate(elemento->instruccion,(void*) liberarInstrucciones);
+		list_destroy_and_destroy_elements(elemento->instruccion,(void*) liberarInstrucciones);
 		free(elemento->operacion);
 		free(elemento);
 	}
@@ -206,21 +204,21 @@ void liberarListas(){
 	pthread_mutex_unlock(&colaTerminados);
 
 
-	pthread_mutex_lock(&mHash);
-	list_destroy_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
-	pthread_mutex_unlock(&mHash);
-
-	pthread_mutex_lock(&mStrong);
-	list_destroy_and_destroy_elements(criterios[STRONG].memorias,(void*)liberarMemoria);
-	pthread_mutex_unlock(&mStrong);
-
-	pthread_mutex_lock(&mEventual);
-	list_destroy_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
-	pthread_mutex_unlock(&mEventual);
-
 	pthread_mutex_lock(&mMemorias);
 	list_destroy_and_destroy_elements(memorias,(void*)liberarMemoria);
 	pthread_mutex_unlock(&mMemorias);
+
+	pthread_mutex_lock(&mHash);
+	list_destroy(criterios[HASH].memorias); //_and_destroy_elements(criterios[HASH].memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mHash);
+
+	pthread_mutex_lock(&mStrong);
+	list_destroy(criterios[STRONG].memorias); //_and_destroy_elements(criterios[STRONG].memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mStrong);
+
+	pthread_mutex_lock(&mEventual);
+	list_destroy(criterios[EVENTUAL].memorias);//_and_destroy_elements(criterios[EVENTUAL].memorias,(void*)liberarMemoria);
+	pthread_mutex_unlock(&mEventual);
 
 	pthread_mutex_lock(&mTablas);
 	list_destroy_and_destroy_elements(tablas,(void*)liberarTabla);

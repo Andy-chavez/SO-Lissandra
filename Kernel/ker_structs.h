@@ -59,6 +59,7 @@ typedef struct {
 	int numero;
 } t_thread;
 
+
 t_log* logMetrics;
 t_log* logResultados;
 /******************************VARIABLES GLOBALES******************************************/
@@ -75,7 +76,6 @@ sem_t hayReady;
 sem_t finalizar;
 sem_t modificables;
 
-pthread_mutex_t consola;
 pthread_mutex_t quantum;
 pthread_mutex_t sleepExec;
 pthread_mutex_t mMetadataRefresh;
@@ -153,6 +153,7 @@ void guardarMemorias(seed* unaSeed);
 void agregarTablaVerificandoSiLaTengo(tabla* t);
 void agregarTablaVerificandoSiLaTengo(tabla* t);
 void agregarMemoriaVerificandoSiLaTengo(memoria* memAux);
+void liberarTabla(tabla* t);
 
 int socketMemoriaSolicitada(consistencia criterio);
 int obtenerIndiceDeConsistencia(consistencia unaConsistencia);

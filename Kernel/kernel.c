@@ -28,7 +28,7 @@ int main(int argc, char *argv[]){
 	pthread_t threadGossip;
 	pthread_t threadMetrics;
 //	if(argc==1){
-//		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel ejecutable.\n");
+//		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel.\n");
 //		return EXIT_FAILURE;
 //	}
 	pathConfig = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
@@ -63,18 +63,14 @@ int main(int argc, char *argv[]){
 	pthread_cancel(threadDescribe);
 	pthread_cancel(threadMetrics);
 	pthread_cancel(threadGossip);
-	for(int i = 0; i<multiprocesamiento;i++){
-		cancelThreadRR();
-	}
+	cancelThreadRR();
 	pthread_join(threadInotify,NULL);
 	pthread_join(threadConsola, NULL);
 	pthread_join(threadNew_Ready,NULL);
 	pthread_join(threadDescribe,NULL);
 	pthread_join(threadMetrics, NULL);
 	pthread_join(threadGossip, NULL);
-	for(int i = 0; i<multiprocesamiento;i++){
-		joinThreadRR();
-	}
+	joinThreadRR();
 	kernel_finalizar();
 
 	return EXIT_SUCCESS;
