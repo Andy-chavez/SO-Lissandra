@@ -248,7 +248,7 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/reemplazo2.lql", "r");
+		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
@@ -266,11 +266,15 @@ void runearScript(){
 			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
 			operacion->operacion = *(operacionLQL + 0);
 			operacion->parametros = *(operacionLQL + 1);
-
 			parserGeneral(operacion, -1);
+//			liberarDoblePuntero(operacionLQL);
+			free(operacionLQL);
+	//		free(lineaLeida);
 			usleep(10000);
 
 		}
+
+
 
 }
 
@@ -313,9 +317,6 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		runearScript();
-
-
 		sem_init(&binarioLFS, 0, 0);
 
 		struct sigaction terminar;
@@ -324,7 +325,7 @@ int main(int argc, char* argv[]) {
 			terminar.sa_flags = SA_RESTART;
 			sigaction(SIGINT, &terminar, NULL);
 
-		sem_wait(&binarioLFS);
+//		sem_wait(&binarioLFS);
 
 		pthread_cancel(threadServer);
 		pthread_cancel(threadConsola);
@@ -335,6 +336,8 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadConsola,NULL);
 		pthread_join(threadDump,NULL);
 		pthread_join(threadCambiosConfig,NULL);
+
+		runearScript();
 
 		liberarVariablesGlobales();
 		system("reset");

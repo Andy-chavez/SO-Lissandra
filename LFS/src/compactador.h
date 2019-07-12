@@ -94,7 +94,7 @@ void ingresarNuevaInfo(char* rutaParticion, char* buffer, char** arrayDeBloques)
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, buffer);
 		config_set_value(particion, "SIZE", size);
 
-
+		config_save(particion);
 		config_destroy(particion);
 	liberarDoblePuntero(arrayDeBloquesFinal);
 	free(size);
@@ -309,7 +309,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 
 	while(1){
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
-		usleep(metadataDeTabla->tiempoCompactacion*1000);
+		usleep((metadataDeTabla->tiempoCompactacion)*1000);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		int i;
 		pthread_mutex_lock(&semaforoDeTabla);

@@ -55,11 +55,13 @@ void dump(){
 		usleep(tiempoActual*1000);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&mutexMemtable);
-		if(memtable->elements_count==0){
-			pthread_mutex_unlock(&mutexMemtable);
+		int cantElementos = memtable->elements_count;
+		pthread_mutex_unlock(&mutexMemtable);
+
+		if(cantElementos==0){
 			continue;
 		}
-		pthread_mutex_unlock(&mutexMemtable);
+
 
 		int tamanioTotalADumpear =0;
 		char* buffer;
