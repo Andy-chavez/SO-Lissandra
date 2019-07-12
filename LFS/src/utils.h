@@ -62,6 +62,7 @@ void soloLoggearError(int socket,char* mensaje,...);
 pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla);
 pthread_mutex_t devolverSemaforoDeTablaMemtable(char* nombreTabla);
 void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer);
+void soloLoggearResultados(int socket,int caso,char *mensaje, ...);
 
 void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer) {
 
@@ -116,6 +117,37 @@ void soloLoggearError(int socket,char* mensaje,...){
 	}
 	free(mensajeTotal);
 	va_end(parametrosAdicionales);
+}
+void soloLoggearResultados(int socket,int error,char *mensaje, ...){
+	va_list parametrosAdicionales;
+	va_start(parametrosAdicionales, mensaje);
+	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
+	if(socket==-1){
+			if(error==1){ //error=1 significa que hubo algun error
+				pthread_mutex_lock(&mutexResultadosConsola);
+				log_error(loggerResultadosConsola, mensajeTotal);
+				pthread_mutex_unlock(&mutexResultadosConsola);
+			}
+			else{
+				pthread_mutex_lock(&mutexResultadosConsola);
+				log_info(loggerResultadosConsola, mensajeTotal);
+				pthread_mutex_unlock(&mutexResultadosConsola);
+			}
+		}
+		else{
+			if(error==1){
+				pthread_mutex_lock(&mutexResultados);
+				log_error(loggerResultados, mensajeTotal);
+				pthread_mutex_unlock(&mutexResultados);
+			}
+			else{
+				pthread_mutex_lock(&mutexResultados);
+				log_info(loggerResultados, mensajeTotal);
+				pthread_mutex_unlock(&mutexResultados);
+			}
+		}
+		free(mensajeTotal);
+		va_end(parametrosAdicionales);
 }
 
 void soloLoggear(int socket, char *mensaje, ...){
@@ -316,11 +348,17 @@ void marcarBloquesComoLibre(char** arrayDeBloques){
 	int pos =0;
 	while(*(arrayDeBloques+pos)!=NULL){
 			int posicionActual = atoi(*(arrayDeBloques+pos));
-
+			char* ruta = string_new();
+			string_append(&ruta,puntoMontaje);
+			string_append(&ruta,"Bloques/");
+			string_append(&ruta,*(arrayDeBloques+pos));
+			string_append(&ruta,".bin");
+			guardarInfoEnArchivo(ruta,"\0");
 			pthread_mutex_lock(&mutexBitarray);
 			bitarray_clean_bit(bitarray, posicionActual);
 			pthread_mutex_unlock(&mutexBitarray);
 			pos++;
+			free(ruta);
 		}
 }
 

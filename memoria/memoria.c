@@ -50,6 +50,7 @@ bool APIProtocolo(void* buffer, int socket) {
 	case TABLAGOSSIP:
 		enviarOMostrarYLogearInfo(-1, "Una memoria o el kernel se comunico conmigo. Enviando mi tabla de gossip...");
 		sem_wait(&MUTEX_TABLA_GOSSIP);
+		recibirYGuardarEnTablaGossip(socket, 0);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 		return true;
@@ -95,9 +96,6 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	}
 	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
 		sem_post(&BINARIO_FINALIZACION_PROCESO);
-		int test;
-		sem_getvalue(&BINARIO_FINALIZACION_PROCESO, &test);
-		printf("%d\n", test);
 	}
 	else {
 		enviarYLogearMensajeError(socketKernel, "No pude entender la operacion");
@@ -203,6 +201,12 @@ void* manejarConsola() {
 	// TODO ver como hacer la funcion para cancelar thread y liberar el hiloPropio
 }
 
+void cancelarServidor(void* bufferSocket) {
+	int socket = *(int*) bufferSocket;
+	cerrarConexion(socket);
+	cancelarListaHilos();
+}
+
 void *servidorMemoria() {
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 	pthread_t threadConexion;
@@ -214,6 +218,8 @@ void *servidorMemoria() {
 		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		pthread_exit(0);
 	}
+
+	pthread_cleanup_push(cancelarServidor, &socketServidorMemoria);
 
 	enviarOMostrarYLogearInfo(-1, "Servidor Memoria en linea");
 	while(1){
@@ -233,7 +239,7 @@ void *servidorMemoria() {
 
 	}
 
-	cerrarConexion(socketServidorMemoria);
+	pthread_cleanup_pop(cancelarListaHilos);
 	pthread_exit(0);
 
 }
@@ -269,7 +275,8 @@ void* cambiosConfig() {
 		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
-			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
+
+			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_FS") && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
 				sem_wait(&MUTEX_RETARDO_GOSSIP);
@@ -281,6 +288,10 @@ void* cambiosConfig() {
 				sem_wait(&MUTEX_RETARDO_MEMORIA);
 				RETARDO_MEMORIA = config_get_int_value(configConNuevosDatos, "RETARDO_MEM");
 				sem_post(&MUTEX_RETARDO_MEMORIA);
+				sem_wait(&MUTEX_RETARDO_FS);
+				RETARDO_FS = config_get_int_value(configConNuevosDatos, "RETARDO_FS");
+				sem_post(&MUTEX_RETARDO_FS);
+
 			}
 
 			config_destroy(configConNuevosDatos);

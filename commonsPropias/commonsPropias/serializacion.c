@@ -508,7 +508,10 @@ int esNumeroParseable(char* key) {
 }
 
 int tieneValorParseable(char* value) {
-	return !string_equals_ignore_case(value, "");
+	string_trim(&value);
+	int resultado = !string_equals_ignore_case(value, "");
+	free(value);
+	return resultado;
 }
 
 int esConsistenciaParseable(char* consistencia) {
