@@ -296,7 +296,9 @@ marco* algoritmoLRU() {
 	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
 	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
 
+
 	sem_post(&BINARIO_ALGORITMO_LRU);
+
 	return encontrarMarcoEscrito(paginaACambiar->marco);
 }
 
@@ -1114,6 +1116,7 @@ void intentarConexiones(t_log* logGossip) {
 
 		if(socketMemoria == -1) {
 			if(tabla==1){
+
 			log_info(logGossip, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 
 			seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
@@ -1124,10 +1127,17 @@ void intentarConexiones(t_log* logGossip) {
 			}
 			log_info(logGossip, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
 			return;
+			}
+			sem_wait(&MUTEX_LOG_CONSOLA);
+			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
+			sem_post(&MUTEX_LOG_CONSOLA);
+			return;
 		}
+
 
 		log_info(logGossip, "Recibiendo tabla Gossip de la memoria de IP \"%s\" y puerto \"%s\"...", unaSeed->ip, unaSeed->puerto);
 		recibirYGuardarEnTablaGossip(socketMemoria, 1);
+
 		cerrarConexion(socketMemoria);
 	}
 
@@ -1154,7 +1164,9 @@ void intentarConexiones(t_log* logGossip) {
 void* timedGossip() {
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
+
 	t_log* logGossip = log_create("memoria_gossip.log", "GOSSIP", 0, LOG_LEVEL_INFO);
+
 
 	while(1) {
 		log_info(logGossip, "Gossip Realizandose...");
@@ -1168,7 +1180,9 @@ void* timedGossip() {
 		usleep(retardoGossip);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
+
 		log_info(logGossip, "Gossip Realizado");
+
 	}
 }
 
