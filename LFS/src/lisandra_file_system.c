@@ -173,9 +173,9 @@ void leerConsola() {
 	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    			}
 	    			else if(esOperacionEjecutable(linea)){
-	    				free (linea);
 	    				pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	    				parserGeneral(splitear_operacion(linea),socket);
+	    				free (linea);
 	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    	    	}
 	    	    		else{
@@ -248,7 +248,7 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
+		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/reemplazo2.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
@@ -288,13 +288,18 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 
-		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
-
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 
 
-		log_info(loggerConsola,"Inicializando FS");
+//		log_info(loggerConsola,"Inicializando FS");
+		log_info(loggerConsola,"Sopa");
+		log_info(loggerResultadosConsola,"de");
+		log_info(loggerResultados,"macaco");
+		log_info(logger,"una deliciaaa");
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
+
+
 
 		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d",bitarray_get_max_bit(bitarray));
 
@@ -308,7 +313,7 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		//runearScript();
+		runearScript();
 
 
 		sem_init(&binarioLFS, 0, 0);

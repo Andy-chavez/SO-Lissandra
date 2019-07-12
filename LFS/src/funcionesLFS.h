@@ -284,8 +284,8 @@ metadata* obtenerMetadata(char* nombreTabla){
 	unaMetadata->tiempoCompactacion = tiempoCompactacion;
 	unaMetadata->nombreTabla = string_duplicate(nombreTabla);
 
-	free(consistencia);
-	config_save(configMetadata);
+//	free(consistencia);
+//	config_save(configMetadata);
 	config_destroy(configMetadata);
 	free(ruta);
 
