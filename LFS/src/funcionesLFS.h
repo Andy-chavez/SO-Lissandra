@@ -427,6 +427,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_t semaforoDeTabla =devolverSemaforoDeTablaFS(nombreTabla);
 		pthread_mutex_t semaforoTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
 		soloLoggear(socket,"Buscando registro con key= %d",key);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&semaforoDeTabla);
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
