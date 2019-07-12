@@ -173,9 +173,9 @@ void leerConsola() {
 	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    			}
 	    			else if(esOperacionEjecutable(linea)){
-	    				free (linea);
 	    				pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	    				parserGeneral(splitear_operacion(linea),socket);
+	    				free (linea);
 	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    	    	}
 	    	    		else{
@@ -279,8 +279,8 @@ void runearScript(){
 
 int main(int argc, char* argv[]) {
 
-		//leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
-		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+		//leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
 		inicializarLog();
@@ -288,15 +288,16 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 
-		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 
 
 		log_info(loggerConsola,"Inicializando FS");
-
-		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d",bitarray_get_max_bit(bitarray));
+		log_info(loggerResultadosConsola,"Aqui iran los resultados de la consola");
+		log_info(loggerResultados,"Aqui iran los resultados de las requests");
+		log_info(logger,"Logger de memoria");
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		pthread_t threadConsola;
 		pthread_t threadServer;

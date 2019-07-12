@@ -94,7 +94,7 @@ void ingresarNuevaInfo(char* rutaParticion, char* buffer, char** arrayDeBloques)
 		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, buffer);
 		config_set_value(particion, "SIZE", size);
 
-
+		config_save(particion);
 		config_destroy(particion);
 	liberarDoblePuntero(arrayDeBloquesFinal);
 	free(size);
@@ -314,9 +314,9 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 		int i;
 		pthread_mutex_lock(&semaforoDeTabla);
 		int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
+		pthread_mutex_unlock(&semaforoDeTabla);
 
 		if(numeroTmp == 0){
-			pthread_mutex_unlock(&semaforoDeTabla);
 			continue;
 		}
 
@@ -335,7 +335,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	enviarOMostrarYLogearInfo(-1, "Se leeran los bloques de los archivos temporales");
 
 
-
+	pthread_mutex_lock(&semaforoDeTabla);
 	for (i = 0; i< numeroTmp; i++){
 
 
@@ -369,7 +369,6 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 			free(numeroDeTmp);
 			free(nombreDelTmpc);
 			config_destroy(archivoTmp);
-			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 			continue;
 		}
 
@@ -407,7 +406,6 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	list_destroy_and_destroy_elements(listaRegistrosTemporales,(void*)liberarRegistros);
 	free(rutaTabla);
 	free(bufferTemporales);
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 
 	soloLoggear(-1,"Compactacion finalizada de la tabla: %s", metadataDeTabla->nombreTabla);
 }

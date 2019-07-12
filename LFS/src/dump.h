@@ -55,11 +55,11 @@ void dump(){
 		usleep(tiempoActual*1000);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&mutexMemtable);
-		if(memtable->elements_count==0){
-			pthread_mutex_unlock(&mutexMemtable);
+		int cantElementos =memtable->elements_count==0;
+		pthread_mutex_unlock(&mutexMemtable);
+		if(cantElementos==0){
 			continue;
 		}
-		pthread_mutex_unlock(&mutexMemtable);
 
 		int tamanioTotalADumpear =0;
 		char* buffer;
@@ -100,9 +100,7 @@ void dump(){
 			pthread_mutex_lock(&semaforoDeTablaFS);
 			char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
 
-			pthread_mutex_lock(&mutexLoggerConsola);
-			log_info(loggerConsola,"Se creo el tmp en la ruta: %s",rutaTmp);
-			pthread_mutex_unlock(&mutexLoggerConsola);
+			soloLoggear(-1,"Se creo el tmp en la ruta: %s",rutaTmp);
 
 			t_config* temporal =config_create(rutaTmp);
 			char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
