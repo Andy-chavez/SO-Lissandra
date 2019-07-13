@@ -126,6 +126,7 @@ void inicializarBitmap() {
 void inicializarListas(){
 	memtable = list_create();
 	listaDeTablas = list_create();
+	TABLA_THREADS = list_create();
 }
 
 void inicializarLog(){
