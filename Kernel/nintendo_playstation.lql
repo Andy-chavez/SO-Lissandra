@@ -1,3 +1,5 @@
+drop peliculas
+drop nintendo
 CREATE NINTENDO EC 3 60000
 CREATE PLAYSTATION SC 2 60000
 INSERT NINTENDO 95 "activision"
