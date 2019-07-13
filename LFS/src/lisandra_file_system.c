@@ -32,6 +32,61 @@
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG)
 
+typedef struct {
+	pthread_t thread;
+} hiloMemoria;
+
+
+
+/*
+
+
+
+ void* trabajarConConexion(void* socket) {
+	agregarHiloAListaDeHilos();
+
+	int socketKernel = *(int*) socket;
+	sem_post(&BINARIO_SOCKET_KERNEL);
+
+	recibir(socketKernel);
+	int numeroMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
+	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
+
+	int hayMensaje = 1;
+	int esGossip = 0;
+
+	while(hayMensaje) {
+		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
+		void* bufferRecepcion = recibir(socketKernel);
+		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
+		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel, &esGossip);
+	}
+
+	eliminarHiloDeListaDeHilos();
+	pthread_detach(pthread_self());
+	pthread_exit(0);
+}
+
+
+ void agregarHiloAListaDeHilos() {
+
+	hiloEnTabla* hiloPropio = malloc(sizeof(hiloEnTabla));
+	hiloPropio->thread = pthread_self();
+
+	hiloPropio->semaforoOperacion = malloc(sizeof(sem_t));
+	hiloPropio->cancelarThread = malloc(sizeof(sem_t));
+	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
+	sem_init(hiloPropio->cancelarThread, 0 , 0);
+
+	sem_wait(&MUTEX_TABLA_THREADS);
+	list_add(TABLA_THREADS, hiloPropio);
+	sem_post(&MUTEX_TABLA_THREADS);
+}
+
+
+ */
+
+
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
@@ -100,7 +155,30 @@ int APIProtocolo(void* buffer, int socket) {
 	free(buffer);
 }
 
+void agregarHiloAListaDeHilos() {
+
+	hiloMemoria* hiloPropio = malloc(sizeof(hiloMemoria));
+	hiloPropio->thread = pthread_self();
+	list_add(TABLA_THREADS, hiloPropio);
+
+}
+
+void cancelarListaHilos(){
+		void cancelarHilo(hiloMemoria* hilo){
+			pthread_cancel(hilo->thread);
+			pthread_join(hilo->thread, NULL);
+			free(hilo);
+		}
+
+	list_destroy_and_destroy_elements(TABLA_THREADS,(void*)cancelarHilo);
+
+}
+
+
 void trabajarConexion(void* socket){
+
+	agregarHiloAListaDeHilos();
+
 	int socketMemoria = *(int*) socket;
 	sem_post(&binarioSocket);
 	int hayMensaje = 1;
@@ -137,6 +215,9 @@ void* servidorLisandra(){
 
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
+
+			//
+
 			soloLoggearError(socketMemoria,"No se pudo crear socket para memoria");
 			continue;
 		}
@@ -331,6 +412,8 @@ int main(int argc, char* argv[]) {
 		pthread_join(threadConsola,NULL);
 		pthread_join(threadDump,NULL);
 		pthread_join(threadCambiosConfig,NULL);
+
+		cancelarListaHilos();
 
 		liberarVariablesGlobales();
 		system("reset");
