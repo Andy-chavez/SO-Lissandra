@@ -122,6 +122,15 @@ void kernel_inicializarVariablesYListas(){
 void kernel_inicializarEstructuras(){
 	kernel_inicializarSemaforos();
 	metrics_resetVariables();
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, "----------------Comienza Kernel con config %s----------------", pathConfig);
+	pthread_mutex_unlock(&mLog);
+	pthread_mutex_lock(&mLogMetrics);
+	log_info(logMetrics, "----------------Comienza Kernel con config %s----------------", pathConfig);
+	pthread_mutex_unlock(&mLogMetrics);
+	pthread_mutex_lock(&mLogResultados);
+	log_info(logResultados, "----------------Comienza Kernel con config %s----------------", pathConfig);
+	pthread_mutex_unlock(&mLogResultados);
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {

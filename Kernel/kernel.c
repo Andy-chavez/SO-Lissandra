@@ -38,6 +38,7 @@ int main(int argc, char *argv[]){
 		return EXIT_FAILURE;
 	}
 	kernel_inicializarEstructuras();
+
 	pthread_create(&threadDescribe, NULL,(void*)describeTimeado, NULL);
 	pthread_create(&threadGossip, NULL,(void*)kernel_gossiping, NULL);
 	pthread_create(&threadMetrics, NULL,(void*)metrics, NULL);
