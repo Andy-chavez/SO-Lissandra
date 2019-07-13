@@ -363,12 +363,13 @@ void manejarSigpipe(){
 	log_info(LOGGER_CONSOLA,"El LFS se ha desconectado, se procedera al cierre del proceso memoria. Vuelva a abir cuando LFS este disponible\n");
 	sem_post(&MUTEX_LOG_CONSOLA);
 	sem_post(&BINARIO_FINALIZACION_PROCESO);
+	system("reset");
 }
 
 int main() {
 	sigaction(SIGPIPE,&(struct sigaction){manejarSigpipe},NULL);
 	if(empezarMemoria()==-1){
-		return -1;
+		return 1;
 	}
 	cerrarYLiberarMemoria();
 	system("reset");

@@ -298,6 +298,9 @@ marco* algoritmoLRU() {
 	registro* registroAEliminar = leerDatosEnMemoria(paginaACambiar);
 	enviarOMostrarYLogearInfo(-1, "RegistroAEliminar: %d, \"%s\", %d", registroAEliminar->key, registroAEliminar->value, registroAEliminar->timestamp);
 
+	free(registroAEliminar->value);
+	free(registroAEliminar);
+
 	bool eliminarPaginaSeleccionadaPorLRU(void* unaPagina) {
 		paginaEnTabla* paginaAEliminar = (paginaEnTabla*) unaPagina;
 		return paginaACambiar->marco == paginaAEliminar->marco;
@@ -826,7 +829,13 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 			}
 			else if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0, &seEjecutaraJournal)) {
-				enviar(socketKernel, (void*) registroLFS->value, strlen(registroLFS->value) + 1);
+				char *mensaje = string_new();
+				string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
+				enviarOMostrarYLogearInfo(socketKernel, mensaje);
+				free(mensaje);
+				free(registroLFS->value);
+				free(registroLFS->nombreTabla);
+				free(registroLFS);
 			}
 			else if(!seEjecutaraJournal){
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
