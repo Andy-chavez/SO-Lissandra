@@ -45,6 +45,7 @@ t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
 t_list* listaDeTablas;
+t_list* TABLA_THREADS;
 t_bitarray* bitarray;
 sem_t binarioLFS;
 

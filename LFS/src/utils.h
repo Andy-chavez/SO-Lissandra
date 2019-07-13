@@ -107,12 +107,12 @@ void soloLoggearError(int socket,char* mensaje,...){
 	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket==-1){
 		pthread_mutex_lock(&mutexLoggerConsola);
-		log_error(loggerConsola, mensaje);
+		log_error(loggerConsola, mensajeTotal);
 		pthread_mutex_unlock(&mutexLoggerConsola);
 	}
 	else{
 		pthread_mutex_lock(&mutexLogger);
-		log_error(logger, mensaje);
+		log_error(logger, mensajeTotal);
 		pthread_mutex_unlock(&mutexLogger);
 	}
 	free(mensajeTotal);

@@ -48,18 +48,24 @@ void dump(){
 	while(1){
 		int tiempoActual=0;
 
+
 		pthread_mutex_lock(&mutexTiempoDump);
 		tiempoActual = tiempoDump;
 		pthread_mutex_unlock(&mutexTiempoDump);
-		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(tiempoActual*1000);
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+		puts("DUMP: HOLAAAA");
+
+//deadlock en mutex memtable
+	//	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&mutexMemtable);
-		if(memtable->elements_count==0){
-			pthread_mutex_unlock(&mutexMemtable);
+		int cantElementos =memtable->elements_count;
+		pthread_mutex_unlock(&mutexMemtable);
+		if(cantElementos==0){
+			puts("DUMP: MEMTABLE VACIA");
+//			log_info(loggerResultadosConsola,"ELEMENTOS=0");
 			continue;
 		}
-		pthread_mutex_unlock(&mutexMemtable);
 
 		int tamanioTotalADumpear =0;
 		char* buffer;
@@ -83,12 +89,12 @@ void dump(){
 		void dumpearTabla(tablaMem* unaTabla){
 		buffer = string_new();
 
+		log_info(loggerResultadosConsola,"DUMP: EMPEZANDO DUMP");
+
+
 		pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
 		pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
-
-		///////////////SEMAFOROOOOO
 		pthread_mutex_lock(&semaforoDeTablaMemtable);
-
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
 			soloLoggear(-1,"Dumpeando tabla: %s", unaTabla->nombre);
@@ -100,9 +106,7 @@ void dump(){
 			pthread_mutex_lock(&semaforoDeTablaFS);
 			char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
 
-			pthread_mutex_lock(&mutexLoggerConsola);
-			log_info(loggerConsola,"Se creo el tmp en la ruta: %s",rutaTmp);
-			pthread_mutex_unlock(&mutexLoggerConsola);
+			soloLoggear(-1,"Se creo el tmp en la ruta: %s",rutaTmp);
 
 			t_config* temporal =config_create(rutaTmp);
 			char** bloquesAsignados= config_get_array_value(temporal,"BLOCKS");
@@ -111,15 +115,19 @@ void dump(){
 
 			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
 
+			puts("DUMP: GUARDIOLA LA DATA");
+
 			soloLoggear(-1,"Finalizado dumpeo de: %s", unaTabla->nombre);
+			log_info(loggerResultadosConsola,"SE DUMPEO");
+
 
 			pthread_mutex_unlock(&semaforoDeTablaFS);
 
 			free(buffer);
 			liberarDoblePuntero(bloquesAsignados);
 
-			bool tablaActual(tablaMem* unaTabla){
-				return (unaTabla->nombre == unaTabla->nombre);
+			bool tablaActual(tablaMem* unaTablita){
+				return (string_equals_ignore_case(unaTablita->nombre,unaTabla->nombre));
 			}
 
 			pthread_mutex_lock(&mutexMemtable);

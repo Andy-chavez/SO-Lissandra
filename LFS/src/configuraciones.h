@@ -22,16 +22,45 @@
 // 1) INICIALIZACIONES//
 
 void inicializarSemaforos(){
-		pthread_mutex_init(&mutexMemtable, NULL);
-		pthread_mutex_init(&mutexLogger, NULL);
-		pthread_mutex_init(&mutexLoggerConsola, NULL);
-		pthread_mutex_init(&mutexListaDeTablas,NULL);
-		pthread_mutex_init(&mutexBitarray,NULL);
-		pthread_mutex_init(&mutexTiempoDump,NULL);
-		pthread_mutex_init(&mutexRetardo,NULL);
-		pthread_mutex_init(&mutexResultadosConsola,NULL);
-		pthread_mutex_init(&mutexResultados,NULL);
+		pthread_mutexattr_t atributoMemtable;
+		pthread_mutexattr_init(&atributoMemtable);
+		pthread_mutexattr_t atributoLogger;
+		pthread_mutexattr_init(&atributoLogger);
+		pthread_mutexattr_t atributoLoggerConsola;
+		pthread_mutexattr_init(&atributoLoggerConsola);
+		pthread_mutexattr_t atributoListaDeTablas;
+		pthread_mutexattr_init(&atributoListaDeTablas);
+		pthread_mutexattr_t atributoBitarray;
+		pthread_mutexattr_init(&atributoBitarray);
+		pthread_mutexattr_t atributoTiempoDump;
+		pthread_mutexattr_init(&atributoTiempoDump);
+		pthread_mutexattr_t atributoRetardo;
+		pthread_mutexattr_init(&atributoRetardo);
+		pthread_mutexattr_t atributoResultadosConsola;
+		pthread_mutexattr_init(&atributoResultadosConsola);
+		pthread_mutexattr_t atributoResultados;
+		pthread_mutexattr_init(&atributoResultados);
+
+		pthread_mutex_init(&mutexMemtable, &atributoMemtable);
+		pthread_mutex_init(&mutexLogger, &atributoLogger);
+		pthread_mutex_init(&mutexLoggerConsola, &atributoLoggerConsola);
+		pthread_mutex_init(&mutexListaDeTablas,&atributoListaDeTablas);
+		pthread_mutex_init(&mutexBitarray,&atributoBitarray);
+		pthread_mutex_init(&mutexTiempoDump,&atributoTiempoDump);
+		pthread_mutex_init(&mutexRetardo,&atributoRetardo);
+		pthread_mutex_init(&mutexResultadosConsola,&atributoResultadosConsola);
+		pthread_mutex_init(&mutexResultados,&atributoResultados);
 		sem_init(&binarioSocket,0,1);
+
+		pthread_mutexattr_settype(&atributoMemtable,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoLogger,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoLoggerConsola,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoListaDeTablas,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoBitarray,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoTiempoDump,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoRetardo,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoResultadosConsola,PTHREAD_MUTEX_ERRORCHECK);
+		pthread_mutexattr_settype(&atributoResultados,PTHREAD_MUTEX_ERRORCHECK);
 
 }
 
@@ -43,7 +72,7 @@ void inicializarBloques(){
 		string_append(&ruta,"Bloques/");
 		string_append(&ruta,numeroDeBloque);
 		string_append(&ruta,".bin");
-		FILE *bloque = fopen(ruta,"w"); //cambiarlo por una 'a' cuando sea entrega
+		FILE *bloque = fopen(ruta,"a"); //cambiarlo por una 'a' cuando sea entrega
 		free(numeroDeBloque);
 		free(ruta);
 		fclose(bloque);
@@ -58,12 +87,11 @@ void inicializarArchivoBitmap(){
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");
-	//DESCOMENTARLO MAS ALEDANTE, PONERLO AL FINAL
-	/*
+
 	if(existeArchivo(ruta)){
 		free(ruta);
 		return;
-	}*/
+	}
 	f = fopen(ruta, "wb");
 
 	for(i=0; i < cantDeBloques/8; i++){
@@ -98,6 +126,7 @@ void inicializarBitmap() {
 void inicializarListas(){
 	memtable = list_create();
 	listaDeTablas = list_create();
+	TABLA_THREADS = list_create();
 }
 
 void inicializarLog(){
@@ -128,16 +157,10 @@ void liberarConfigYLogs() {
 	log_destroy(loggerConsola);
 	log_destroy(loggerResultados);
 	log_destroy(loggerResultadosConsola);
-	config_save(archivoDeConfig);
-	config_save(archivoMetadata);
 	config_destroy(archivoDeConfig);
 	config_destroy(archivoMetadata);
 }
 void liberarVariablesGlobales(){
-	//free(puntoMontaje);
-	//free(puertoLisandra);
-	//free(ipLisandra);
-	//free(magicNumber);
 	liberarSemaforos();
 	liberarMemtable();
 	liberarListaDeTablas();
