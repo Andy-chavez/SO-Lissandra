@@ -48,7 +48,6 @@ bool APIProtocolo(void* buffer, int socket) {
 		cerrarConexion(socket);
 		return false;
 	case TABLAGOSSIP:
-		enviarOMostrarYLogearInfo(-1, "Una memoria o el kernel se comunico conmigo. Enviando mi tabla de gossip...");
 		sem_wait(&MUTEX_TABLA_GOSSIP);
 		recibirYGuardarEnTablaGossip(socket, 0);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
@@ -299,17 +298,7 @@ void* cambiosConfig() {
 	}
 }
 
-void cambiarValor() {
-	sem_post(&BINARIO_FINALIZACION_PROCESO);
-}
-
 void cerrarMemoria() {
-	struct sigaction terminar;
-	terminar.sa_handler = cambiarValor;
-	sigemptyset(&terminar.sa_mask);
-	terminar.sa_flags = SA_RESTART;
-	sigaction(SIGINT, &terminar, NULL);
-
 	sem_wait(&BINARIO_FINALIZACION_PROCESO);
 	sem_wait(&MUTEX_CERRANDO_MEMORIA);
 	CERRANDO_MEMORIA = 1;
