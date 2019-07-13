@@ -5,15 +5,20 @@
  Description :
  ============================================================================
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <commons/config.h>
-#include <pthread.h>
+
 #include <string.h>
 #include "ker_operaciones.h"
 #include <signal.h>
-/* INSERT TABLA1 515 "malesal" * SELECT TABLA1 515 * DESCRIBE TABLA1
- * DESCRIBE * CREATE TABLA1 SC 7 1000 * DROP TABLA1 * METRICS * JOURNAL * ADD MEMORY 5 TO EC
+/* INSERT TABLA1 515 "malesal"
+ * SELECT TABLA1 515
+ * DESCRIBE TABLA1
+ * DESCRIBE
+ * CREATE TABLA1 SC 7 1000
+ * DROP TABLA1
+ * METRICS
+ * JOURNAL
+ * ADD MEMORY 5 TO EC
+ * MEMORIES
  */
 int main(int argc, char *argv[]){
 	pthread_t threadConsola;

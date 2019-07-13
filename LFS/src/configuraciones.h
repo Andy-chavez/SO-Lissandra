@@ -29,6 +29,9 @@ void inicializarSemaforos(){
 		pthread_mutex_init(&mutexBitarray,NULL);
 		pthread_mutex_init(&mutexTiempoDump,NULL);
 		pthread_mutex_init(&mutexRetardo,NULL);
+		pthread_mutex_init(&mutexResultadosConsola,NULL);
+		pthread_mutex_init(&mutexResultados,NULL);
+		sem_init(&binarioSocket,0,1);
 
 }
 
@@ -100,6 +103,8 @@ void inicializarListas(){
 void inicializarLog(){
 	logger = log_create("lisandra.log", "LISANDRA", 0, LOG_LEVEL_INFO);
 	loggerConsola = log_create("lisandraConsola.log","LISANDRA_CONSOLA",0,LOG_LEVEL_INFO);
+	loggerResultados = log_create("lisandraResultados.log","LISANDRA_RESULTADO",0,LOG_LEVEL_INFO);
+	loggerResultadosConsola = log_create("lisandraResultadosConsola.log","LISANDRA_CONSOLA_RESULTADO",0,LOG_LEVEL_INFO);
 }
 
 // ------------------------------------------------------------------------ //
@@ -114,11 +119,15 @@ void liberarSemaforos(){
 	pthread_mutex_destroy(&mutexBitarray);
 	pthread_mutex_destroy(&mutexTiempoDump);
 	pthread_mutex_destroy(&mutexRetardo);
+	pthread_mutex_destroy(&mutexResultadosConsola);
+	pthread_mutex_destroy(&mutexResultados);
 }
 
 void liberarConfigYLogs() {
 	log_destroy(logger);
 	log_destroy(loggerConsola);
+	log_destroy(loggerResultados);
+	log_destroy(loggerResultadosConsola);
 	config_destroy(archivoDeConfig);
 	config_destroy(archivoMetadata);
 }

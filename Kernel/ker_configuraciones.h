@@ -1,11 +1,10 @@
 #ifndef KER_CONFIGURACIONES_H_
 #define KER_CONFIGURACIONES_H_
 
+
+#include "ker_auxiliares.h"
 #include <sys/types.h>
 #include <sys/inotify.h>
-#include "ker_auxiliares.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1 * EVENT_SIZE_CONFIG)
@@ -47,6 +46,7 @@ void kernel_inicializarSemaforos(){
 	pthread_mutex_init(&colaListos, NULL);
 	pthread_mutex_init(&colaTerminados, NULL);
 	pthread_mutex_init(&mLogMetrics, NULL);
+	pthread_mutex_init(&mLogResultados,NULL);
 	pthread_mutex_init(&mLog, NULL);
 	pthread_mutex_init(&mThread, NULL);
 	pthread_mutex_init(&mMemorias,NULL);
@@ -98,14 +98,19 @@ int kernel_inicializarMemoria(){
 	}
 	operacionProtocolo protocoloGossip = TABLAGOSSIP;
 	enviar(socketClienteKernel,(void*)&protocoloGossip, sizeof(operacionProtocolo));
+	t_list* tabla = list_create();
+	serializarYEnviarTablaGossip(socketClienteKernel,tabla);
 	recibirYDeserializarTablaDeGossipRealizando(socketClienteKernel,guardarMemorias);
+	cerrarConexion(socketClienteKernel);
+	free(tabla);
 	return 0;
 }
 void kernel_inicializarVariablesYListas(){
 	logMetrics = log_create("Metrics.log", "KERNEL", 0, LOG_LEVEL_INFO);
+	logResultados = log_create("Resultados.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	kernel_configYLog= malloc(sizeof(configYLogs));
 	kernel_configYLog->config = config_create(pathConfig);
-	kernel_configYLog->log = log_create("Kernel.log", "KERNEL", 0, LOG_LEVEL_INFO);
+	kernel_configYLog->log = log_create("Ejecucion.log", "KERNEL", 0, LOG_LEVEL_INFO);
 	ipMemoria = config_get_string_value(kernel_configYLog->config ,"IP_MEMORIA");
 	puertoMemoria = config_get_string_value(kernel_configYLog->config,"PUERTO_MEMORIA");
 	multiprocesamiento =config_get_int_value(kernel_configYLog->config,"MULTIPROCESAMIENTO");
@@ -121,6 +126,7 @@ void kernel_inicializarEstructuras(){
 }
 //-----------------FINALIZAR KERNEL-----------------------------
 void liberarConfigYLogs() {
+	log_destroy(logResultados);
 	log_destroy(logMetrics);
 	log_destroy(kernel_configYLog->log);
 	config_destroy(kernel_configYLog->config);
@@ -145,6 +151,7 @@ void destruirSemaforos(){
 	pthread_mutex_destroy(&mMetadataRefresh);
 	pthread_mutex_destroy(&mConexion);
 	pthread_mutex_destroy(&mLogMetrics);
+	pthread_mutex_destroy(&mLogResultados);
 }
 void liberarColas(pcb* element){
 	free(element->operacion);
