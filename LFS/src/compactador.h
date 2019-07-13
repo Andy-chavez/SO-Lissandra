@@ -346,7 +346,6 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 
 
 	for (i = 0; i< numeroTmp; i++){
-		log_info(loggerConsola,"Cant de temporales= %d",numeroTmp);
 
 		char* rutaTmpOriginal = string_new();
 		char* rutaTmpCompactar= string_new();

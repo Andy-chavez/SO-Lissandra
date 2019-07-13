@@ -480,7 +480,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			if(!registroBuscado) {
 				if(socket!=-1) enviarError(socket);
 				soloLoggearError(socket,"SELECT %s %d: No se encontro el registro",nombreTabla,key);
-				soloLoggearResultados(socket,1,"RESULTADO SELECT %s %d es: ERROR",nombreTabla,key);
+				soloLoggearResultados(socket,1,"RESULTADO SELECT %s %d es: ERROR SELECT",nombreTabla,key);
 				list_destroy_and_destroy_elements(listaRegistros, (void*) liberarRegistros);
 				liberarDoblePuntero(argSeparados);
 				return;
@@ -519,13 +519,13 @@ void funcionInsert(char* argumentos,int socket) {
 		soloLoggearError(socket,"El tamanio del value es mayor al maximo");
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
-		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR",nombreTabla,key,value);
+		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR INSERT",nombreTabla,key,value);
 		return;
 	}
 	if (!verificarExistenciaDirectorioTabla(nombreTabla,socket)){
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
-		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR",nombreTabla,key,value);
+		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR INSERT",nombreTabla,key,value);
 		if(socket!=-1) enviarError(socket);
 		return;
 	}
