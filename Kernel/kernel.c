@@ -27,12 +27,11 @@ int main(int argc, char *argv[]){
 	pthread_t threadDescribe;
 	pthread_t threadGossip;
 	pthread_t threadMetrics;
-	/*if(argc==1){
+	if(argc==1){
 		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel.\n");
 		return EXIT_FAILURE;
-
-	}*/
-	pathConfig = "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
+	}
+	pathConfig =(char*) argv[1];// "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
 	kernel_inicializarVariablesYListas();
 	if(kernel_inicializarMemoria()==-1){
 		printf("No memory to initialize\n");
@@ -48,12 +47,6 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i<multiprocesamiento;i++){
 		crearThreadRR(i);
 	}
-
-//	struct sigaction terminar;
-//	terminar.sa_handler = kernel_semFinalizar;
-//	sigemptyset(&terminar.sa_mask);
-//	terminar.sa_flags = SA_RESTART;
-//	sigaction(SIGINT, &terminar, NULL);
 
 	sem_wait(&finalizar);
 
@@ -73,6 +66,6 @@ int main(int argc, char *argv[]){
 	joinThreadRR();
 	kernel_finalizar();
 
-	//system("reset");
+	system("reset");
 	return EXIT_SUCCESS;
 }

@@ -182,6 +182,8 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 			while(recibidoContiene(recibido, "FULL")){
 				enviarJournal(socket);
 				serializarYEnviarOperacionLQL(socket, opAux);
+				free(recibido);
+				recibido = NULL;
 				recibido = (char*) recibir(socket);
 				if(recibidoContiene(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);
