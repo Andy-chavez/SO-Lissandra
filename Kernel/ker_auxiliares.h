@@ -170,7 +170,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
 			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
-			return -1;
+			return 1;
 		}
 		if(recibidoContiene(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
