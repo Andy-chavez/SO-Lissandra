@@ -248,7 +248,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int ke
 
 	//list_destroy(encuentraLista);
 	list_destroy(registrosConLaKeyEnMemtable);
-//	list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistros);
+	//list_destroy_and_destroy_elements(registrosConLaKeyEnMemtable, liberarRegistros);
 
 return registroDeMayorTimestamp;
 
@@ -408,7 +408,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 	int key = atoi(*(argSeparados+1));
 	registro* registroBuscado;
 
-	puts("arranca select");
 
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);

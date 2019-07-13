@@ -330,7 +330,7 @@ void runearScript(){
 
 		FILE *archivoALeer;
 //		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
-		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/resultadosnintendo.lql", "r");
+		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/nintendo_playstation.lql", "r");
 
 	//	archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
@@ -369,8 +369,8 @@ void runearScript(){
 
 int main(int argc, char* argv[]) {
 
-		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
-//		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		//leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
 		inicializarLog();
@@ -398,7 +398,7 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		//runearScript();
+		runearScript();
 
 		sem_init(&binarioLFS, 0, 0);
 
