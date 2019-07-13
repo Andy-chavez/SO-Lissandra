@@ -122,7 +122,7 @@ void kernel_gossiping(){
 	}
 
 }
-void describeTimeado(){ //set a disabled, enabled en donde quiero que corte
+void describeTimeado(){
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	while(destroy==0){
 		operacionLQL* opAux = malloc(sizeof(operacionLQL));
@@ -170,7 +170,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
 			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
-			return -1;
+			return 1;
 		}
 		if(recibidoContiene(recibido, "ERROR")){
 			thread_loggearInfo("@ RECIBIDO",thread, recibido);
@@ -182,6 +182,8 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 			while(recibidoContiene(recibido, "FULL")){
 				enviarJournal(socket);
 				serializarYEnviarOperacionLQL(socket, opAux);
+				free(recibido);
+				recibido = NULL;
 				recibido = (char*) recibir(socket);
 				if(recibidoContiene(recibido, "ERROR")){
 					thread_loggearInfo("@ RECIBIDO",thread, recibido);

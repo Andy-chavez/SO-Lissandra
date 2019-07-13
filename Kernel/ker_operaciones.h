@@ -55,6 +55,7 @@ bool kernel_select(char* operacion, int thread){
 		tiempo = time(NULL) - tiempo;
 //		gettimeofday(&horaInicio);
 		actualizarTiemposSelect(index,tiempo);
+		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 //	gettimeofday(&horaFin);
@@ -99,7 +100,7 @@ bool kernel_describe(char* operacion, int thread){
 				log_info(kernel_configYLog->log, " @ DESCONEXION DE MEMORIA: No se realizo describe all");
 				pthread_mutex_unlock(&mLog);
 				free(bufferProtocolo);
-				return false;
+				return true;
 			}
 			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
 			if(protocolo == METADATA){
@@ -140,15 +141,16 @@ bool kernel_describe(char* operacion, int thread){
 		return false;
 	void* buffer =recibir(socket);
 	if(buffer == NULL){
-		free(buffer);
 		return false;
 	}
-	actualizarListaMetadata(deserializarMetadata(buffer));
+	metadata* met = deserializarMetadata(buffer);
+	actualizarListaMetadata(met);
+	free(met->nombreTabla);
+	free(met);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
-	free(buffer);
 	liberarOperacionLQL(operacionAux);
 	return true;
 }
@@ -182,20 +184,38 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	pthread_mutex_lock(&mHash);
 	int hash_cantidadSelect = criterios[HASH].cantidadSelects;
 	int hash_cantidadInsert = criterios[HASH].cantidadInserts;
-	unsigned long hash_tiempoSelect = criterios[HASH].tiempoSelects;
-	unsigned long hash_tiempoInsert = criterios[HASH].tiempoInserts;
+	float hash_tiempoSelect = 0;
+	float hash_tiempoInsert = 0;
+	if(hash_cantidadInsert != 0){
+		hash_tiempoInsert = (criterios[HASH].tiempoSelects/hash_cantidadInsert);
+	}
+	if(hash_cantidadSelect!=0){
+		hash_tiempoSelect = (criterios[HASH].tiempoInserts/hash_cantidadInsert);;
+	}
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mStrong);
 	int strong_cantidadSelect = criterios[STRONG].cantidadSelects;
 	int strong_cantidadInsert = criterios[STRONG].cantidadInserts;
-	unsigned long strong_tiempoSelect = criterios[STRONG].tiempoSelects;
-	unsigned long strong_tiempoInsert = criterios[STRONG].tiempoInserts;
+	float strong_tiempoSelect = 0;//= criterios[STRONG].tiempoSelects;
+	float strong_tiempoInsert = 0;// criterios[STRONG].tiempoInserts;
+	if(strong_cantidadInsert != 0){
+		strong_tiempoInsert = (criterios[STRONG].tiempoSelects/strong_cantidadInsert);
+	}
+	if(strong_cantidadSelect!=0){
+		strong_tiempoSelect = (criterios[STRONG].tiempoInserts/strong_cantidadSelect);;
+	}
 	pthread_mutex_unlock(&mStrong);
 	pthread_mutex_lock(&mEventual);
 	int eventual_cantidadSelect = criterios[EVENTUAL].cantidadSelects;
 	int eventual_cantidadInsert = criterios[EVENTUAL].cantidadInserts;
-	unsigned long eventual_tiempoSelect = criterios[EVENTUAL].tiempoSelects;
-	unsigned long eventual_tiempoInsert = criterios[EVENTUAL].tiempoInserts;
+	float eventual_tiempoSelect = 0; //= criterios[EVENTUAL].tiempoSelects;
+	float eventual_tiempoInsert = 0;//= criterios[EVENTUAL].tiempoInserts;
+	if(eventual_cantidadInsert != 0){
+		eventual_tiempoInsert = (criterios[EVENTUAL].tiempoSelects/eventual_cantidadInsert);
+	}
+	if(eventual_cantidadSelect!=0){
+		eventual_tiempoSelect = (criterios[EVENTUAL].tiempoInserts/eventual_cantidadSelect);;
+	}
 	pthread_mutex_unlock(&mEventual);
 	void printearMetrics(memoria* mem){
 		printf(">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
@@ -206,7 +226,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: HASH\n"
-				">tiempo en selects de HASH: %lu,\n>tiempo en inserts de HASH: %lu,\n"
+				">tiempo por select de HASH: %f ms,\n>tiempo por insert de HASH: %f ms,\n"
 				">cantidad inserts en HASH : %d,\n>cantidad selects en HASH : %d\n",
 				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect);
 		pthread_mutex_lock(&mHash);
@@ -216,7 +236,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: STRONG\n"
-				">tiempo en selects de STRONG: %lu,\n>tiempo en inserts de STRONG: %lu,\n"
+				">tiempo por select de STRONG: %f ms,\n>tiempo por insert de STRONG: %f ms,\n"
 				">cantidad inserts en STRONG : %d,\n>cantidad selects en STRONG : %d\n",
 				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect);
 		pthread_mutex_lock(&mStrong);
@@ -226,7 +246,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: EVENTUAL\n"
-				">tiempo en selects de EVENTUAL: %lu,\n>tiempo en inserts de EVENTUAL: %lu,\n"
+				">tiempo por select de EVENTUAL: %f ms,\n>tiempo por insert de EVENTUAL: %f ms,\n"
 				">cantidad inserts en EVENTUAL : %d,\n>cantidad selects en EVENTUAL : %d\n",
 				eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_lock(&mEventual);
@@ -237,21 +257,21 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	}
 	else if (consolaOLog==1){
 		printf("METRICS: HASH\n"
-						">tiempo en selects de HASH: %lu,\n>tiempo en inserts de HASH: %lu,\n"
+						">tiempo por select de HASH: %f ms,\n>tiempo por insert de HASH: %f ms,\n"
 						">cantidad inserts en HASH : %d,\n>cantidad selects en HASH : %d\n",
 						hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect);
 		pthread_mutex_lock(&mHash);
 		list_iterate(criterios[HASH].memorias,(void*)printearMetrics);
 		pthread_mutex_unlock(&mHash);
 		printf("METRICS: STRONG\n"
-						">tiempo en selects de STRONG: %lu,\n>tiempo en inserts de STRONG: %lu,\n"
+						">tiempo por select de STRONG: %f ms,\n>tiempo por insert de STRONG: %f ms,\n"
 						">cantidad inserts en STRONG : %d,\n>cantidad selects en STRONG : %d\n",
 						strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect);
 		pthread_mutex_lock(&mStrong);
 		list_iterate(criterios[STRONG].memorias,(void*)printearMetrics);
 		pthread_mutex_unlock(&mStrong);
 		printf("METRICS: EVENTUAL\n"
-						">tiempo en selects de EVENTUAL: %lu,\n>tiempo en inserts de EVENTUAL: %lu,\n"
+						">tiempo por select de EVENTUAL: %f ms,\n>tiempo por insert de EVENTUAL: %f ms,\n"
 						">cantidad inserts en EVENTUAL : %d,\n>cantidad selects en EVENTUAL : %d\n",
 						eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_lock(&mEventual);
@@ -266,7 +286,9 @@ void journal_consistencia(int consistencia){
 		pthread_mutex_lock(&mConexion);
 		int socket = crearSocketCliente(mem->ip,mem->puerto);
 		pthread_mutex_unlock(&mConexion);
-		//log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
+		pthread_mutex_unlock(&mLog);
 		enviarJournal(socket);
 	}
 	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);

@@ -116,8 +116,7 @@ void kernel_finalizar();
 int kernel_inicializarMemoria();
 /******************************OPERACIONES******************************************/
 void liberarMemoria(memoria* elemento);
-/* TODO metrics-> time
- */
+
 bool kernel_create(char* operacion,int thread);
 bool kernel_describe(char* operacion,int thread);
 bool kernel_journal();
