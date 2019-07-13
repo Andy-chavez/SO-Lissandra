@@ -21,7 +21,7 @@
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG) // Lo dejo asi de grande porque sino segfaultea
 
 // DEFINICIONES //
-bool APIProtocolo(void* buffer, int socket);
+bool APIProtocolo(void* buffer, int socket, int* esGossip);
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel);
 void* trabajarConConexion(void* socket);
 datosInicializacion* realizarHandshake();
@@ -33,7 +33,7 @@ void* cambiosConfig();
 void cambiarValor();
 
 
-bool APIProtocolo(void* buffer, int socket) {
+bool APIProtocolo(void* buffer, int socket, int *fueGossip) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
@@ -44,7 +44,9 @@ bool APIProtocolo(void* buffer, int socket) {
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
 	case DESCONEXION:
-		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
+		if(!fueGossip){
+			enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
+		}
 		cerrarConexion(socket);
 		return false;
 	case TABLAGOSSIP:
@@ -52,7 +54,8 @@ bool APIProtocolo(void* buffer, int socket) {
 		recibirYGuardarEnTablaGossip(socket, 0);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
-		return true;
+		*fueGossip = 1;
+		return 1;
 	case PAQUETEOPERACIONES:
 	case UNREGISTRO:
 	case METADATA:
@@ -116,12 +119,13 @@ void* trabajarConConexion(void* socket) {
 	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
 	*/
 	int hayMensaje = 1;
+	int esGossip = 0;
 
 	while(hayMensaje) {
 		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 		void* bufferRecepcion = recibir(socketKernel);
 		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
-		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
+		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel, &esGossip);
 	}
 
 	eliminarHiloDeListaDeHilos();
