@@ -185,6 +185,8 @@ void insertarInfoEnBloquesDeTabla(char* rutaTabla, t_list* listaRegistrosTempora
 
 	for (int i = 0; i< cantParticiones; i++){
 
+		puts("COMPACTACION: LEYENDO PARTICION");
+
 	//	t_list* listaDeRegistrosTemporales = list_create();
 	//	listaDeRegistrosTemporales = listaRegistrosTemporales;
 
@@ -242,6 +244,8 @@ void insertarInfoEnBloquesDeTabla(char* rutaTabla, t_list* listaRegistrosTempora
 
 		if (!cargarInfoDeBloquesParaCompactacion(&bufferParticion, arrayDeBloques)){
 
+			puts("COMPACTACION: SE GUARDA");
+
 			enviarOMostrarYLogearInfo(-1, "La particion esta vacia, se ingresara la nueva informacion");
 			//particion vacía y hay temporales
 			//meter una lista de registros temporales en un buffer
@@ -264,6 +268,9 @@ void insertarInfoEnBloquesDeTabla(char* rutaTabla, t_list* listaRegistrosTempora
 			continue;
 
 		}else{
+
+			puts("COMPACTACION: SE REEMPLAZA");
+
 			//la particion tiene registros y hay registros temporales para actualizar o agregar
 
 			//Tenemos que hacer esto porque si no se eliminan los nodos temporales que se van a usar despues
@@ -307,10 +314,14 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 
 	enviarOMostrarYLogearInfo(-1,"Comenzando compactacion de la tabla: %s\n",metadataDeTabla->nombreTabla);
 
+
 	while(1){
-		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
-		usleep(metadataDeTabla->tiempoCompactacion*1000);
-		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+
+		puts("COMPACTACION: VAMO A COMPACTAR");
+
+	//	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+		usleep((metadataDeTabla->tiempoCompactacion)*1000);
+	//	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		int i;
 		pthread_mutex_lock(&semaforoDeTabla);
 		int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
@@ -353,6 +364,8 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 		string_append(&nombreDelTmpc, numeroDeTmp);
 		string_append(&nombreDelTmpc,".tmpc");
 
+	//	puts("SE RENOMBRO TMP");
+
 
 		//con esto despues se puede verificar que no se pueda hacer esto
 		int cambiarNombre = rename(rutaTmpOriginal, rutaTmpCompactar);
@@ -377,6 +390,8 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 
 		cargarInfoDeBloquesParaCompactacion(&bufferTemporales, arrayDeBloques);
 
+		puts("COMPACTACION: SE CARGO INFO DE BLOQUES");
+
 		liberarBloquesDeTmpYPart(nombreDelTmpc, rutaTabla);
 
 		remove(rutaTmpCompactar);
@@ -392,6 +407,9 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	soloLoggear(-1, "Se insertara la informacion en los bloques de las particiones");
 
 	t_list* listaRegistrosTemporalesSinKeyRepetidas = list_create();
+
+	puts("COMPACTACION: SE CARGARON REGISTROS EN LISTA DE TEMPORALES");
+
 	agregadoYReemplazoDeRegistros(listaRegistrosTemporales, listaRegistrosTemporalesSinKeyRepetidas);
 
 	//Bloques originales -- de tabla

@@ -408,6 +408,8 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 	int key = atoi(*(argSeparados+1));
 	registro* registroBuscado;
 
+	puts("arranca select");
+
 	bool encontrarLaKey(void *elemento){
 			return estaLaKey(key, elemento);
 		}
@@ -467,6 +469,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket);
 			}
 		}
+
 
 		liberarDoblePuntero(arrayDeBloques);
 
@@ -703,6 +706,8 @@ void funcionDescribe(char* argumentos,int socket) {
 			metadataBuscado = obtenerMetadata(argumentos);
 			soloLoggear(socket,"Se encontro el metadata buscado");
 					if(socket!=-1){
+						operacionProtocolo protocolo = METADATA;
+						enviar(socket, (void *) &protocolo, sizeof(operacionProtocolo));
 						serializarYEnviarMetadata(socket,metadataBuscado);
 						soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 						liberarMetadata(metadataBuscado);

@@ -48,16 +48,22 @@ void dump(){
 	while(1){
 		int tiempoActual=0;
 
+
 		pthread_mutex_lock(&mutexTiempoDump);
 		tiempoActual = tiempoDump;
 		pthread_mutex_unlock(&mutexTiempoDump);
 		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(tiempoActual*1000);
-		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+		puts("DUMP: HOLAAAA");
+
+//deadlock en mutex memtable
+	//	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&mutexMemtable);
 		int cantElementos =memtable->elements_count;
 		pthread_mutex_unlock(&mutexMemtable);
 		if(cantElementos==0){
+			puts("DUMP: MEMTABLE VACIA");
+//			log_info(loggerResultadosConsola,"ELEMENTOS=0");
 			continue;
 		}
 
@@ -83,6 +89,9 @@ void dump(){
 		void dumpearTabla(tablaMem* unaTabla){
 		buffer = string_new();
 
+		log_info(loggerResultadosConsola,"DUMP: EMPEZANDO DUMP");
+
+
 		pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
 		pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
 		pthread_mutex_lock(&semaforoDeTablaMemtable);
@@ -106,7 +115,11 @@ void dump(){
 
 			guardarRegistrosEnBloques(tamanioTotalADumpear, cantBloquesNecesarios, bloquesAsignados, buffer);
 
+			puts("DUMP: GUARDIOLA LA DATA");
+
 			soloLoggear(-1,"Finalizado dumpeo de: %s", unaTabla->nombre);
+			log_info(loggerResultadosConsola,"SE DUMPEO");
+
 
 			pthread_mutex_unlock(&semaforoDeTablaFS);
 

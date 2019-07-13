@@ -329,7 +329,10 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
+//		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
+		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/resultadosnintendo.lql", "r");
+
+	//	archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
@@ -347,11 +350,17 @@ void runearScript(){
 			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
 			operacion->operacion = *(operacionLQL + 0);
 			operacion->parametros = *(operacionLQL + 1);
-
+			//puts(operacion->operacion);
+			//puts(operacion->parametros);
 			parserGeneral(operacion, -1);
-			usleep(10000);
+//			liberarDoblePuntero(operacionLQL);
+			free(operacionLQL);
+	//		free(lineaLeida);
+			usleep(100000);
 
 		}
+
+
 
 }
 
@@ -360,7 +369,7 @@ void runearScript(){
 
 int main(int argc, char* argv[]) {
 
-		//leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+//		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
 		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
@@ -368,7 +377,6 @@ int main(int argc, char* argv[]) {
 
 		inicializarBloques();
 		inicializarSemaforos();
-
 
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
@@ -392,7 +400,6 @@ int main(int argc, char* argv[]) {
 
 		//runearScript();
 
-
 		sem_init(&binarioLFS, 0, 0);
 
 		struct sigaction terminar;
@@ -401,17 +408,26 @@ int main(int argc, char* argv[]) {
 			terminar.sa_flags = SA_RESTART;
 			sigaction(SIGINT, &terminar, NULL);
 
-		sem_wait(&binarioLFS);
+			sem_wait(&binarioLFS);
 
-		pthread_cancel(threadServer);
-		pthread_cancel(threadConsola);
-		pthread_cancel(threadDump);
-		pthread_cancel(threadCambiosConfig);
 
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);
+			pthread_cancel(threadServer);
+				pthread_cancel(threadConsola);
+			pthread_cancel(threadDump);
+				pthread_cancel(threadCambiosConfig);
+
+				pthread_join(threadServer,NULL);
+				pthread_join(threadConsola,NULL);
+				pthread_join(threadDump,NULL);
+				pthread_join(threadCambiosConfig,NULL);
+
+/*
+				pthread_create(&threadDump, NULL,(void*) dump, NULL);
+				pthread_cancel(threadDump);
+				pthread_join(threadDump,NULL);
+*/
+
+
 
 		cancelarListaHilos();
 
