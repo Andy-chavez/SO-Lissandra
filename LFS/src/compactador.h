@@ -314,12 +314,11 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 		int i;
 		pthread_mutex_lock(&semaforoDeTabla);
 		int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
-
 		if(numeroTmp == 0){
 			pthread_mutex_unlock(&semaforoDeTabla);
 			continue;
 		}
-
+		puts("empece a compactar");
 	char* bufferTemporales = string_new();
 	char* rutaTabla = string_new();
 
@@ -336,7 +335,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 
 
 	for (i = 0; i< numeroTmp; i++){
-
+		log_info(loggerConsola,"Cant de temporales= %d",numeroTmp);
 
 		char* rutaTmpOriginal = string_new();
 		char* rutaTmpCompactar= string_new();
@@ -386,7 +385,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 		free(numeroDeTmp);
 		free(nombreDelTmpc);
 		liberarDoblePuntero(arrayDeBloques);
-		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	}
 
 	separarRegistrosYCargarALista(bufferTemporales, listaRegistrosTemporales);

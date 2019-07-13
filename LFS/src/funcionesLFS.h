@@ -451,7 +451,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		separarRegistrosYCargarALista(buffer, listaRegistros);
 		soloLoggear(socket,"Informacion de bloques de particion y tmps cargada");
 		pthread_mutex_lock(&mutexMemtable);
-		puts("pase SELECT MEMTABLE");
 		int cantElementosMemtable = memtable->elements_count;
 		pthread_mutex_unlock(&mutexMemtable);
 		if (cantElementosMemtable == 0){
@@ -705,6 +704,7 @@ void funcionDescribe(char* argumentos,int socket) {
 			soloLoggear(socket,"Se encontro el metadata buscado");
 					if(socket!=-1){
 						serializarYEnviarMetadata(socket,metadataBuscado);
+						soloLoggearResultados(socket,0,"Resultado DESCRIBE La tabla: %s, tiene %d particion/es, consistencia= %d y tiempo de compactacion= %d \n",metadataBuscado->nombreTabla,metadataBuscado->cantParticiones,metadataBuscado->tipoConsistencia,metadataBuscado->tiempoCompactacion);
 						liberarMetadata(metadataBuscado);
 						return;
 					}
