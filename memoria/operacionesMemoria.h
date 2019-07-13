@@ -956,7 +956,10 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 	operacionProtocolo tipoDeMetadata = empezarDeserializacion(&bufferMetadata);
 
 	if(tipoDeMetadata == METADATA){
-		metadata* unaMetadata = deserializarMetadata(bufferMetadata);
+		sem_wait(&MUTEX_SOCKET_LFS);
+		void* bufferMetadataReal = recibir(SOCKET_LFS); // Pls dont question about this on the coloquio thanks
+		sem_post(&MUTEX_SOCKET_LFS);
+		metadata* unaMetadata = deserializarMetadata(bufferMetadataReal);
 		serializarYEnviarMetadata(socketKernel, unaMetadata);
 		free(unaMetadata->nombreTabla);
 		free(unaMetadata);
