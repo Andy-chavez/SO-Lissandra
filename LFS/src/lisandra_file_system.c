@@ -248,7 +248,9 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
+//		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
+		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/resultadosnintendo.lql", "r");
+
 	//	archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
 		char *lineaLeida;
@@ -267,8 +269,8 @@ void runearScript(){
 			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
 			operacion->operacion = *(operacionLQL + 0);
 			operacion->parametros = *(operacionLQL + 1);
-			puts(operacion->operacion);
-			puts(operacion->parametros);
+			//puts(operacion->operacion);
+			//puts(operacion->parametros);
 			parserGeneral(operacion, -1);
 //			liberarDoblePuntero(operacionLQL);
 			free(operacionLQL);
@@ -315,7 +317,7 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		runearScript();
+		//runearScript();
 
 		sem_init(&binarioLFS, 0, 0);
 

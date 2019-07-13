@@ -52,12 +52,12 @@ void dump(){
 		pthread_mutex_lock(&mutexTiempoDump);
 		tiempoActual = tiempoDump;
 		pthread_mutex_unlock(&mutexTiempoDump);
-		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+		//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 		usleep(tiempoActual*1000);
 		puts("DUMP: HOLAAAA");
 
 //deadlock en mutex memtable
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+	//	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		pthread_mutex_lock(&mutexMemtable);
 		int cantElementos =memtable->elements_count;
 		pthread_mutex_unlock(&mutexMemtable);
@@ -94,10 +94,7 @@ void dump(){
 
 		pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
 		pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
-
-		///////////////SEMAFOROOOOO
 		pthread_mutex_lock(&semaforoDeTablaMemtable);
-
 		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
 			soloLoggear(-1,"Dumpeando tabla: %s", unaTabla->nombre);
@@ -129,8 +126,8 @@ void dump(){
 			free(buffer);
 			liberarDoblePuntero(bloquesAsignados);
 
-			bool tablaActual(tablaMem* unaTabla){
-				return (unaTabla->nombre == unaTabla->nombre);
+			bool tablaActual(tablaMem* unaTablita){
+				return (string_equals_ignore_case(unaTablita->nombre,unaTabla->nombre));
 			}
 
 			pthread_mutex_lock(&mutexMemtable);
