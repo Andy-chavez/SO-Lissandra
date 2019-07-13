@@ -141,15 +141,16 @@ bool kernel_describe(char* operacion, int thread){
 		return false;
 	void* buffer =recibir(socket);
 	if(buffer == NULL){
-		free(buffer);
 		return false;
 	}
-	actualizarListaMetadata(deserializarMetadata(buffer));
+	metadata* met = deserializarMetadata(buffer);
+	actualizarListaMetadata(met);
+	free(met->nombreTabla);
+	free(met);
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log, " RECIBIDO: Describe realizado"); //ver este tema del log cuando probemos
 	pthread_mutex_unlock(&mLog);
 	cerrarConexion(socket);
-	free(buffer);
 	liberarOperacionLQL(operacionAux);
 	return true;
 }

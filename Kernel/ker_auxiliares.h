@@ -122,7 +122,7 @@ void kernel_gossiping(){
 	}
 
 }
-void describeTimeado(){ //set a disabled, enabled en donde quiero que corte
+void describeTimeado(){
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 	while(destroy==0){
 		operacionLQL* opAux = malloc(sizeof(operacionLQL));
