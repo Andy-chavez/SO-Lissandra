@@ -707,6 +707,8 @@ void funcionDescribe(char* argumentos,int socket) {
 			metadataBuscado = obtenerMetadata(argumentos);
 			soloLoggear(socket,"Se encontro el metadata buscado");
 					if(socket!=-1){
+						operacionProtocolo protocolo = METADATA;
+						enviar(socket, (void *) &protocolo, sizeof(operacionProtocolo));
 						serializarYEnviarMetadata(socket,metadataBuscado);
 						liberarMetadata(metadataBuscado);
 						return;
