@@ -324,12 +324,20 @@ void cerrarMemoria() {
 	pthread_join(threadTimedGossiping, NULL);
 }
 
-int main() {
+void cerrarYLiberarMemoria(){
+	cerrarMemoria();
+	liberarMemoria();
+	liberarConfigYLogs();
+	liberarTablaMarcos();
+	liberarTablaGossip();
+}
+
+
+int empezarMemoria(){
 	inicializarProcesoMemoria();
-
 	datosInicializacion* datosDeInicializacion;
-	if(!(datosDeInicializacion = realizarHandshake())) {
 
+	if(!(datosDeInicializacion = realizarHandshake())) {
 		liberarConfigYLogs();
 		return -1;
 	}
@@ -337,24 +345,27 @@ int main() {
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion);
 	inicializarTablaMarcos();
 	liberarDatosDeInicializacion(datosDeInicializacion);
-
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
-
-	cerrarMemoria();
-
-	liberarMemoria();
-	liberarConfigYLogs();
-	liberarTablaMarcos();
-	liberarTablaGossip();
-
-	system("reset");
 	return 0;
-
 }
 
+void manejarSigpipe(){
+	sem_wait(&MUTEX_LOG_CONSOLA);
+	log_info(LOGGER_CONSOLA,"El LFS se ha desconectado, se procedera al cierre del proceso memoria. Vuelva a abir cuando LFS este disponible\n");
+	sem_post(&MUTEX_LOG_CONSOLA);
+	sem_post(&BINARIO_FINALIZACION_PROCESO);
+}
 
-
+int main() {
+	sigaction(SIGPIPE,&(struct sigaction){manejarSigpipe},NULL);
+	if(empezarMemoria()==-1){
+		return -1;
+	}
+	cerrarYLiberarMemoria();
+	system("reset");
+	return 0;
+}
