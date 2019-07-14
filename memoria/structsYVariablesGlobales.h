@@ -36,6 +36,7 @@ typedef struct {
 	int estaEnUso;
 	int tamanioValue;
 	void* lugarEnMemoria;
+	sem_t mutexMarco;
 } marco;
 
 typedef struct {

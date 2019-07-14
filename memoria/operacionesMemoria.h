@@ -113,6 +113,7 @@ void inicializarTablaMarcos() {
 		nuevoMarco->estaEnUso = 0;
 		nuevoMarco->marco = i;
 		nuevoMarco->lugarEnMemoria = (MEMORIA_PRINCIPAL->base) + ((i)*TAMANIO_UN_REGISTRO_EN_MEMORIA);
+		sem_init(&nuevoMarco->mutexMarco, 0, 1);
 		list_add(TABLA_MARCOS, nuevoMarco);
 	}
 }
@@ -225,7 +226,9 @@ void liberarTablaGossip() {
 void vaciarMemoria() {
 	void marcarMarcoComoDisponible(void* marcoAMarcar) {
 		marco* unMarco = (marco*) marcoAMarcar;
+		sem_wait(&unMarco->mutexMarco);
 		unMarco->estaEnUso = 0;
+		sem_post(&unMarco->mutexMarco);
 	}
 
 	sem_wait(&MUTEX_TABLA_MARCOS);
@@ -324,7 +327,11 @@ marco* algoritmoLRU() {
 
 marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 	bool encontrarLibreEnTablaMarcos(void* unMarcoEnTabla) {
-		return !(((marco*) unMarcoEnTabla)->estaEnUso);
+		marco* marcoEnTabla = (marco*) unMarcoEnTabla;
+		sem_wait(&marcoEnTabla->mutexMarco);
+		bool estaEnUso = marcoEnTabla->estaEnUso;
+		sem_post(&marcoEnTabla->mutexMarco);
+		return estaEnUso;
 	}
 	marco* marcoLibre;
 
@@ -392,8 +399,10 @@ marco* guardar(registroConNombreTabla* unRegistro,int socketKernel, bool* seEjec
 		return NULL;
 	}
 
+	sem_wait(&guardarEn->mutexMarco);
 	guardarEnMarco(guardarEn, bufferAGuardar);
 	guardarEn->estaEnUso = 1;
+	sem_post(&guardarEn->mutexMarco);
 
 	liberarBufferDePagina(bufferAGuardar);
 	return guardarEn;
@@ -1252,7 +1261,7 @@ void eliminarHiloDeListaDeHilos() {
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
-	hiloEnTabla* hiloADestruir = (hiloEnTabla*) list_remove_by_condition(TABLA_THREADS, esElPropioThread, destruirThreadEnTabla);
+	hiloEnTabla* hiloADestruir = (hiloEnTabla*) list_remove_by_condition(TABLA_THREADS, esElPropioThread);
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	if(!hiloADestruir) {
@@ -1297,9 +1306,9 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	list_iterate(TABLA_THREADS, crearHiloParaEsperar);
+	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
 	sem_post(&MUTEX_TABLA_THREADS);
 
-	list_iterate(listaHilosEsperandoSemaforos, esperarHiloEsperando);
 	list_destroy(listaHilosEsperandoSemaforos);
 }
 
