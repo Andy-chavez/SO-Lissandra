@@ -119,6 +119,9 @@ void dump(){
 			pthread_mutex_unlock(&semaforoDeTablaFS);
 
 			free(buffer);
+
+			buffer = NULL; // TODO un error tiraba que buffer quedo inutilizable (Es decir usaban el string_new() pero no realocaba bien), esto capaz lo soluciona
+
 			liberarDoblePuntero(bloquesAsignados);
 
 			bool tablaActual(tablaMem* unaTablita){

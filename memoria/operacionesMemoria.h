@@ -187,6 +187,7 @@ void inicializarSemaforos() {
 	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 	sem_init(&BINARIO_ALGORITMO_LRU, 0, 1);
+	sem_init(&BINARIO_HILO_EN_TABLA, 0, 1);
 }
 
 void liberarSegmento(void* segmentoEnMemoria) {
@@ -329,9 +330,9 @@ marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
 	bool encontrarLibreEnTablaMarcos(void* unMarcoEnTabla) {
 		marco* marcoEnTabla = (marco*) unMarcoEnTabla;
 		sem_wait(&marcoEnTabla->mutexMarco);
-		bool estaEnUso = marcoEnTabla->estaEnUso;
+		int estaEnUso = marcoEnTabla->estaEnUso;
 		sem_post(&marcoEnTabla->mutexMarco);
-		return estaEnUso;
+		return !estaEnUso;
 	}
 	marco* marcoLibre;
 
@@ -456,11 +457,17 @@ void* pedirALFS(operacionLQL *operacion) {
 	usleep(retardo);
 
 	sem_wait(&MUTEX_SOCKET_LFS);
+	if(SOCKET_LFS == -1) {
+		enviarOMostrarYLogearInfo(-1, "Se encuentra desconectado el LFS.");
+		return NULL;
+	}
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
 		SOCKET_LFS = -1;
+		sem_post(&MUTEX_SOCKET_LFS);
+		return NULL;
 	} else if(empezarDeserializacion(&buffer) == ERROR) {
 		sem_post(&MUTEX_SOCKET_LFS);
 		free(buffer);
@@ -648,14 +655,11 @@ paginaEnTabla* encontrarRegistroPorKey(segmento* unSegmento, int keyDada){
 			return igualKeyRegistro(unRegistro, keyDada);
 	}
 
-	sem_wait(&unSegmento->mutexSegmento);
 	paginaEnTabla* paginaEncontrada = (paginaEnTabla*) list_find(unSegmento->tablaPaginas,(void*)tieneIgualKeyQueDada);
-	sem_post(&unSegmento->mutexSegmento);
 
 	if(!paginaEncontrada) {
 		return NULL;
 	}
-	paginaEncontrada->timestamp = time(NULL);
 
 	return paginaEncontrada;
 }
@@ -780,10 +784,17 @@ void journalLQL(int socketKernel) {
 
 	operacionProtocolo protocoloJournal = PAQUETEOPERACIONES;
 
+	enviarOMostrarYLogearInfo(-1, "Tomo semaforo mutex en Journal");
 	sem_wait(&MUTEX_SOCKET_LFS);
-	enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo)); // TODO VERIFICAR SI SOCKETLFS NO EXISTE YA
-	serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
+	if(SOCKET_LFS == -1) {
+		enviarOMostrarYLogearInfo(-1, "ERROR: No se puede enviar la informacion del Journal, ya que el LFS no se encuentra disponible.");
+		enviarOMostrarYLogearInfo(-1, "Se pasara a borrar los datos en la memoria de todos modos. Se perderan los datos.");
+	}else {
+		enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo)); // TODO VERIFICAR SI SOCKETLFS NO EXISTE YA
+		serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
+	}
 	sem_post(&MUTEX_SOCKET_LFS);
+	enviarOMostrarYLogearInfo(-1, "libero semaforo mutex en journal.");
 
 	vaciarMemoria();
 
@@ -818,6 +829,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 	segmento* unSegmento = encontrarSegmentoPorNombre(nombreTabla);
 	if(unSegmento){
 
+	sem_wait(&unSegmento->mutexSegmento);
 	paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,key);
 
 		if(paginaEncontrada){
@@ -825,15 +837,19 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			char* value = valueRegistro(paginaEncontrada);
 			char *mensaje = string_new();
 			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", value);
+
 			paginaEncontrada->timestamp = time(NULL);
 
+			sem_post(&unSegmento->mutexSegmento);
+
 			enviarOMostrarYLogearInfo(socketKernel, mensaje);
+
 			free(value);
 			free(mensaje);
 		}
 		else {
 			// Pedir a LFS un registro para guardar el registro en segmento encontrado.
-
+			sem_post(&unSegmento->mutexSegmento);
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
@@ -913,14 +929,18 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	segmento* unSegmento = encontrarSegmentoPorNombre(tabla);
 	if(unSegmento){
 
+		sem_wait(&unSegmento->mutexSegmento);
 		paginaEnTabla* paginaEncontrada = encontrarRegistroPorKey(unSegmento,registroNuevo->key);
 
 		if(paginaEncontrada){
 			cambiarDatosEnMemoria(paginaEncontrada, registroNuevo);
 			paginaEncontrada->flag = SI;
 
+			sem_post(&unSegmento->mutexSegmento);
+
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
+			sem_post(&unSegmento->mutexSegmento);
 			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel, 1, &seEjecutaraJournal)){
 				enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 			} else if(!seEjecutaraJournal){
@@ -1275,6 +1295,7 @@ void eliminarHiloDeListaDeHilos() {
 void* esperarSemaforoDeHilo(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
+		sem_post(&BINARIO_HILO_EN_TABLA);
 		sem_wait(hiloAEsperar->semaforoOperacion);
 		pthread_exit(0);
 }
@@ -1282,6 +1303,7 @@ void* esperarSemaforoDeHilo(void* buffer) {
 void* esperarSemaforoDeCancelar(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
+		sem_post(&BINARIO_HILO_EN_TABLA);
 		sem_wait(hiloAEsperar->cancelarThread);
 		pthread_exit(0);
 }
@@ -1296,9 +1318,11 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 	}
 
 	void crearHiloParaEsperar(void* unHilo) {
+		sem_wait(&BINARIO_HILO_EN_TABLA);
 		hiloQueEspera* unHiloQueEspera = malloc(sizeof(hiloQueEspera));
 		int error = pthread_create(&unHiloQueEspera->thread, NULL, esperarSemaforoParticular, unHilo);
 		if(error) {
+			sem_post(&BINARIO_HILO_EN_TABLA);
 			printf("Hubo un error al crear un hilo para esperar\n");
 		}
 		list_add(listaHilosEsperandoSemaforos, unHiloQueEspera);

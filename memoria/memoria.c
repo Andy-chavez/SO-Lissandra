@@ -238,7 +238,7 @@ void *servidorMemoria() {
 			enviarYLogearMensajeError(-1, "ERROR: Socket Defectuoso");
 			continue;
 		}
-		if(pthread_create(&threadConexion, NULL, trabajarConConexion, &socketKernel) < 0) {
+		if(pthread_create(&threadConexion, NULL, trabajarConConexion, (void*) &socketKernel) < 0) {
 			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
 		}
 
@@ -360,16 +360,7 @@ int empezarMemoria(){
 	return 0;
 }
 
-void manejarSigpipe(){
-	sem_wait(&MUTEX_LOG_CONSOLA);
-	log_info(LOGGER_CONSOLA,"El LFS se ha desconectado, se procedera al cierre del proceso memoria. Vuelva a abir cuando LFS este disponible\n");
-	sem_post(&MUTEX_LOG_CONSOLA);
-	sem_post(&BINARIO_FINALIZACION_PROCESO);
-	system("reset");
-}
-
 int main() {
-	sigaction(SIGPIPE,&(struct sigaction){manejarSigpipe},NULL);
 	if(empezarMemoria()==-1){
 		return 1;
 	}
