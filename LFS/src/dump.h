@@ -66,35 +66,42 @@ void dump(){
 		}
 
 		int tamanioTotalADumpear =0;
-		char* buffer = string_new();
-		void cargarRegistro(registro* unRegistro){
-
-			char* time = string_itoa(unRegistro->timestamp);
-			char* key = string_itoa(unRegistro->key);
-
-			string_append(&buffer,time);
-			string_append(&buffer,";");
-			string_append(&buffer,key);
-			string_append(&buffer,";");
-			string_append(&buffer,unRegistro->value);
-			string_append(&buffer,"\n");
 
 
-			free(time);
-			free(key);
-
-		}
 
 		void dumpearTabla(tablaMem* unaTabla){
+			char* buffer = string_new();
+			int cantidadRegistrosDumpeados = 0;
+			void cargarRegistro(registro* unRegistro){
 
-		log_info(loggerResultadosConsola,"DUMP: EMPEZANDO DUMP");
+				char* time = string_itoa(unRegistro->timestamp);
+				char* key = string_itoa(unRegistro->key);
 
-		pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
-		pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
-		pthread_mutex_lock(&semaforoDeTablaMemtable);
-		list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
+				soloLoggear(-1, "Se agrega al buffer de dump el registro %d %s %d", unRegistro->key, unRegistro->value, unRegistro->timestamp);
+
+				string_append(&buffer,time);
+				string_append(&buffer,";");
+				string_append(&buffer,key);
+				string_append(&buffer,";");
+				string_append(&buffer,unRegistro->value);
+				string_append(&buffer,"\n");
+
+				cantidadRegistrosDumpeados++;
+				free(time);
+				free(key);
+
+			}
+
+			log_info(loggerResultadosConsola,"DUMP: EMPEZANDO DUMP");
+
+			pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
+			pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
+			pthread_mutex_unlock(&mutexMemtable);
+			pthread_mutex_lock(&semaforoDeTablaMemtable);
+			list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
 			soloLoggear(-1,"Dumpeando tabla: %s", unaTabla->nombre);
+			soloLoggear(-1, "Se dumpearan %d registros.", cantidadRegistrosDumpeados);
 
 			tamanioTotalADumpear = strlen(buffer);
 			soloLoggear(-1,"Creando tmp");
@@ -120,8 +127,6 @@ void dump(){
 
 			free(buffer);
 
-			buffer = NULL; // TODO un error tiraba que buffer quedo inutilizable (Es decir usaban el string_new() pero no realocaba bien), esto capaz lo soluciona
-
 			liberarDoblePuntero(bloquesAsignados);
 
 			bool tablaActual(tablaMem* unaTablita){
@@ -130,14 +135,13 @@ void dump(){
 
 			pthread_mutex_lock(&mutexMemtable);
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
-			pthread_mutex_unlock(&mutexMemtable);
-
 			pthread_mutex_unlock(&semaforoDeTablaMemtable);
-
 
 		}
 
+		pthread_mutex_lock(&mutexMemtable);
 		list_iterate(memtable,(void*)dumpearTabla);
+		pthread_mutex_unlock(&mutexMemtable);
 
 		//liberarPorTablas
 

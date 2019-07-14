@@ -206,7 +206,6 @@ void separarRegistrosYCargarALista(char* buffer, t_list* listaRegistros){
 				agregarALista(*(aCargar+0),*(aCargar+1),*(aCargar+2),listaRegistros);
 				liberarDoblePuntero(aCargar);
 			}
-
 	liberarDoblePuntero(separarRegistro);
 }
 
@@ -409,7 +408,6 @@ char* infoEnBloque(char* numeroBloque){ //pasarle el tamanio de la particion, o 
 		free(rutaBloque);
 		return NULL;
 	}
-
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);
 	free(rutaBloque);
 	return informacion;

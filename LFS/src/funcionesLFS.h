@@ -558,8 +558,6 @@ void funcionInsert(char* argumentos,int socket) {
 
 	liberarDoblePuntero(separarNombreYKey);
 	liberarDoblePuntero(argSeparados);
-
-
 }
 
 void funcionCreate(char* argumentos,int socket) {

@@ -459,6 +459,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	sem_wait(&MUTEX_SOCKET_LFS);
 	if(SOCKET_LFS == -1) {
 		enviarOMostrarYLogearInfo(-1, "Se encuentra desconectado el LFS.");
+		sem_post(&MUTEX_SOCKET_LFS);
 		return NULL;
 	}
 	serializarYEnviarOperacionLQL(SOCKET_LFS, operacion);
@@ -485,10 +486,6 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 	}
 
 	registroConNombreTabla* paginaEncontradaEnLFS = deserializarRegistro(bufferRegistroConTabla);
-
-	if(atoi(paginaEncontradaEnLFS->nombreTabla)) {
-		return NULL;
-	}
 
 	return paginaEncontradaEnLFS;
 }
@@ -859,6 +856,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 				string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
 				enviarOMostrarYLogearInfo(socketKernel, mensaje);
 				liberarRegistroConNombreTabla(registroLFS);
+				free(mensaje);
 			}
 			else if(!seEjecutaraJournal){
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
