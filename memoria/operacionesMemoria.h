@@ -30,7 +30,7 @@ marco* encontrarMarcoEscrito(int numeroMarco);
 marco* algoritmoLRU();
 marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal);
 bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tamanioValueMaximo);
-void liberarbufferDePagina(bufferDePagina* buffer);
+void liberarBufferDePagina(bufferDePagina* buffer);
 void guardarEnMarco(marco* unMarco, bufferDePagina* bufferAGuardar);
 marco* guardar(registroConNombreTabla* unRegistro,int socketKernel, bool* seEjecutaraJournal);
 int guardarEnMemoria(registroConNombreTabla* unRegistro,int socketKernel, bool* seEjecutaraJournal);
@@ -372,7 +372,7 @@ bufferDePagina *armarBufferDePagina(registroConNombreTabla* unRegistro, int tama
 	return buffer;
 }
 
-void liberarbufferDePagina(bufferDePagina* buffer) {
+void liberarBufferDePagina(bufferDePagina* buffer) {
 	free(buffer->buffer);
 	free(buffer);
 }
@@ -388,14 +388,14 @@ marco* guardar(registroConNombreTabla* unRegistro,int socketKernel, bool* seEjec
 	marco *guardarEn = encontrarEspacio(socketKernel, seEjecutaraJournal);
 
 	if(!guardarEn) {
-		free(bufferAGuardar);
+		liberarBufferDePagina(bufferAGuardar);
 		return NULL;
 	}
 
 	guardarEnMarco(guardarEn, bufferAGuardar);
 	guardarEn->estaEnUso = 1;
 
-	liberarbufferDePagina(bufferAGuardar);
+	liberarBufferDePagina(bufferAGuardar);
 	return guardarEn;
 }
 
@@ -434,7 +434,7 @@ void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNu
 	guardarEnMarco(marcoACambiarValue, bufferParaCambio);
 	sem_post(&MUTEX_TABLA_MARCOS);
 
-	liberarbufferDePagina(bufferParaCambio);
+	liberarBufferDePagina(bufferParaCambio);
 }
 
 // ------------------------------------------------------------------------ //
@@ -454,6 +454,7 @@ void* pedirALFS(operacionLQL *operacion) {
 		SOCKET_LFS = -1;
 	} else if(empezarDeserializacion(&buffer) == ERROR) {
 		sem_post(&MUTEX_SOCKET_LFS);
+		free(buffer);
 		return NULL;
 	}
 	sem_post(&MUTEX_SOCKET_LFS);
@@ -832,13 +833,11 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 				char *mensaje = string_new();
 				string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
 				enviarOMostrarYLogearInfo(socketKernel, mensaje);
-				free(mensaje);
-				free(registroLFS->value);
-				free(registroLFS->nombreTabla);
-				free(registroLFS);
+				liberarRegistroConNombreTabla(registroLFS);
 			}
 			else if(!seEjecutaraJournal){
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+				liberarRegistroConNombreTabla(registroLFS);
 			}
 		}
 	}
@@ -846,7 +845,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 	else {
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
-		if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
+		if(!registroLFS) {
 			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
 		}
 		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel, &seEjecutaraJournal)){
@@ -854,12 +853,11 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
 			enviarOMostrarYLogearInfo(socketKernel, mensaje);
 			free(mensaje);
-			free(registroLFS->value);
-			free(registroLFS->nombreTabla);
-			free(registroLFS);
+			liberarRegistroConNombreTabla(registroLFS);
 		}
 		else if(!seEjecutaraJournal){
 			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+			liberarRegistroConNombreTabla(registroLFS);
 		}
 	}
 
@@ -995,6 +993,7 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 		serializarYEnviarPaqueteMetadatas(socketKernel, metadatas);
 		list_destroy_and_destroy_elements(metadatas, liberarMetadata);
 	}
+	free(bufferMetadata);
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
@@ -1240,19 +1239,20 @@ void agregarHiloAListaDeHilos() {
 }
 
 void eliminarHiloDeListaDeHilos() {
+	void destruirThreadEnTabla(void* hiloEnLaTabla) {
+		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
+		free(unHilo->cancelarThread);
+		free(unHilo->semaforoOperacion);
+		free(unHilo);
+	}
+
 	bool esElPropioThread(void* hiloEnLaTabla) {
 		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
-		if(pthread_equal(unHilo->thread, pthread_self())) {
-			free(unHilo->cancelarThread);
-			free(unHilo->semaforoOperacion);
-			free(unHilo);
-			return true;
-		}
-		return false;
+		return pthread_equal(unHilo->thread, pthread_self());
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
-	list_remove_by_condition(TABLA_THREADS, esElPropioThread);
+	list_remove_and_destroy_by_condition(TABLA_THREADS, esElPropioThread, destruirThreadEnTabla);
 	sem_post(&MUTEX_TABLA_THREADS);
 }
 

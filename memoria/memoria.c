@@ -47,6 +47,7 @@ bool APIProtocolo(void* buffer, int socket, int *fueGossip) {
 		if(!fueGossip){
 			enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
 		}
+		free(buffer);
 		cerrarConexion(socket);
 		return false;
 	case TABLAGOSSIP:
@@ -54,6 +55,7 @@ bool APIProtocolo(void* buffer, int socket, int *fueGossip) {
 		recibirYGuardarEnTablaGossip(socket, 0);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
+		free(buffer);
 		*fueGossip = 1;
 		return 1;
 	case PAQUETEOPERACIONES:

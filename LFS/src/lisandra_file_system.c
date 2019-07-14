@@ -190,7 +190,8 @@ void trabajarConexion(void* socket){
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
 		}
 
-		pthread_exit(0);
+	// TODO agregar la funcion que elimine el hilo de la lista de hilos a cancelar cuando cierren LFS
+	pthread_exit(0);
 }
 
 void* servidorLisandra(){

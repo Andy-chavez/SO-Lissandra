@@ -276,6 +276,12 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 	configMetadata = config_create(ruta);
 
+	// TODO Aca rompe porque el configMetadata no es verificado antes de leer los values.
+	// TODO Se podrian hacer 3 cosas:
+	// TODO 1. Avisar al Kernel que fallo al obtener metadata y romper el curso del script, con lo cual dejaria de correr el script y no podriamos ejecutar compactacion_larga.lql
+	// TODO 2. Avisar por un log sobre el caso, romper el curso de ejecucion de la funcion que se llamo pero seguir el curso de ejecucion del script
+	// TODO 3. Realizar una espera con un while hasta tener un config legible para obtener los valores solicitados.
+
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
 	char* consistencia = config_get_string_value(configMetadata, "CONSISTENCY");
 	tipoConsistencia = devolverConsistencia(consistencia);
@@ -343,12 +349,12 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 // 5) CARGAR COSAS//
 
 
-void cargarInfoDeBloques(char*** buffer, char**arrayDeBloques){
+void cargarInfoDeBloques(char** buffer, char**arrayDeBloques){
 	int i = 0;
 		while(*(arrayDeBloques+i)!= NULL){
 							char* informacion = infoEnBloque(*(arrayDeBloques+i));
 							if(informacion!=NULL)
-							string_append(*buffer, informacion);
+							string_append(buffer, informacion);
 							i++;
 						}
 }
@@ -370,7 +376,7 @@ void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDePa
 			char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 
 
-			cargarInfoDeBloques(&buffer, arrayDeBloques);
+			cargarInfoDeBloques(buffer, arrayDeBloques);
 
 			free(numeroTmp);
 			free(ruta);
@@ -378,7 +384,7 @@ void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDePa
 			config_destroy(part);
 
 		}
-		cargarInfoDeBloques(&buffer, arrayDeParticion); //aca cargas lo de la particion
+		cargarInfoDeBloques(buffer, arrayDeParticion); //aca cargas lo de la particion
 
 }
 
@@ -516,15 +522,15 @@ void funcionInsert(char* argumentos,int socket) {
 
 	if(strlen(value)> tamanioValue){
 		soloLoggearError(socket,"El tamanio del value es mayor al maximo");
+		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR INSERT",nombreTabla,key,value);
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
-		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR INSERT",nombreTabla,key,value);
 		return;
 	}
 	if (!verificarExistenciaDirectorioTabla(nombreTabla,socket)){
+		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR INSERT",nombreTabla,key,value);
 		liberarDoblePuntero(separarNombreYKey);
 		liberarDoblePuntero(argSeparados);
-		soloLoggearResultados(socket,1,"RESULTADO INSERT %s %d %s :ERROR INSERT",nombreTabla,key,value);
 		if(socket!=-1) enviarError(socket);
 		return;
 	}
