@@ -160,7 +160,7 @@ bool agregarRegistro(char* nombreTabla, registro* unRegistro, tablaMem* tabla){
 
 		if (string_equals_ignore_case(tabla->nombre, nombreTabla)){
 			list_add(tabla->listaRegistros, unRegistro);
-			enviarOMostrarYLogearInfo(-1,"Se añadio registro");
+			enviarOMostrarYLogearInfo(-1,"Se añadio en la tabla %s el registro key %d value \"%s\" timestamp %d", tabla->nombre, unRegistro->key, unRegistro->value, unRegistro->timestamp);
 			return true;
 		}else{
 			return false;

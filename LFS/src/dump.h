@@ -66,7 +66,7 @@ void dump(){
 		}
 
 		int tamanioTotalADumpear =0;
-		char* buffer;
+		char* buffer = string_new();
 		void cargarRegistro(registro* unRegistro){
 
 			char* time = string_itoa(unRegistro->timestamp);
@@ -79,16 +79,15 @@ void dump(){
 			string_append(&buffer,unRegistro->value);
 			string_append(&buffer,"\n");
 
+
 			free(time);
 			free(key);
 
 		}
 
 		void dumpearTabla(tablaMem* unaTabla){
-		buffer = string_new();
 
 		log_info(loggerResultadosConsola,"DUMP: EMPEZANDO DUMP");
-
 
 		pthread_mutex_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
 		pthread_mutex_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);

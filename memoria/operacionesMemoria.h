@@ -1252,8 +1252,15 @@ void eliminarHiloDeListaDeHilos() {
 	}
 
 	sem_wait(&MUTEX_TABLA_THREADS);
-	list_remove_and_destroy_by_condition(TABLA_THREADS, esElPropioThread, destruirThreadEnTabla);
+	hiloEnTabla* hiloADestruir = (hiloEnTabla*) list_remove_by_condition(TABLA_THREADS, esElPropioThread, destruirThreadEnTabla);
 	sem_post(&MUTEX_TABLA_THREADS);
+
+	if(!hiloADestruir) {
+		printf("Hubo un problema eliminando el hilo de la lista de hilos\n");
+		return;
+	}
+	destruirThreadEnTabla((void*) hiloADestruir);
+	return;
 }
 
 void* esperarSemaforoDeHilo(void* buffer) {

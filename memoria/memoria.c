@@ -374,6 +374,6 @@ int main() {
 		return 1;
 	}
 	cerrarYLiberarMemoria();
-	system("reset");
+//	system("reset");
 	return 0;
 }
