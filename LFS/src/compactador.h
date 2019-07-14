@@ -56,26 +56,26 @@ void actualizarBloquesEnArchivo(char* rutaParticion,int cantidadTotalNecesaria,i
 //aca entras cuando ya necesitas mas bloques de los que ya tenes
 	char* infoAGuardar = string_new();
 
-				char* tamanioTotal = string_itoa(size);
-				string_append(&infoAGuardar, "SIZE=");
+	char* tamanioTotal = string_itoa(size);
+	string_append(&infoAGuardar, "SIZE=");
 
-				string_append(&infoAGuardar,tamanioTotal);
-				string_append(&infoAGuardar, "\n");
-				string_append(&infoAGuardar, "BLOCKS=[");
-				free(tamanioTotal);
+	string_append(&infoAGuardar,tamanioTotal);
+	string_append(&infoAGuardar, "\n");
+	string_append(&infoAGuardar, "BLOCKS=[");
+	free(tamanioTotal);
 
-				for(int j=0;j=cantidadTotalNecesaria;j++){
-						char* bloqueLibre = devolverBloqueLibre();
-						string_append(&infoAGuardar,bloqueLibre);
-						cantidadTotalNecesaria--;
-						free(bloqueLibre);
-						if(cantidadTotalNecesaria>0) string_append(&infoAGuardar,","); //si es el ultimo no quiero que me ponga una ,
-				}
-				string_append(&infoAGuardar, "]");
+	for(int j=0;j=cantidadTotalNecesaria;j++){
+		char* bloqueLibre = devolverBloqueLibre();
+		string_append(&infoAGuardar,bloqueLibre);
+		cantidadTotalNecesaria--;
+		free(bloqueLibre);
+		if(cantidadTotalNecesaria>0) string_append(&infoAGuardar,","); //si es el ultimo no quiero que me ponga una ,
+	}
+	string_append(&infoAGuardar, "]");
 
-//remove(rutaParticion);
-guardarInfoEnArchivo(rutaParticion, infoAGuardar);
-free(infoAGuardar);
+	//remove(rutaParticion);
+	guardarInfoEnArchivo(rutaParticion, infoAGuardar);
+	free(infoAGuardar);
 }
 
 
@@ -89,15 +89,13 @@ void ingresarNuevaInfo(char* rutaParticion, char* buffer, char** arrayDeBloques)
 	//si solo se necesita un bloque se guarda en el unico bloque que se le asigno a la particion al cargar la tabla
 	//aca no
 
-		actualizarBloquesEnArchivo(rutaParticion,cantBloquesNecesarios,tamanioDelBuffer);
-		t_config* particion = config_create(rutaParticion);
+	actualizarBloquesEnArchivo(rutaParticion,cantBloquesNecesarios,tamanioDelBuffer);
+	t_config* particion = config_create(rutaParticion);
 
-		char** arrayDeBloquesFinal = config_get_array_value(particion, "BLOCKS");
-		guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, buffer);
-		config_set_value(particion, "SIZE", size);
+	char** arrayDeBloquesFinal = config_get_array_value(particion, "BLOCKS");
+	guardarRegistrosEnBloques(tamanioDelBuffer, cantBloquesNecesarios, arrayDeBloquesFinal, buffer);
+	config_destroy(particion);
 
-		//config_save(particion);
-		config_destroy(particion);
 	liberarDoblePuntero(arrayDeBloquesFinal);
 	free(size);
 }

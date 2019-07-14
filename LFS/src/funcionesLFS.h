@@ -276,11 +276,9 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 	configMetadata = config_create(ruta);
 
-	// TODO Aca rompe porque el configMetadata no es verificado antes de leer los values.
-	// TODO Se podrian hacer 3 cosas:
-	// TODO 1. Avisar al Kernel que fallo al obtener metadata y romper el curso del script, con lo cual dejaria de correr el script y no podriamos ejecutar compactacion_larga.lql
-	// TODO 2. Avisar por un log sobre el caso, romper el curso de ejecucion de la funcion que se llamo pero seguir el curso de ejecucion del script
-	// TODO 3. Realizar una espera con un while hasta tener un config legible para obtener los valores solicitados.
+	while(configMetadata == NULL || config_has_property(configMetadata, "PARTITIONS") || config_has_property(configMetadata, "CONSISTENCY") || config_has_property(configMetadata, "COMPACTION_TIME")) {
+		printf("No se abrio bien la metadata de la tabla %s", nombreTabla);
+	}
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
 	char* consistencia = config_get_string_value(configMetadata, "CONSISTENCY");
@@ -354,8 +352,8 @@ void cargarInfoDeBloques(char** buffer, char**arrayDeBloques){
 		while(*(arrayDeBloques+i)!= NULL){
 							char* informacion = infoEnBloque(*(arrayDeBloques+i));
 							if(informacion!=NULL)
-							string_append(buffer, informacion);
-							i++;
+								string_append(buffer, informacion);
+								i++;
 						}
 }
 
@@ -437,7 +435,11 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_t semaforoTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
 		soloLoggear(socket,"Buscando registro con key= %d",key);
 		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
-		pthread_mutex_lock(&semaforoDeTabla);
+		int seLockeoMal = pthread_mutex_lock(&semaforoDeTabla);
+		if(seLockeoMal) {
+			printf("Se lockeo mal el lock de semaforoDeTabla en la funcion Select");
+			return;
+		}
 
 		metadata* metadataTabla = obtenerMetadata(nombreTabla);
 

@@ -403,6 +403,12 @@ char* infoEnBloque(char* numeroBloque){ //pasarle el tamanio de la particion, o 
 	string_append(&rutaBloque,".bin");
 	int archivo = open(rutaBloque,O_RDWR);
 
+	if(archivo == -1) {
+		soloLoggearError(-1, "No se pudo abrir el file descriptor del archivo %s", rutaBloque);
+		free(rutaBloque);
+		return NULL;
+	}
+
 	fstat(archivo,&sb);
 	if (sb.st_size == 0){
 		free(rutaBloque);
