@@ -32,8 +32,8 @@ typedef struct{
 	int cantParticiones;
 	int tiempoCompactacion;
 	char* nombreTabla;
-	pthread_mutex_t semaforoFS;
-	pthread_mutex_t semaforoMemtable;
+	sem_t semaforoFS;
+	sem_t semaforoMemtable;
 	pthread_t hiloDeCompactacion;
 }metadataConSemaforo;
 
@@ -60,8 +60,8 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
 void soloLoggear(int socket,char* mensaje,...);
 void soloLoggearError(int socket,char* mensaje,...);
-pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla);
-pthread_mutex_t devolverSemaforoDeTablaMemtable(char* nombreTabla);
+sem_t devolverSemaforoDeTablaFS(char* nombreTabla);
+sem_t devolverSemaforoDeTablaMemtable(char* nombreTabla);
 void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer);
 void soloLoggearResultados(int socket,int caso,char *mensaje, ...);
 
@@ -107,14 +107,14 @@ void soloLoggearError(int socket,char* mensaje,...){
 	va_start(parametrosAdicionales, mensaje);
 	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket==-1){
-		pthread_mutex_lock(&mutexLoggerConsola);
+		sem_wait(&mutexLoggerConsola);
 		log_error(loggerConsola, mensajeTotal);
-		pthread_mutex_unlock(&mutexLoggerConsola);
+		sem_post(&mutexLoggerConsola);
 	}
 	else{
-		pthread_mutex_lock(&mutexLogger);
+		sem_wait(&mutexLogger);
 		log_error(logger, mensajeTotal);
-		pthread_mutex_unlock(&mutexLogger);
+		sem_post(&mutexLogger);
 	}
 	free(mensajeTotal);
 	va_end(parametrosAdicionales);
@@ -125,26 +125,26 @@ void soloLoggearResultados(int socket,int error,char *mensaje, ...){
 	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket==-1){
 			if(error==1){ //error=1 significa que hubo algun error
-				pthread_mutex_lock(&mutexResultadosConsola);
+				sem_wait(&mutexResultadosConsola);
 				log_error(loggerResultadosConsola, mensajeTotal);
-				pthread_mutex_unlock(&mutexResultadosConsola);
+				sem_post(&mutexResultadosConsola);
 			}
 			else{
-				pthread_mutex_lock(&mutexResultadosConsola);
+				sem_wait(&mutexResultadosConsola);
 				log_info(loggerResultadosConsola, mensajeTotal);
-				pthread_mutex_unlock(&mutexResultadosConsola);
+				sem_post(&mutexResultadosConsola);
 			}
 		}
 		else{
 			if(error==1){
-				pthread_mutex_lock(&mutexResultados);
+				sem_wait(&mutexResultados);
 				log_error(loggerResultados, mensajeTotal);
-				pthread_mutex_unlock(&mutexResultados);
+				sem_post(&mutexResultados);
 			}
 			else{
-				pthread_mutex_lock(&mutexResultados);
+				sem_wait(&mutexResultados);
 				log_info(loggerResultados, mensajeTotal);
-				pthread_mutex_unlock(&mutexResultados);
+				sem_post(&mutexResultados);
 			}
 		}
 		free(mensajeTotal);
@@ -156,37 +156,37 @@ void soloLoggear(int socket, char *mensaje, ...){
 	va_start(parametrosAdicionales, mensaje);
 	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket==-1){
-		pthread_mutex_lock(&mutexLoggerConsola);
+		sem_wait(&mutexLoggerConsola);
 		log_info(loggerConsola, mensajeTotal);
-		pthread_mutex_unlock(&mutexLoggerConsola);
+		sem_post(&mutexLoggerConsola);
 	}
 	else{
-		pthread_mutex_lock(&mutexLogger);
+		sem_wait(&mutexLogger);
 		log_info(logger, mensajeTotal);
-		pthread_mutex_unlock(&mutexLogger);
+		sem_post(&mutexLogger);
 	}
 	free(mensajeTotal);
 	va_end(parametrosAdicionales);
 }
-pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla){
+sem_t devolverSemaforoDeTablaFS(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
 			metadata* unMetadata = (metadata*) elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
 		}
-	pthread_mutex_lock(&mutexListaDeTablas);
+	sem_wait(&mutexListaDeTablas);
 	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
-	pthread_mutex_unlock(&mutexListaDeTablas);
+	sem_post(&mutexListaDeTablas);
 	return metadataBuscado->semaforoFS;
 }
 
-pthread_mutex_t devolverSemaforoDeTablaMemtable(char* nombreTabla){
+sem_t devolverSemaforoDeTablaMemtable(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
 			metadata* unMetadata = elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
 		}
-	pthread_mutex_lock(&mutexListaDeTablas);
+	sem_wait(&mutexListaDeTablas);
 	metadataConSemaforo* metadataBuscado = list_find(listaDeTablas,seEncuentraTabla);
-	pthread_mutex_unlock(&mutexListaDeTablas);
+	sem_post(&mutexListaDeTablas);
 	return metadataBuscado->semaforoMemtable;
 }
 
@@ -246,14 +246,14 @@ void enviarOMostrarYLogearInfo(int socket, char* mensaje, ...) {
 void enviarYOLogearAlgo(int socket, char *mensaje, void(*log)(t_log *, char *), va_list parametrosAdicionales){
 	char* mensajeTotal = string_from_vformat(mensaje, parametrosAdicionales);
 	if(socket != -1) {
-		pthread_mutex_lock(&mutexLogger);
+		sem_wait(&mutexLogger);
 		log(logger, mensajeTotal);
-		pthread_mutex_unlock(&mutexLogger);
+		sem_post(&mutexLogger);
 		enviar(socket, mensajeTotal, strlen(mensajeTotal) + 1);
 	} else {
-		pthread_mutex_lock(&mutexLoggerConsola);
+		sem_wait(&mutexLoggerConsola);
 		log(loggerConsola, mensajeTotal);
-		pthread_mutex_unlock(&mutexLoggerConsola);
+		sem_post(&mutexLoggerConsola);
 	}
 	free(mensajeTotal);
 }
@@ -279,8 +279,6 @@ void liberarMemtable() { //no elimina toda la memtable sino las tablas y registr
 
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
 	free(unMetadata->nombreTabla);
-	pthread_mutex_destroy(&(unMetadata->semaforoFS));
-	pthread_mutex_destroy(&(unMetadata->semaforoMemtable));
 
 	pthread_cancel(unMetadata->hiloDeCompactacion);
 	pthread_join(unMetadata->hiloDeCompactacion,NULL);
@@ -346,6 +344,7 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 		fclose(fp);
 		return;
 	}
+	soloLoggearError(-1,"No se pudo guardar la informacion en la ruta %s",ruta);
 	fclose(fp);
 }
 
@@ -359,9 +358,9 @@ void marcarBloquesComoLibre(char** arrayDeBloques){
 			string_append(&ruta,*(arrayDeBloques+pos));
 			string_append(&ruta,".bin");
 			guardarInfoEnArchivo(ruta,"\0");
-			pthread_mutex_lock(&mutexBitarray);
+			sem_wait(&mutexBitarray);
 			bitarray_clean_bit(bitarray, posicionActual);
-			pthread_mutex_unlock(&mutexBitarray);
+			sem_post(&mutexBitarray);
 			pos++;
 			free(ruta);
 		}
@@ -375,9 +374,9 @@ char* devolverBloqueLibre(){
 	char* numero;
 
 	for(i=0; i < cantDeBloques; i++){
-		pthread_mutex_lock(&mutexBitarray);
+		sem_wait(&mutexBitarray);
 		bool bit = bitarray_test_bit(bitarray, i);
-		pthread_mutex_unlock(&mutexBitarray);
+		sem_post(&mutexBitarray);
 		if(bit == 0){
 			encontroBloque = 1;
 			bloqueEncontrado = i;
@@ -387,9 +386,9 @@ char* devolverBloqueLibre(){
 	}
 
 	if (encontroBloque == 1){
-		pthread_mutex_lock(&mutexBitarray);
+		sem_wait(&mutexBitarray);
 		bitarray_set_bit(bitarray, bloqueEncontrado);
-		pthread_mutex_unlock(&mutexBitarray);
+		sem_post(&mutexBitarray);
 		numero = string_itoa(bloqueEncontrado);
 	}
 	return numero;
