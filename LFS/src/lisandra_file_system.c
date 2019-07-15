@@ -94,6 +94,7 @@ int APIProtocolo(void* buffer, int socket) {
 	case PAQUETEOPERACIONES:
 		soloLoggear(socket,"Recibi un paquete de operacion\n");
 		recibirYDeserializarPaqueteDeOperacionesLQLRealizando(socket,(void*) operacionLQLSola);
+		free(buffer);
 		return 1;
 	case DESCONEXION:
 		soloLoggearError(1,"Se cierra la conexion\n");
