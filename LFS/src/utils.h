@@ -170,7 +170,7 @@ void soloLoggear(int socket, char *mensaje, ...){
 }
 pthread_mutex_t devolverSemaforoDeTablaFS(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
-			metadata* unMetadata = elemento;
+			metadata* unMetadata = (metadata*) elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
 		}
 	pthread_mutex_lock(&mutexListaDeTablas);
@@ -340,7 +340,9 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 	//int largo =strlen(info);
 	if (fp != NULL){
 		//fwrite(info , 1 , largo , fp );
-		fputs(info, fp);
+		if(!fputs(info, fp)) {
+			printf("Hubo un error cargando la informacion en el archivo");
+		}
 		fclose(fp);
 		return;
 	}
@@ -412,6 +414,7 @@ char* infoEnBloque(char* numeroBloque){ //pasarle el tamanio de la particion, o 
 	fstat(archivo,&sb);
 	if (sb.st_size == 0){
 		free(rutaBloque);
+		close(archivo);
 		return NULL;
 	}
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);

@@ -323,7 +323,10 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 		usleep((metadataDeTabla->tiempoCompactacion)*1000);
 	//	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		int i;
-		pthread_mutex_lock(&semaforoDeTabla);
+		int lockeoMal = pthread_mutex_lock(&semaforoDeTabla);
+		if(lockeoMal) {
+			printf("Se lockeo mal el mutex en el compactador para la tabla %s", metadataDeTabla->nombreTabla);
+		}
 		int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
 		if(numeroTmp == 0){
 			pthread_mutex_unlock(&semaforoDeTabla);
