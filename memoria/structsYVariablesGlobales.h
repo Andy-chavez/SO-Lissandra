@@ -64,7 +64,6 @@ typedef struct {
 typedef struct {
 	pthread_t thread;
 	sem_t *semaforoOperacion;
-	sem_t *cancelarThread;
 } hiloEnTabla;
 
 typedef struct {
@@ -100,8 +99,6 @@ sem_t MUTEX_TABLA_MARCOS;
 sem_t MUTEX_TABLA_SEGMENTOS;
 sem_t BINARIO_ALGORITMO_LRU;
 sem_t BINARIO_HILO_EN_TABLA;
-
-sem_t BINARIO_CERRANDO_SERVIDOR;
 
 memoria* MEMORIA_PRINCIPAL;
 t_list* TABLA_MARCOS;

@@ -184,7 +184,6 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
-	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 	sem_init(&BINARIO_ALGORITMO_LRU, 0, 1);
 	sem_init(&BINARIO_HILO_EN_TABLA, 0, 1);
@@ -1179,9 +1178,7 @@ void intentarConexiones(t_log* logGossip) {
 
 				return;
 			}
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
-			sem_post(&MUTEX_LOG_CONSOLA);
+			log_info(logGossip, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
 			return;
 		}
 
@@ -1262,9 +1259,7 @@ void agregarHiloAListaDeHilos() {
 	hiloPropio->thread = pthread_self();
 
 	hiloPropio->semaforoOperacion = malloc(sizeof(sem_t));
-	hiloPropio->cancelarThread = malloc(sizeof(sem_t));
 	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
-	sem_init(hiloPropio->cancelarThread, 0 , 0);
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	list_add(TABLA_THREADS, hiloPropio);
@@ -1274,7 +1269,6 @@ void agregarHiloAListaDeHilos() {
 void eliminarHiloDeListaDeHilos() {
 	void destruirThreadEnTabla(void* hiloEnLaTabla) {
 		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
-		free(unHilo->cancelarThread);
 		free(unHilo->semaforoOperacion);
 		free(unHilo);
 	}
@@ -1301,14 +1295,6 @@ void* esperarSemaforoDeHilo(void* buffer) {
 
 		sem_post(&BINARIO_HILO_EN_TABLA);
 		sem_wait(hiloAEsperar->semaforoOperacion);
-		pthread_exit(0);
-}
-
-void* esperarSemaforoDeCancelar(void* buffer) {
-		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
-
-		sem_post(&BINARIO_HILO_EN_TABLA);
-		sem_wait(hiloAEsperar->cancelarThread);
 		pthread_exit(0);
 }
 
@@ -1362,15 +1348,9 @@ void cancelarListaHilos(){
 			pthread_join(((hiloEnTabla*) hilo)->thread, NULL);
 		}
 
-	esperarAHilosEjecutandose(esperarSemaforoDeCancelar);
 	list_iterate(TABLA_THREADS,cancelarHilo);
 }
 
 void cleanupTrabajarConConexion() {
 	cancelarListaHilos();
-}
-
-void esperarParaCancelarConsola(pthread_t hiloConsola){
-	hiloEnTabla* hilo = obtenerHiloEnTabla(hiloConsola);
-	sem_wait(hilo->cancelarThread);
 }

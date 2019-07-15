@@ -111,22 +111,24 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 //------------------------------------------------------------------------
 
 void* trabajarConConexion(void* socket) {
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	agregarHiloAListaDeHilos();
 
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
-	/*
-	recibir(socketKernel);
-	int numeroMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
-	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
-	*/
+
 	int hayMensaje = 1;
 	int esGossip = 0;
 
 	while(hayMensaje) {
-		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		void* bufferRecepcion = recibir(socketKernel);
-		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
+		sem_wait(&MUTEX_RETARDO_MEMORIA);
+		int retardoMemoria = RETARDO_MEMORIA * 1000;
+		sem_post(&MUTEX_RETARDO_MEMORIA);
+		usleep(retardoMemoria);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel, &esGossip);
 	}
 
@@ -168,6 +170,7 @@ int crearSocketLFS() {
 //--------------------------------------------------------
 
 void* manejarConsola() {
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	agregarHiloAListaDeHilos();
 
 	pthread_cleanup_push(eliminarHiloDeListaDeHilos, NULL);
@@ -182,9 +185,11 @@ void* manejarConsola() {
 	while(1) {
 
 		char* comando = NULL;
-		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
+
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		comando = readline(">");
-		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
 
 		if(!esOperacionEjecutable(comando)) {
 			enviarOMostrarYLogearInfo(-1, "El comando ingresado no es un comando LQL ejecutable.");
@@ -213,6 +218,7 @@ void cancelarServidor(void* bufferSocket) {
 }
 
 void *servidorMemoria() {
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	int socketServidorMemoria = crearSocketServidor(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"), config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 	pthread_t threadConexion;
 	int socketKernel;
@@ -220,7 +226,6 @@ void *servidorMemoria() {
 		cerrarConexion(socketServidorMemoria);
 
 		enviarYLogearMensajeError(-1, "No se pudo inicializar el servidor de memoria");
-		sem_post(&BINARIO_CERRANDO_SERVIDOR);
 		pthread_exit(0);
 	}
 
@@ -230,9 +235,9 @@ void *servidorMemoria() {
 	while(1){
 		sem_wait(&BINARIO_SOCKET_KERNEL);
 
-		sem_post(&BINARIO_CERRANDO_SERVIDOR);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		socketKernel = aceptarCliente(socketServidorMemoria);
-		sem_wait(&BINARIO_CERRANDO_SERVIDOR);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 		if(socketKernel == -1) {
 			enviarYLogearMensajeError(-1, "ERROR: Socket Defectuoso");
@@ -258,7 +263,11 @@ void* cambiosConfig() {
 		enviarOMostrarYLogearInfo(-1, "hubo un error con el inotify_init");
 	}
 
-	inotify_add_watch(fdConfig, "memoria.config", IN_MODIFY);
+	int watchDescriptor = inotify_add_watch(fdConfig, "memoria.config", IN_MODIFY);
+
+	if(watchDescriptor == -1) {
+		printf("Add watch fallo \n");
+	}
 
 	while(1) {
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -281,22 +290,44 @@ void* cambiosConfig() {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
 
-			if (event->mask == IN_MODIFY && config_has_property(configConNuevosDatos, "RETARDO_FS") && config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING") && config_has_property(configConNuevosDatos, "RETARDO_JOURNAL") && config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
+			if ((event->mask & IN_MODIFY)) {
 				enviarOMostrarYLogearInfo(-1, "hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
 
-				sem_wait(&MUTEX_RETARDO_GOSSIP);
-				RETARDO_GOSSIP = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
-				sem_post(&MUTEX_RETARDO_GOSSIP);
-				sem_wait(&MUTEX_RETARDO_JOURNAL);
-				RETARDO_JOURNAL = config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL");
-				sem_post(&MUTEX_RETARDO_JOURNAL);
-				sem_wait(&MUTEX_RETARDO_MEMORIA);
-				RETARDO_MEMORIA = config_get_int_value(configConNuevosDatos, "RETARDO_MEM");
-				sem_post(&MUTEX_RETARDO_MEMORIA);
-				sem_wait(&MUTEX_RETARDO_FS);
-				RETARDO_FS = config_get_int_value(configConNuevosDatos, "RETARDO_FS");
-				sem_post(&MUTEX_RETARDO_FS);
 
+				if(config_has_property(configConNuevosDatos, "RETARDO_GOSSIPING")) {
+					sem_wait(&MUTEX_RETARDO_GOSSIP);
+					RETARDO_GOSSIP = config_get_int_value(configConNuevosDatos, "RETARDO_GOSSIPING");
+					sem_post(&MUTEX_RETARDO_GOSSIP);
+				} else {
+					printf("Hubo un problema leyendo el config del dato RETARDO_GOSSIPING\n");
+				}
+
+				if(config_has_property(configConNuevosDatos, "RETARDO_JOURNAL")) {
+					sem_wait(&MUTEX_RETARDO_JOURNAL);
+					RETARDO_JOURNAL = config_get_int_value(configConNuevosDatos, "RETARDO_JOURNAL");
+					sem_post(&MUTEX_RETARDO_JOURNAL);
+				} else {
+					printf("Hubo un problema leyendo el config del dato RETARDO_JOURNAL\n");
+				}
+
+				if(config_has_property(configConNuevosDatos, "RETARDO_MEM")) {
+					sem_wait(&MUTEX_RETARDO_MEMORIA);
+					RETARDO_MEMORIA = config_get_int_value(configConNuevosDatos, "RETARDO_MEM");
+					sem_post(&MUTEX_RETARDO_MEMORIA);
+				} else {
+					printf("Hubo un problema leyendo el config del dato RETARDO_MEM\n");
+				}
+
+				if(config_has_property(configConNuevosDatos, "RETARDO_FS")) {
+					sem_wait(&MUTEX_RETARDO_FS);
+					RETARDO_FS = config_get_int_value(configConNuevosDatos, "RETARDO_FS");
+					sem_post(&MUTEX_RETARDO_FS);
+				} else {
+					printf("Hubo un problema leyendo el config del dato RETARDO_FS\n");
+				}
+
+			} else {
+				printf("No es un evento de modificacion\n");
 			}
 
 			config_destroy(configConNuevosDatos);
@@ -313,13 +344,11 @@ void cerrarMemoria() {
 
 	sem_wait(&MUTEX_LOG);
 	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
-	// no libero mutex ya que quiero que sea lo ultimo que se loguee.
+	sem_post(&MUTEX_LOG);
 
-	esperarParaCancelarConsola(threadConsola);
 	pthread_cancel(threadConsola);
 	pthread_join(threadConsola, NULL);
 
-	sem_wait(&BINARIO_CERRANDO_SERVIDOR);
 	pthread_cancel(threadServer);
 	pthread_join(threadServer, NULL);
 
@@ -339,6 +368,19 @@ void cerrarYLiberarMemoria(){
 	liberarTablaGossip();
 }
 
+void ping() {
+	char* ipLFS = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IPFILESYSTEM");
+	char* puertoLFS = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO_FS");
+	int socketPingLFS = crearSocketCliente(ipLFS, puertoLFS);
+
+	if(socketPingLFS == -1) {
+		printf("No se pudo crear el socket para realizar el ping con LFS. Se supone LFS desconectado\n");
+		// TODO ver que hacer si el ping da mal
+		return;
+	}
+
+
+}
 
 int empezarMemoria(){
 	inicializarProcesoMemoria();
@@ -365,6 +407,6 @@ int main() {
 		return 1;
 	}
 	cerrarYLiberarMemoria();
-//	system("reset");
+	system("reset");
 	return 0;
 }
