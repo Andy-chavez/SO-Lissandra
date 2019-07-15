@@ -737,7 +737,6 @@ void marcarHiloRealizandoSemaforo(sem_t *semaforo) {
 void verSiHayJournalEjecutandose(sem_t *semaforo, int numeroHilo, int* seEjecutoJournal) {
 	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
 	if(JOURNAL_REALIZANDOSE) {
-		printf("hilo: %d, Hay journal realizandose. esperar...\n", numeroHilo);
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 		sem_wait(semaforo);
 		*seEjecutoJournal = 1;
@@ -820,11 +819,8 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 	int seEjecutoJournal = 0;
 
-	printf("SELECT, hilo %d, va a ver si hay journal realizandose\n", hiloQueEjecuta->numeroHilo);
 	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
-	printf("SELECT, hilo %d, va a tomar el semaforo\n", hiloQueEjecuta->numeroHilo);
 	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
-	printf("SELECT, hilo %d, dentro de select\n", hiloQueEjecuta->numeroHilo);
 
 	bool seEjecutaraJournal = false;
 
@@ -898,7 +894,6 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 	liberarRecursosSelectLQL(nombreTabla, keyString);
 	liberarParametrosSpliteados(parametrosSpliteados);
-	printf("SELECT, hilo %d, libera semaforo\n", hiloQueEjecuta->numeroHilo);
 	if(seEjecutoJournal) {
 		marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoJournal);
 	}
@@ -915,11 +910,8 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	int seEjecutoJournal = 0;
 
 	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
-	printf("INSERT, hilo %d, va a haber si hay journal\n", hiloQueEjecuta->numeroHilo);
 	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
-	printf("INSERT, hilo %d, Toma semaforo\n", hiloQueEjecuta->numeroHilo);
 	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
-	printf("INSERT, hilo %d, dentro de insert\n", hiloQueEjecuta->numeroHilo);
 	char* timestamp = NULL;
 	bool seEjecutaraJournal = false;
 
@@ -983,7 +975,6 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
 	liberarParametrosSpliteados(tablaYKey);
 	liberarRecursosInsertLQL(tabla, registroNuevo);
-	printf("INSERT, hilo %d, libera semaforo\n", hiloQueEjecuta->numeroHilo);
 
 	if(seEjecutoJournal) {
 		marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoJournal);
@@ -1291,7 +1282,6 @@ void agregarHiloAListaDeHilos() {
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	hiloPropio->numeroHilo = list_size(TABLA_THREADS);
-	printf("Se agrega al hilo %d\n", hiloPropio->numeroHilo);
 	list_add(TABLA_THREADS, hiloPropio);
 	sem_post(&MUTEX_TABLA_THREADS);
 }
@@ -1311,7 +1301,6 @@ void eliminarHiloDeListaDeHilos() {
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	hiloEnTabla* hiloADestruir = (hiloEnTabla*) list_remove_by_condition(TABLA_THREADS, esElPropioThread);
-	printf("se elimina al hilo %d\n", hiloADestruir->numeroHilo);
 	sem_post(&MUTEX_TABLA_THREADS);
 
 	if(!hiloADestruir) {
@@ -1326,10 +1315,8 @@ void* esperarSemaforoDeHilo(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
 		sem_post(&BINARIO_HILO_EN_TABLA);
-		printf("Se va a esperar al hilo %d \n", hiloAEsperar->numeroHilo);
 		sem_wait(hiloAEsperar->semaforoJournal);
 		sem_wait(hiloAEsperar->semaforoOperacion);
-		printf("Se tomo el semaforo del hilo %d \n", hiloAEsperar->numeroHilo);
 		pthread_exit(0);
 }
 
@@ -1363,7 +1350,6 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 
 void dejarEjecutarOperacionesDeNuevo() {
 	void postSemaforoDelHilo(void* hilo) {
-		printf("Se va a dejar ejecutar de nuevo a %d\n",((hiloEnTabla*) hilo)->numeroHilo);
 		sem_post(((hiloEnTabla*) hilo)->semaforoOperacion);
 		sem_post(((hiloEnTabla*) hilo)->semaforoJournal);
 	}
