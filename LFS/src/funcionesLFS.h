@@ -276,8 +276,8 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 	configMetadata = config_create(ruta);
 
-	while(configMetadata == NULL || config_has_property(configMetadata, "PARTITIONS") || config_has_property(configMetadata, "CONSISTENCY") || config_has_property(configMetadata, "COMPACTION_TIME")) {
-		printf("No se abrio bien la metadata de la tabla %s", nombreTabla);
+	if(configMetadata == NULL || !config_has_property(configMetadata, "PARTITIONS") || !config_has_property(configMetadata, "CONSISTENCY") || !config_has_property(configMetadata, "COMPACTION_TIME")) {
+		printf("No se abrio bien la metadata de la tabla %s, perteneciente a la ruta %s", nombreTabla, ruta);
 	}
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");

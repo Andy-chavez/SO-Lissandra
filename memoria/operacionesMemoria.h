@@ -195,7 +195,8 @@ void liberarSegmento(void* segmentoEnMemoria) {
 	segmento* unSegmento = (segmento*) segmentoEnMemoria;
 
 	void liberarPaginas(void* paginaEnLaTabla) {
-		free((paginaEnTabla*) paginaEnLaTabla);
+		paginaEnTabla* unaPagina = (paginaEnTabla*) paginaEnLaTabla;
+		free(unaPagina);
 	}
 
 	sem_wait(&unSegmento->mutexSegmento);
@@ -321,9 +322,13 @@ marco* algoritmoLRU() {
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, encontrarYEliminarPagina);
 	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
+	int numeroMarcoDePaginaACambiar = paginaACambiar->marco;
+
+	free(paginaACambiar);
+
 	sem_post(&BINARIO_ALGORITMO_LRU);
 
-	return encontrarMarcoEscrito(paginaACambiar->marco);
+	return encontrarMarcoEscrito(numeroMarcoDePaginaACambiar);
 }
 
 marco* encontrarEspacio(int socketKernel, bool* seEjecutaraJournal) {
@@ -850,18 +855,19 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
-			}
-			else if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0, &seEjecutaraJournal)) {
-				char *mensaje = string_new();
-				string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
-				enviarOMostrarYLogearInfo(socketKernel, mensaje);
+			} else {
+				if(agregarPaginaEnSegmento(unSegmento,(registro*) registroLFS,socketKernel,0, &seEjecutaraJournal)) {
+					char *mensaje = string_new();
+					string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
+					enviarOMostrarYLogearInfo(socketKernel, mensaje);
+					free(mensaje);
+				}
+				else if(!seEjecutaraJournal){
+					enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+				}
 				liberarRegistroConNombreTabla(registroLFS);
-				free(mensaje);
 			}
-			else if(!seEjecutaraJournal){
-				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al guardar el registro LFS en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
-				liberarRegistroConNombreTabla(registroLFS);
-			}
+
 		}
 	}
 
@@ -870,16 +876,16 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
 		if(!registroLFS) {
 			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
+		}else{
+			if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel, &seEjecutaraJournal)){
+				char *mensaje = string_new();
+				string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
+				enviarOMostrarYLogearInfo(socketKernel, mensaje);
+				free(mensaje);
 		}
-		else if(agregarSegmentoConNombreDeLFS(registroLFS,0,socketKernel, &seEjecutaraJournal)){
-			char *mensaje = string_new();
-			string_append_with_format(&mensaje, "SELECT exitoso. Su valor es: %s", registroLFS->value);
-			enviarOMostrarYLogearInfo(socketKernel, mensaje);
-			free(mensaje);
-			liberarRegistroConNombreTabla(registroLFS);
-		}
-		else if(!seEjecutaraJournal){
-			enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+			else if(!seEjecutaraJournal){
+				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, Hubo un error al agregar el segmento en la memoria.", operacionSelect->operacion, operacionSelect->parametros);
+			}
 			liberarRegistroConNombreTabla(registroLFS);
 		}
 	}

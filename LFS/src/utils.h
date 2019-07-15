@@ -20,6 +20,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <errno.h>
 
 typedef struct {
 	char* nombre;
@@ -403,10 +404,9 @@ char* infoEnBloque(char* numeroBloque){ //pasarle el tamanio de la particion, o 
 	string_append(&rutaBloque,".bin");
 	int archivo = open(rutaBloque,O_RDWR);
 
-	if(archivo == -1) {
-		soloLoggearError(-1, "No se pudo abrir el file descriptor del archivo %s", rutaBloque);
-		free(rutaBloque);
-		return NULL;
+	while(archivo == -1) {
+		soloLoggearError(-1, "No se pudo abrir el file descriptor del archivo %s. error: %d", rutaBloque, errno);
+		archivo = open(rutaBloque, O_RDWR);
 	}
 
 	fstat(archivo,&sb);
@@ -415,6 +415,7 @@ char* infoEnBloque(char* numeroBloque){ //pasarle el tamanio de la particion, o 
 		return NULL;
 	}
 	char* informacion = mmap(NULL,tamanioBloques,PROT_READ,MAP_PRIVATE,archivo,NULL);
+	close(archivo);
 	free(rutaBloque);
 	return informacion;
 }
