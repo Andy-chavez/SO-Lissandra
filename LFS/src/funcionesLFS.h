@@ -278,6 +278,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 
 	while(configMetadata == NULL || config_has_property(configMetadata, "PARTITIONS") || config_has_property(configMetadata, "CONSISTENCY") || config_has_property(configMetadata, "COMPACTION_TIME")) {
 		printf("No se abrio bien la metadata de la tabla %s", nombreTabla);
+		configMetadata = config_create(ruta);
 	}
 
 	cantParticiones = config_get_int_value(configMetadata, "PARTITIONS");
@@ -435,14 +436,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_t semaforoTablaMemtable = devolverSemaforoDeTablaMemtable(nombreTabla);
 		soloLoggear(socket,"Buscando registro con key= %d",key);
 		//pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
-		int seLockeoMal = pthread_mutex_lock(&semaforoDeTabla);
-		if(seLockeoMal) {
-			printf("Se lockeo mal el lock de semaforoDeTabla en la funcion Select");
-			if(socket!=-1) enviarError(socket);
-			free(ruta);
-			liberarDoblePuntero(argSeparados);
-			return;
-		}
 
 		pthread_mutex_lock(&semaforoTablaMemtable);
 		pthread_mutex_lock(&mutexMemtable);
@@ -452,6 +445,14 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		pthread_mutex_unlock(&semaforoTablaMemtable);
 		if (cantElementosMemtable == 0 || !registroBuscado){
 			soloLoggear(socket,"Memtable esta Vacia o no se encuentra en la memtable el registro buscado");
+			int seLockeoMal = pthread_mutex_lock(&semaforoDeTabla);
+				if(seLockeoMal) {
+					printf("Se lockeo mal el lock de semaforoDeTabla en la funcion Select");
+					if(socket!=-1) enviarError(socket);
+					free(ruta);
+					liberarDoblePuntero(argSeparados);
+					return;
+				}
 			metadata* metadataTabla = obtenerMetadata(nombreTabla);
 
 			particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones));

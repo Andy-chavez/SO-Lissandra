@@ -37,57 +37,6 @@ typedef struct {
 } hiloMemoria;
 
 
-
-/*
-
-
-
- void* trabajarConConexion(void* socket) {
-	agregarHiloAListaDeHilos();
-
-	int socketKernel = *(int*) socket;
-	sem_post(&BINARIO_SOCKET_KERNEL);
-
-	recibir(socketKernel);
-	int numeroMemoria = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "MEMORY_NUMBER");
-	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
-
-	int hayMensaje = 1;
-	int esGossip = 0;
-
-	while(hayMensaje) {
-		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
-		void* bufferRecepcion = recibir(socketKernel);
-		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
-		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel, &esGossip);
-	}
-
-	eliminarHiloDeListaDeHilos();
-	pthread_detach(pthread_self());
-	pthread_exit(0);
-}
-
-
- void agregarHiloAListaDeHilos() {
-
-	hiloEnTabla* hiloPropio = malloc(sizeof(hiloEnTabla));
-	hiloPropio->thread = pthread_self();
-
-	hiloPropio->semaforoOperacion = malloc(sizeof(sem_t));
-	hiloPropio->cancelarThread = malloc(sizeof(sem_t));
-	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
-	sem_init(hiloPropio->cancelarThread, 0 , 0);
-
-	sem_wait(&MUTEX_TABLA_THREADS);
-	list_add(TABLA_THREADS, hiloPropio);
-	sem_post(&MUTEX_TABLA_THREADS);
-}
-
-
- */
-
-
-
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
 				soloLoggear(socket,"Se recibio un INSERT\n");
@@ -331,7 +280,7 @@ void runearScript(){
 
 		FILE *archivoALeer;
 //		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
-		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/nintendo_playstation.lql", "r");
+		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/compactacion_larga.lql", "r");
 
 	//	archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
@@ -399,7 +348,7 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		//runearScript();
+		runearScript();
 
 		sem_init(&binarioLFS, 0, 0);
 
