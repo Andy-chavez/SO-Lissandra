@@ -64,6 +64,8 @@ typedef struct {
 typedef struct {
 	pthread_t thread;
 	sem_t *semaforoOperacion;
+	sem_t *semaforoJournal;
+	int numeroHilo;
 } hiloEnTabla;
 
 typedef struct {
