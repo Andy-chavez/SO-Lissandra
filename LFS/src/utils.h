@@ -32,8 +32,8 @@ typedef struct{
 	int cantParticiones;
 	int tiempoCompactacion;
 	char* nombreTabla;
-	sem_t semaforoFS;
-	sem_t semaforoMemtable;
+	sem_t *semaforoFS;
+	sem_t *semaforoMemtable;
 	pthread_t hiloDeCompactacion;
 }metadataConSemaforo;
 
@@ -60,8 +60,8 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla);
 void agregarALista(char* timestamp,char* key,char* value,t_list* head);
 void soloLoggear(int socket,char* mensaje,...);
 void soloLoggearError(int socket,char* mensaje,...);
-sem_t devolverSemaforoDeTablaFS(char* nombreTabla);
-sem_t devolverSemaforoDeTablaMemtable(char* nombreTabla);
+sem_t *devolverSemaforoDeTablaFS(char* nombreTabla);
+sem_t *devolverSemaforoDeTablaMemtable(char* nombreTabla);
 void guardarRegistrosEnBloques(int tamanioTotalADumpear, int cantBloquesNecesarios, char** bloquesAsignados, char* buffer);
 void soloLoggearResultados(int socket,int caso,char *mensaje, ...);
 
@@ -168,7 +168,7 @@ void soloLoggear(int socket, char *mensaje, ...){
 	free(mensajeTotal);
 	va_end(parametrosAdicionales);
 }
-sem_t devolverSemaforoDeTablaFS(char* nombreTabla){
+sem_t *devolverSemaforoDeTablaFS(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
 			metadata* unMetadata = (metadata*) elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
@@ -179,7 +179,7 @@ sem_t devolverSemaforoDeTablaFS(char* nombreTabla){
 	return metadataBuscado->semaforoFS;
 }
 
-sem_t devolverSemaforoDeTablaMemtable(char* nombreTabla){
+sem_t *devolverSemaforoDeTablaMemtable(char* nombreTabla){
 		bool seEncuentraTabla(void* elemento){
 			metadata* unMetadata = elemento;
 			return string_equals_ignore_case(unMetadata->nombreTabla,nombreTabla);
@@ -279,6 +279,8 @@ void liberarMemtable() { //no elimina toda la memtable sino las tablas y registr
 
 void liberarMetadataConSemaforo(metadataConSemaforo* unMetadata){
 	free(unMetadata->nombreTabla);
+	free(unMetadata->semaforoFS);
+	free(unMetadata->semaforoMemtable);
 
 	pthread_cancel(unMetadata->hiloDeCompactacion);
 	pthread_join(unMetadata->hiloDeCompactacion,NULL);

@@ -94,10 +94,10 @@ void dump(){
 
 			log_info(loggerResultadosConsola,"DUMP: EMPEZANDO DUMP");
 
-			sem_t semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
-			sem_t semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
+			sem_t *semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
+			sem_t *semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
 			sem_post(&mutexMemtable);
-			sem_wait(&semaforoDeTablaMemtable);
+			sem_wait(semaforoDeTablaMemtable);
 			list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
 			soloLoggear(-1,"Dumpeando tabla: %s", unaTabla->nombre);
@@ -108,9 +108,9 @@ void dump(){
 
 			int cantBloquesNecesarios =  ceil((float) (tamanioTotalADumpear/ (float) tamanioBloques));
 			int valorSemaforoDeTabla;
-			sem_getvalue(&semaforoDeTablaFS, &valorSemaforoDeTabla);
+			sem_getvalue(semaforoDeTablaFS, &valorSemaforoDeTabla);
 			printf("valor del semaforo de tabla %s en el dump: %d\n", unaTabla->nombre, valorSemaforoDeTabla);
-			sem_wait(&semaforoDeTablaFS);
+			sem_wait(semaforoDeTablaFS);
 			printf("entre en el dump de %s\n", unaTabla->nombre);
 			char* rutaTmp = crearTemporal(tamanioTotalADumpear,cantBloquesNecesarios,unaTabla->nombre);
 
@@ -128,7 +128,7 @@ void dump(){
 
 
 			printf("Libere el semaforo de tabla %s en dump\n", unaTabla->nombre);
-			sem_post(&semaforoDeTablaFS);
+			sem_post(semaforoDeTablaFS);
 			free(buffer);
 
 			liberarDoblePuntero(bloquesAsignados);
@@ -139,7 +139,7 @@ void dump(){
 
 			sem_wait(&mutexMemtable);
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
-			sem_post(&semaforoDeTablaMemtable);
+			sem_post(semaforoDeTablaMemtable);
 
 		}
 

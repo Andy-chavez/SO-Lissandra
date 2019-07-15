@@ -317,7 +317,7 @@ void insertarInfoEnBloquesDeTabla(char* rutaTabla, t_list* listaRegistrosTempora
 
 void compactar(metadataConSemaforo* metadataDeTabla){
 
-	sem_t semaforoDeTabla = devolverSemaforoDeTablaFS(metadataDeTabla->nombreTabla);
+	sem_t *semaforoDeTabla = devolverSemaforoDeTablaFS(metadataDeTabla->nombreTabla);
 
 	while(1){
 
@@ -326,14 +326,14 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 	//	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
 		int i;
 		int valorSemaforoDeTabla;
-		sem_getvalue(&semaforoDeTabla, &valorSemaforoDeTabla);
+		sem_getvalue(semaforoDeTabla, &valorSemaforoDeTabla);
 		printf("valor del semaforo de tabla %s en la compactacion: %d\n", metadataDeTabla->nombreTabla, valorSemaforoDeTabla);
-		sem_wait(&semaforoDeTabla);
+		sem_wait(semaforoDeTabla);
 		printf("entre en la compactacion de %s\n", metadataDeTabla->nombreTabla);
 		int numeroTmp = obtenerCantTemporales(metadataDeTabla->nombreTabla);
 		if(numeroTmp == 0){
 			printf("libere el semaforo de tabla %s en compactacion\n", metadataDeTabla->nombreTabla);
-			sem_post(&semaforoDeTabla);
+			sem_post(semaforoDeTabla);
 			continue;
 		}
 		enviarOMostrarYLogearInfo(-1,"Comenzando compactacion de la tabla: %s\n",metadataDeTabla->nombreTabla);
@@ -420,7 +420,7 @@ void compactar(metadataConSemaforo* metadataDeTabla){
 		insertarInfoEnBloquesDeTabla(rutaTabla, listaRegistrosTemporalesSinKeyRepetidas, metadataDeTabla->nombreTabla);
 
 		printf("libere el semaforo de tabla %s en compactacion\n", metadataDeTabla->nombreTabla);
-		sem_post(&semaforoDeTabla);
+		sem_post(semaforoDeTabla);
 			// LIBERAR Y DESTRUIR ELEMENTOS DE LISTAREGISTROSTEMPORALES
 		list_destroy(listaRegistrosTemporalesSinKeyRepetidas);
 		list_destroy_and_destroy_elements(listaRegistrosTemporales,(void*)liberarRegistros);
