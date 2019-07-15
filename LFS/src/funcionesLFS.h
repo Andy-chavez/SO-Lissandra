@@ -425,9 +425,9 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 
 	}
 	if(verificarExistenciaDirectorioTabla(nombreTabla,socket) ==0){
-		if(socket!=-1) {
-			enviarError(socket);
-		}
+		if(socket!=-1) enviarError(socket);
+		free(ruta);
+		liberarDoblePuntero(argSeparados);
 		return;
 		}
 	else{
@@ -438,19 +438,20 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		int seLockeoMal = pthread_mutex_lock(&semaforoDeTabla);
 		if(seLockeoMal) {
 			printf("Se lockeo mal el lock de semaforoDeTabla en la funcion Select");
+			if(socket!=-1) enviarError(socket);
+			free(ruta);
+			liberarDoblePuntero(argSeparados);
 			return;
 		}
 
-		pthread_mutex_lock(&mutexMemtable);
-		int cantElementosMemtable = memtable->elements_count;
-		pthread_mutex_unlock(&mutexMemtable);
 		pthread_mutex_lock(&semaforoTablaMemtable);
 		pthread_mutex_lock(&mutexMemtable);
+		int cantElementosMemtable = memtable->elements_count;
 		registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(nombreTabla, key,socket);
 		pthread_mutex_unlock(&mutexMemtable);
 		pthread_mutex_unlock(&semaforoTablaMemtable);
 		if (cantElementosMemtable == 0 || !registroBuscado){
-			soloLoggear(socket,"Memtable esta Vacia o no se encuentra en la memtable");
+			soloLoggear(socket,"Memtable esta Vacia o no se encuentra en la memtable el registro buscado");
 			metadata* metadataTabla = obtenerMetadata(nombreTabla);
 
 			particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones));
@@ -472,10 +473,10 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
 			liberarDoblePuntero(arrayDeBloques);
 
-			free(ruta);
 			free(buffer);
 			free(particion);
 		}
+			free(ruta);
 
 			if(!registroBuscado) {
 				if(socket!=-1) enviarError(socket);

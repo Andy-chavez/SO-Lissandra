@@ -343,6 +343,7 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 		fclose(fp);
 		return;
 	}
+	soloLoggearError(-1,"No se pudo guardar la informacion en la ruta %s",ruta);
 	fclose(fp);
 }
 
