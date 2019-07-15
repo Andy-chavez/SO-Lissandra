@@ -1,4 +1,4 @@
-# Makefile template for shared library, Ya veremos de hacer uno nuestro JAJAJAJA
+# Makefile template for shared library
 
 CC = gcc # C compiler
 CFLAGS = -fPIC -Wall -Wextra -O2 -g # C flags

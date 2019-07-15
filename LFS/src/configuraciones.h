@@ -22,17 +22,16 @@
 // 1) INICIALIZACIONES//
 
 void inicializarSemaforos(){
-		pthread_mutex_init(&mutexMemtable, NULL);
-		pthread_mutex_init(&mutexLogger, NULL);
-		pthread_mutex_init(&mutexLoggerConsola, NULL);
-		pthread_mutex_init(&mutexListaDeTablas,NULL);
-		pthread_mutex_init(&mutexBitarray,NULL);
-		pthread_mutex_init(&mutexTiempoDump,NULL);
-		pthread_mutex_init(&mutexRetardo,NULL);
-		pthread_mutex_init(&mutexResultadosConsola,NULL);
-		pthread_mutex_init(&mutexResultados,NULL);
+		sem_init(&mutexMemtable, 0, 1);
+		sem_init(&mutexLogger, 0, 1);
+		sem_init(&mutexLoggerConsola, 0, 1);
+		sem_init(&mutexListaDeTablas, 0, 1);
+		sem_init(&mutexBitarray, 0, 1);
+		sem_init(&mutexTiempoDump, 0, 1);
+		sem_init(&mutexRetardo, 0, 1);
+		sem_init(&mutexResultadosConsola, 0, 1);
+		sem_init(&mutexResultados, 0, 1);
 		sem_init(&binarioSocket,0,1);
-
 }
 
 void inicializarBloques(){
@@ -43,7 +42,7 @@ void inicializarBloques(){
 		string_append(&ruta,"Bloques/");
 		string_append(&ruta,numeroDeBloque);
 		string_append(&ruta,".bin");
-		FILE *bloque = fopen(ruta,"w"); //cambiarlo por una 'a' cuando sea entrega
+		FILE *bloque = fopen(ruta,"a"); //cambiarlo por una 'a' cuando sea entrega
 		free(numeroDeBloque);
 		free(ruta);
 		fclose(bloque);
@@ -58,12 +57,11 @@ void inicializarArchivoBitmap(){
 	char* ruta = string_new();
 	string_append(&ruta,puntoMontaje);
 	string_append(&ruta,"Metadata/Bitmap.bin");
-	//DESCOMENTARLO MAS ALEDANTE, PONERLO AL FINAL
-	/*
+
 	if(existeArchivo(ruta)){
 		free(ruta);
 		return;
-	}*/
+	}
 	f = fopen(ruta, "wb");
 
 	for(i=0; i < cantDeBloques/8; i++){
@@ -98,6 +96,7 @@ void inicializarBitmap() {
 void inicializarListas(){
 	memtable = list_create();
 	listaDeTablas = list_create();
+	TABLA_THREADS = list_create();
 }
 
 void inicializarLog(){
@@ -108,20 +107,7 @@ void inicializarLog(){
 }
 
 // ------------------------------------------------------------------------ //
-// 2) LIBERACIONES//
-
-void liberarSemaforos(){
-	pthread_mutex_destroy(&mutexMemtable);
-	pthread_mutex_destroy(&mutexLogger);
-	pthread_mutex_destroy(&mutexLoggerConsola);
-	pthread_mutex_destroy(&mutexListaDeTablas);
-
-	pthread_mutex_destroy(&mutexBitarray);
-	pthread_mutex_destroy(&mutexTiempoDump);
-	pthread_mutex_destroy(&mutexRetardo);
-	pthread_mutex_destroy(&mutexResultadosConsola);
-	pthread_mutex_destroy(&mutexResultados);
-}
+// 2) LIBERACIONES//\
 
 void liberarConfigYLogs() {
 	log_destroy(logger);
@@ -132,11 +118,6 @@ void liberarConfigYLogs() {
 	config_destroy(archivoMetadata);
 }
 void liberarVariablesGlobales(){
-	free(puntoMontaje);
-	free(puertoLisandra);
-	free(ipLisandra);
-	free(magicNumber);
-	liberarSemaforos();
 	liberarMemtable();
 	liberarListaDeTablas();
 	liberarConfigYLogs();

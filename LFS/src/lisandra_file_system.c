@@ -32,6 +32,10 @@
 #define EVENT_SIZE_CONFIG (sizeof(struct inotify_event) + 15)
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG)
 
+typedef struct {
+	pthread_t thread;
+} hiloMemoria;
+
 
 void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser para que ignore uppercase
 	if(string_equals_ignore_case(operacionAParsear->operacion, "INSERT")) {
@@ -100,19 +104,43 @@ int APIProtocolo(void* buffer, int socket) {
 	free(buffer);
 }
 
+void agregarHiloAListaDeHilos() {
+
+	hiloMemoria* hiloPropio = malloc(sizeof(hiloMemoria));
+	hiloPropio->thread = pthread_self();
+	list_add(TABLA_THREADS, hiloPropio);
+
+}
+
+void cancelarListaHilos(){
+		void cancelarHilo(hiloMemoria* hilo){
+			pthread_cancel(hilo->thread);
+			pthread_join(hilo->thread, NULL);
+			free(hilo);
+		}
+
+	list_destroy_and_destroy_elements(TABLA_THREADS,(void*)cancelarHilo);
+
+}
+
+
 void trabajarConexion(void* socket){
+
+	agregarHiloAListaDeHilos();
+
 	int socketMemoria = *(int*) socket;
 	sem_post(&binarioSocket);
 	int hayMensaje = 1;
 	while(hayMensaje) {
 			void* bufferRecepcion = recibir(socketMemoria);
-			pthread_mutex_lock(&mutexRetardo);
+			sem_wait(&mutexRetardo);
 			usleep(retardo*1000);
-			pthread_mutex_unlock(&mutexRetardo);
+			sem_post(&mutexRetardo);
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
 		}
 
-		pthread_exit(0);
+	// TODO agregar la funcion que elimine el hilo de la lista de hilos a cancelar cuando cierren LFS
+	pthread_exit(0);
 }
 
 void* servidorLisandra(){
@@ -137,6 +165,9 @@ void* servidorLisandra(){
 
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
+
+			//
+
 			soloLoggearError(socketMemoria,"No se pudo crear socket para memoria");
 			continue;
 		}
@@ -163,18 +194,25 @@ void leerConsola() {
 	    printf("-------DROP [NOMBRE_TABLA]---------\n");
 	    printf("-------CERRAR---------\n");
 	    printf ("Ingresa operacion\n");
-
 	    while ((linea = readline(""))){
-	    			string_to_upper(linea);
+	    	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
+	    	string_to_upper(linea);
 	    			if(string_equals_ignore_case(linea,"Cerrar"))
 	    			{
-	    			cerrar();
+	    				free(linea);
+	    				cerrar();
+	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    			}
 	    			else if(esOperacionEjecutable(linea)){
-	    	    		parserGeneral(splitear_operacion(linea),socket);
+	    				pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
+	    				parserGeneral(splitear_operacion(linea),socket);
+	    				free (linea);
+	    				pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    	    	}
 	    	    		else{
-	    	    		soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
+	    	    			free (linea);
+	    	    			soloLoggearError(-1,"No es una operacion valida la ingresada por consola\n");
+	    	    			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
 	    	    		}
 	    	    }
 	    free (linea);
@@ -215,12 +253,12 @@ void* cambiosConfig() {
 
 				soloLoggear(-1,"Cambios en config, cambiando retardo y dump");
 
-				pthread_mutex_lock(&mutexTiempoDump);
+				sem_wait(&mutexTiempoDump);
 				tiempoDump = config_get_int_value(archivoDeConfig,"TIEMPO_DUMP");
-				pthread_mutex_unlock(&mutexTiempoDump);
-				pthread_mutex_lock(&mutexRetardo);
+				sem_post(&mutexTiempoDump);
+				sem_wait(&mutexRetardo);
 				retardo = config_get_int_value(archivoDeConfig,"RETARDO");
-				pthread_mutex_unlock(&mutexRetardo);
+				sem_post(&mutexRetardo);
 			}
 
 			config_destroy(configConNuevosDatos);
@@ -241,7 +279,10 @@ typedef struct{
 void runearScript(){
 
 		FILE *archivoALeer;
-		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
+//		archivoALeer= fopen("/home/utnso/Escritorio/PruebasFinales/nintendo_playstation.lql", "r");
+		archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/compactacion_larga.lql", "r");
+
+	//	archivoALeer= fopen("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/ArchivosTest/peliculas.lql", "r");
 
 		char *lineaLeida;
 		size_t limite = 250;
@@ -259,11 +300,17 @@ void runearScript(){
 			char** operacionLQL= string_n_split(lineaLeida,2,  " ");
 			operacion->operacion = *(operacionLQL + 0);
 			operacion->parametros = *(operacionLQL + 1);
-
+			//puts(operacion->operacion);
+			//puts(operacion->parametros);
 			parserGeneral(operacion, -1);
-			usleep(10000);
+//			liberarDoblePuntero(operacionLQL);
+			free(operacionLQL);
+	//		free(lineaLeida);
+			usleep(100000);
 
 		}
+
+
 
 }
 
@@ -272,8 +319,8 @@ void runearScript(){
 
 int main(int argc, char* argv[]) {
 
-		//leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
-		leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
+		leerConfig("../lisandra.config"); //esto es para la entrega pero por eclipse rompe
+		//leerConfig("/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/LFS/lisandra.config");
 		leerMetadataFS();
 		inicializarListas();
 		inicializarLog();
@@ -281,15 +328,15 @@ int main(int argc, char* argv[]) {
 		inicializarBloques();
 		inicializarSemaforos();
 
-		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
-
 		inicializarArchivoBitmap(); //sacar despues
 		inicializarBitmap();
 
 
 		log_info(loggerConsola,"Inicializando FS");
-
-		log_info(loggerConsola,"El tamanio maximo del bitarray es de: %d",bitarray_get_max_bit(bitarray));
+		log_info(loggerResultadosConsola,"Aqui iran los resultados de la consola");
+		log_info(loggerResultados,"Aqui iran los resultados de las requests");
+		log_info(logger,"Logger de memoria");
+		funcionDescribe("ALL",-1); //ver las tablas que hay en el FS
 
 		pthread_t threadConsola;
 		pthread_t threadServer;
@@ -301,8 +348,7 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		runearScript();
-
+		//runearScript();
 
 		sem_init(&binarioLFS, 0, 0);
 
@@ -312,18 +358,30 @@ int main(int argc, char* argv[]) {
 			terminar.sa_flags = SA_RESTART;
 			sigaction(SIGINT, &terminar, NULL);
 
-		sem_wait(&binarioLFS);
+			sem_wait(&binarioLFS);
 
-		pthread_cancel(threadServer);
-		pthread_cancel(threadConsola);
-		pthread_cancel(threadDump);
-		pthread_cancel(threadCambiosConfig);
 
-		pthread_join(threadServer,NULL);
-		pthread_join(threadConsola,NULL);
-		pthread_join(threadDump,NULL);
-		pthread_join(threadCambiosConfig,NULL);
+			pthread_cancel(threadServer);
+				pthread_cancel(threadConsola);
+			pthread_cancel(threadDump);
+				pthread_cancel(threadCambiosConfig);
+
+				pthread_join(threadServer,NULL);
+				pthread_join(threadConsola,NULL);
+				pthread_join(threadDump,NULL);
+				pthread_join(threadCambiosConfig,NULL);
+
+/*
+				pthread_create(&threadDump, NULL,(void*) dump, NULL);
+				pthread_cancel(threadDump);
+				pthread_join(threadDump,NULL);
+*/
+
+
+
+		cancelarListaHilos();
 
 		liberarVariablesGlobales();
+		system("reset");
 return EXIT_SUCCESS;
 }
