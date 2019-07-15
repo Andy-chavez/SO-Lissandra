@@ -441,48 +441,41 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			return;
 		}
 
-		metadata* metadataTabla = obtenerMetadata(nombreTabla);
-
-		particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones));
-		liberarMetadata(metadataTabla);
-		char* buffer = string_new();
-		string_append(&ruta,puntoMontaje);
-		string_append(&ruta,"Tables/");
-		string_append(&ruta,nombreTabla);
-		string_append(&ruta,"/part");
-		string_append(&ruta,particion);
-		string_append(&ruta,".bin");
-		part = config_create(ruta);
-		char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
-		config_destroy(part);
-		cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques);
-		pthread_mutex_unlock(&semaforoDeTabla);
-		separarRegistrosYCargarALista(buffer, listaRegistros);
-		soloLoggear(socket,"Informacion de bloques de particion y tmps cargada");
 		pthread_mutex_lock(&mutexMemtable);
 		int cantElementosMemtable = memtable->elements_count;
 		pthread_mutex_unlock(&mutexMemtable);
-		if (cantElementosMemtable == 0){
-			soloLoggear(socket,"Memtable esta Vacia");
+		pthread_mutex_lock(&semaforoTablaMemtable);
+		pthread_mutex_lock(&mutexMemtable);
+		registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(nombreTabla, key,socket);
+		pthread_mutex_unlock(&mutexMemtable);
+		pthread_mutex_unlock(&semaforoTablaMemtable);
+		if (cantElementosMemtable == 0 || !registroBuscado){
+			soloLoggear(socket,"Memtable esta Vacia o no se encuentra en la memtable");
+			metadata* metadataTabla = obtenerMetadata(nombreTabla);
+
+			particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones));
+			liberarMetadata(metadataTabla);
+			char* buffer = string_new();
+			string_append(&ruta,puntoMontaje);
+			string_append(&ruta,"Tables/");
+			string_append(&ruta,nombreTabla);
+			string_append(&ruta,"/part");
+			string_append(&ruta,particion);
+			string_append(&ruta,".bin");
+			part = config_create(ruta);
+			char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
+			config_destroy(part);
+			cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques);
+			pthread_mutex_unlock(&semaforoDeTabla);
+			separarRegistrosYCargarALista(buffer, listaRegistros);
+			soloLoggear(socket,"Informacion de bloques de particion y tmps cargada");
 			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros, key, socket);
-		} else{
-			pthread_mutex_lock(&semaforoTablaMemtable);
-			pthread_mutex_lock(&mutexMemtable);
-			registroBuscado = devolverRegistroDeMayorTimestampDeLaMemtable(nombreTabla, key,socket);
-			pthread_mutex_unlock(&mutexMemtable);
-			pthread_mutex_unlock(&semaforoTablaMemtable);
-			if (!(registroBuscado)){
-			soloLoggear(socket,"El registro no se encuentra en la memtable");
-			registroBuscado = devolverRegistroDeListaDeRegistros(listaRegistros,key, socket);
-			}
+			liberarDoblePuntero(arrayDeBloques);
+
+			free(ruta);
+			free(buffer);
+			free(particion);
 		}
-
-
-		liberarDoblePuntero(arrayDeBloques);
-
-		free (ruta);
-		free(buffer);
-		free(particion);
 
 			if(!registroBuscado) {
 				if(socket!=-1) enviarError(socket);
