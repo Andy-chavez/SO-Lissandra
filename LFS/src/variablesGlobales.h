@@ -11,17 +11,16 @@
 #include <commons/bitarray.h>
 #include <semaphore.h>
 
-pthread_mutex_t mutexMemtable;
-pthread_mutex_t mutexLogger;
-pthread_mutex_t mutexLoggerConsola;
-pthread_mutex_t mutexListaDeTablas;
-pthread_mutex_t mutexBitarray;
-pthread_mutex_t mutexTiempoDump;
-pthread_mutex_t mutexRetardo;
-pthread_mutex_t mutexResultadosConsola;
-pthread_mutex_t mutexResultados;
+sem_t mutexMemtable;
+sem_t mutexLogger;
+sem_t mutexLoggerConsola;
+sem_t mutexListaDeTablas;
+sem_t mutexBitarray;
+sem_t mutexTiempoDump;
+sem_t mutexRetardo;
+sem_t mutexResultadosConsola;
+sem_t mutexResultados;
 sem_t binarioSocket;
-
 
 t_log* logger;
 t_log* loggerConsola;
@@ -45,6 +44,7 @@ t_config* archivoDeConfig;
 //hasta aca del archivo de config
 t_list* memtable;
 t_list* listaDeTablas;
+t_list* TABLA_THREADS;
 t_bitarray* bitarray;
 sem_t binarioLFS;
 

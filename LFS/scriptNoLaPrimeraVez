@@ -1,9 +1,4 @@
 #!/bin/bash
-cd ..
-cd commonsPropias/
-sudo make uninstall
-sudo make install
-cd ..
 cd LFS/
 mkdir Metadata
 cd Metadata/

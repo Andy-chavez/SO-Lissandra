@@ -21,7 +21,7 @@
 #define BUF_LEN_CONFIG (1024 * EVENT_SIZE_CONFIG) // Lo dejo asi de grande porque sino segfaultea
 
 // DEFINICIONES //
-bool APIProtocolo(void* buffer, int socket);
+bool APIProtocolo(void* buffer, int socket, int* esGossip);
 void APIMemoria(operacionLQL* operacionAParsear, int socketKernel);
 void* trabajarConConexion(void* socket);
 datosInicializacion* realizarHandshake();
@@ -33,7 +33,7 @@ void* cambiosConfig();
 void cambiarValor();
 
 
-bool APIProtocolo(void* buffer, int socket) {
+bool APIProtocolo(void* buffer, int socket, int *fueGossip) {
 	operacionProtocolo operacion = empezarDeserializacion(&buffer);
 
 	switch(operacion) {
@@ -44,16 +44,20 @@ bool APIProtocolo(void* buffer, int socket) {
 	// TODO hacer un case donde se quiere cerrar el socket, cerrarConexion(socketKernel);
 	// por ahora va a ser el default, ver como arreglarlo
 	case DESCONEXION:
-		enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
+		if(!fueGossip){
+			enviarOMostrarYLogearInfo(-1, "Se cerro una conexion con el socket");
+		}
+		free(buffer);
 		cerrarConexion(socket);
 		return false;
 	case TABLAGOSSIP:
-		enviarOMostrarYLogearInfo(-1, "Una memoria o el kernel se comunico conmigo. Enviando mi tabla de gossip...");
 		sem_wait(&MUTEX_TABLA_GOSSIP);
 		recibirYGuardarEnTablaGossip(socket, 0);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
-		return true;
+		free(buffer);
+		*fueGossip = 1;
+		return 1;
 	case PAQUETEOPERACIONES:
 	case UNREGISTRO:
 	case METADATA:
@@ -117,12 +121,13 @@ void* trabajarConConexion(void* socket) {
 	enviar(socketKernel, (void*) &numeroMemoria, sizeof(int));
 	*/
 	int hayMensaje = 1;
+	int esGossip = 0;
 
 	while(hayMensaje) {
 		marcarHiloComoSemaforoRealizado(obtenerHiloEnTabla(pthread_self())->cancelarThread);
 		void* bufferRecepcion = recibir(socketKernel);
 		marcarHiloRealizandoSemaforo(obtenerHiloEnTabla(pthread_self())->cancelarThread);
-		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel);
+		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel, &esGossip);
 	}
 
 	eliminarHiloDeListaDeHilos();
@@ -233,7 +238,7 @@ void *servidorMemoria() {
 			enviarYLogearMensajeError(-1, "ERROR: Socket Defectuoso");
 			continue;
 		}
-		if(pthread_create(&threadConexion, NULL, trabajarConConexion, &socketKernel) < 0) {
+		if(pthread_create(&threadConexion, NULL, trabajarConConexion, (void*) &socketKernel) < 0) {
 			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
 		}
 
@@ -300,17 +305,7 @@ void* cambiosConfig() {
 	}
 }
 
-void cambiarValor() {
-	sem_post(&BINARIO_FINALIZACION_PROCESO);
-}
-
 void cerrarMemoria() {
-	struct sigaction terminar;
-	terminar.sa_handler = cambiarValor;
-	sigemptyset(&terminar.sa_mask);
-	terminar.sa_flags = SA_RESTART;
-	sigaction(SIGINT, &terminar, NULL);
-
 	sem_wait(&BINARIO_FINALIZACION_PROCESO);
 	sem_wait(&MUTEX_CERRANDO_MEMORIA);
 	CERRANDO_MEMORIA = 1;
@@ -336,12 +331,20 @@ void cerrarMemoria() {
 	pthread_join(threadTimedGossiping, NULL);
 }
 
-int main() {
+void cerrarYLiberarMemoria(){
+	cerrarMemoria();
+	liberarMemoria();
+	liberarConfigYLogs();
+	liberarTablaMarcos();
+	liberarTablaGossip();
+}
+
+
+int empezarMemoria(){
 	inicializarProcesoMemoria();
-
 	datosInicializacion* datosDeInicializacion;
-	if(!(datosDeInicializacion = realizarHandshake())) {
 
+	if(!(datosDeInicializacion = realizarHandshake())) {
 		liberarConfigYLogs();
 		return -1;
 	}
@@ -349,24 +352,19 @@ int main() {
 	MEMORIA_PRINCIPAL = inicializarMemoria(datosDeInicializacion);
 	inicializarTablaMarcos();
 	liberarDatosDeInicializacion(datosDeInicializacion);
-
 	pthread_create(&threadServer, NULL, servidorMemoria, NULL);
 	pthread_create(&threadConsola, NULL, manejarConsola, NULL);
 	pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 	pthread_create(&threadTimedJournal, NULL, timedJournal, ARCHIVOS_DE_CONFIG_Y_LOG);
 	pthread_create(&threadTimedGossiping, NULL, timedGossip, ARCHIVOS_DE_CONFIG_Y_LOG);
-
-	cerrarMemoria();
-
-	liberarMemoria();
-	liberarConfigYLogs();
-	liberarTablaMarcos();
-	liberarTablaGossip();
-
-	// system("reset");
 	return 0;
-
 }
 
-
-
+int main() {
+	if(empezarMemoria()==-1){
+		return 1;
+	}
+	cerrarYLiberarMemoria();
+//	system("reset");
+	return 0;
+}
