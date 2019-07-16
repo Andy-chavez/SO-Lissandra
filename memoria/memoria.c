@@ -387,7 +387,7 @@ int ping() {
 		return 0;
 	}
 
-	serializarYEnviarHandshake(socketPingLFS, 0);
+	serializarYEnviarHandshake(socketPingLFS, 1);
 	void* bufferHandshake = recibir(socketPingLFS);
 
 	if(bufferHandshake == NULL) {

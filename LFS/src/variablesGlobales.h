@@ -21,6 +21,7 @@ sem_t mutexRetardo;
 sem_t mutexResultadosConsola;
 sem_t mutexResultados;
 sem_t binarioSocket;
+sem_t MUTEX_TABLA_THREADS;
 
 t_log* logger;
 t_log* loggerConsola;
@@ -31,7 +32,7 @@ int tamanioBloques;
 int cantDeBloques;
 char* magicNumber;
 t_config* archivoMetadata;
-//hasta aca todo se saca del metadata
+//hasta aca se saca del metadata
 
 char* ipLisandra;
 char* puertoLisandra;
