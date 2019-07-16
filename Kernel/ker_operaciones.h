@@ -323,7 +323,7 @@ void realizarJournal(memoria * mem){
 void journal_consistencia(int consistencia, pthread_mutex_t sem){
 	pthread_mutex_lock(&sem);
 	list_iterate(criterios[consistencia].memorias,(void*)realizarJournal);
-	pthread_mutex_lock(&sem);
+	pthread_mutex_unlock(&sem);
 }
 bool kernel_add(char* operacion){
 	char** opAux = string_n_split(operacion,5," ");
@@ -370,10 +370,20 @@ bool kernel_memories(){
 	void printearMemories(memoria* mem){
 		printf(">MEMORIA %d IP %s PUERTO %s\n",mem->numero,mem->ip, mem->puerto);
 	}
-	//pthread_mutex_lock(&consola);
+	pthread_mutex_lock(&mMemorias);
 	printf("MEMORIES:\n");
 	list_iterate(memorias,(void*)printearMemories);
-	//pthread_mutex_unlock(&consola);
+	pthread_mutex_unlock(&mMemorias);
+	return true;
+}
+bool kernel_tables(){
+	void printearTablas(tabla* t){
+		printf(">TABLA NOMBRE %s CONSISTENCIA %d\n",t->nombreDeTabla, t->consistenciaDeTabla);
+	}
+	pthread_mutex_lock(&mTablas);
+	printf("TABLAS::\n");
+	list_iterate(tablas,(void*)printearTablas);
+	pthread_mutex_unlock(&mTablas);
 	return true;
 }
 // _________________________________________.: PROCEDIMIENTOS INTERNOS :.____________________________________________
@@ -518,7 +528,12 @@ void kernel_consola(){
 
 		printf(">");
 		linea = readline("");
-
+		if(linea)
+		      add_history(linea);
+		/*if(!strncmp(linea, "exit", 4)) {
+			free(linea);
+			break;
+		}*/
 		kernel_almacenar_en_new(linea);
 	}
 	free(linea);
@@ -549,7 +564,8 @@ void kernel_pasar_a_ready(){
 				string_contains(operacion, "CREATE") || string_contains(operacion, "DESCRIBE") ||
 				string_contains(operacion, "DROP") ||  string_contains(operacion, "JOURNAL") ||
 				string_contains(operacion, "METRICS") || string_contains(operacion, "ADD")
-				|| string_contains(operacion, "CERRAR")|| string_contains(operacion, "MEMORIES")){
+				|| string_contains(operacion, "CERRAR")|| string_contains(operacion, "MEMORIES")
+				|| string_contains(operacion, "TABLES")){
 			kernel_crearPCB(operacion);
 		}
 		else{
@@ -630,6 +646,9 @@ bool kernel_api(char* operacionAParsear, int thread){
 		}
 		else if (string_contains(operacionAParsear, "METRICS")) {
 			return kernel_metrics(1);
+		}
+		else if (string_contains(operacionAParsear, "TABLES")) {
+			return kernel_tables();
 		}
 		else if (string_contains(operacionAParsear, "CERRAR")) {
 			kernel_semFinalizar();

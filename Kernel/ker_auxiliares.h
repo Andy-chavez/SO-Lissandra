@@ -183,6 +183,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
 			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
+			cerrarConexion(socket);
 			return 1;
 		}
 		if(recibidoContiene(recibido, "ERROR")){
@@ -434,6 +435,7 @@ void enviarJournal(int socket){
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
+	cerrarConexion(socket);
 }
 //------ INSTRUCCIONES DE PCB ---------
 bool instruccion_no_ejecutada(instruccion* instruc){
@@ -480,7 +482,7 @@ void eliminarTablaCreada(char* parametros){
 			return false;
 		}
 	pthread_mutex_lock(&mTablas);
-	list_remove_by_condition(tablas, (void*)tablaDeNombre);
+	tabla* aBorrar = list_remove_by_condition(tablas, (void*)tablaDeNombre);
 	pthread_mutex_unlock(&mTablas);
 
 }
