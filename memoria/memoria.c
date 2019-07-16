@@ -368,20 +368,41 @@ void cerrarYLiberarMemoria(){
 	liberarConfigYLogs();
 	liberarTablaMarcos();
 	liberarTablaGossip();
+	liberarTablaDeSeedsEnConfig();
+	liberarTablaHilos();
 }
 
-void ping() {
+int ping() {
 	char* ipLFS = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IPFILESYSTEM");
 	char* puertoLFS = config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO_FS");
 	int socketPingLFS = crearSocketCliente(ipLFS, puertoLFS);
 
 	if(socketPingLFS == -1) {
 		printf("No se pudo crear el socket para realizar el ping con LFS. Se supone LFS desconectado\n");
+		sem_wait(&MUTEX_SOCKET_LFS);
+		cerrarConexion(SOCKET_LFS);
+		SOCKET_LFS = -1;
+		sem_post(&MUTEX_SOCKET_LFS);
 		// TODO ver que hacer si el ping da mal
-		return;
+		return 0;
 	}
 
+	serializarYEnviarHandshake(socketPingLFS, 0);
+	void* bufferHandshake = recibir(socketPingLFS);
 
+	if(bufferHandshake == NULL) {
+		printf("Ping fallido. Se supone LFS desconectado\n");
+		sem_wait(&MUTEX_SOCKET_LFS);
+		cerrarConexion(SOCKET_LFS);
+		SOCKET_LFS = -1;
+		sem_post(&MUTEX_SOCKET_LFS);
+		cerrarConexion(socketPingLFS);
+		return 0;
+	}
+	free(bufferHandshake);
+	cerrarConexion(socketPingLFS);
+
+	return 1;
 }
 
 int empezarMemoria(){
@@ -406,9 +427,36 @@ int empezarMemoria(){
 
 int main() {
 	if(empezarMemoria()==-1){
+		printf("File System Desconectado. se cerrara la memoria\n");
 		return 1;
 	}
 	cerrarYLiberarMemoria();
+
+	char* ultimoComando = NULL;
+	int cerrarMemoriaTotalmente = 0;
+
+	while(!cerrarMemoriaTotalmente) {
+		system("clear");
+		printf("\n\nSi quiere que la memoria se cierre completamente, escriba \"SI\"\n");
+		printf("Si quiere intentar reiniciar la memoria, escriba \"NO\"\n");
+		printf("Si la memoria no se puede conectar al LFS en este intento, se cerrara por completo.\n");
+
+
+		ultimoComando = readline(">");
+
+		if(string_equals_ignore_case(ultimoComando, "NO")) {
+			if(empezarMemoria()==-1){
+				printf("File System Desconectado. se cerrara la memoria\n");
+				return 1;
+			}
+			cerrarYLiberarMemoria();
+		} else if(string_equals_ignore_case(ultimoComando, "SI")) {
+			cerrarMemoriaTotalmente = 1;
+		}
+		free(ultimoComando);
+		ultimoComando = NULL;
+	}
+
 	system("reset");
 	return 0;
 }

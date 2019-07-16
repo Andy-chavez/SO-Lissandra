@@ -206,6 +206,13 @@ void liberarSegmento(void* segmentoEnMemoria) {
 
 }
 
+void liberarThreadEnTabla(void* hiloEnLaTabla) {
+	hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
+	free(unHilo->semaforoOperacion);
+	free(unHilo->semaforoJournal);
+	free(unHilo);
+}
+
 void liberarConfigYLogs() {
 	log_destroy(ARCHIVOS_DE_CONFIG_Y_LOG->logger);
 	log_destroy(LOGGER_CONSOLA);
@@ -214,14 +221,26 @@ void liberarConfigYLogs() {
 
 }
 
+void liberarTablaHilos() {
+	list_destroy_and_destroy_elements(TABLA_THREADS, liberarThreadEnTabla);
+	TABLA_THREADS = NULL;
+}
+
 void liberarMemoria() {
 	free(MEMORIA_PRINCIPAL->base);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
 	free(MEMORIA_PRINCIPAL);
+	MEMORIA_PRINCIPAL = NULL;
 }
 
 void liberarTablaGossip() {
 	list_destroy_and_destroy_elements(TABLA_GOSSIP, liberarSeed);
+	TABLA_GOSSIP = NULL;
+}
+
+void liberarTablaDeSeedsEnConfig() {
+	list_destroy_and_destroy_elements(TABLA_SEEDS_CONFIG, liberarSeed);
+	TABLA_SEEDS_CONFIG = NULL;
 }
 
 void vaciarMemoria() {
@@ -468,6 +487,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
+		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
 		sem_post(&MUTEX_SOCKET_LFS);
 		return NULL;
@@ -783,11 +803,11 @@ void journalLQL(int socketKernel) {
 
 	enviarOMostrarYLogearInfo(-1, "Tomo semaforo mutex en Journal");
 	sem_wait(&MUTEX_SOCKET_LFS);
-	if(SOCKET_LFS == -1) {
+	if(SOCKET_LFS == -1 || !ping()) {
 		enviarOMostrarYLogearInfo(-1, "ERROR: No se puede enviar la informacion del Journal, ya que el LFS no se encuentra disponible.");
 		enviarOMostrarYLogearInfo(-1, "Se pasara a borrar los datos en la memoria de todos modos. Se perderan los datos.");
-	}else {
-		enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo)); // TODO VERIFICAR SI SOCKETLFS NO EXISTE YA
+	} else {
+		enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo));
 		serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
 	}
 	sem_post(&MUTEX_SOCKET_LFS);
@@ -1226,12 +1246,17 @@ void intentarConexiones(t_log* logGossip) {
 	liberarSeed(seedPropia);
 }
 
+void liberarLogGossip(void* logGossip) {
+	log_destroy((t_log*) logGossip);
+}
+
 void* timedGossip() {
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
 
 	t_log* logGossip = log_create("memoria_gossip.log", "GOSSIP", 0, LOG_LEVEL_INFO);
 
+	pthread_cleanup_push(liberarLogGossip, logGossip);
 
 	while(1) {
 		log_info(logGossip, "Gossip Realizandose...");
@@ -1249,6 +1274,7 @@ void* timedGossip() {
 		log_info(logGossip, "Gossip Realizado");
 
 	}
+	pthread_cleanup_pop(liberarLogGossip);
 }
 
 void* timedJournal(){
@@ -1287,13 +1313,6 @@ void agregarHiloAListaDeHilos() {
 }
 
 void eliminarHiloDeListaDeHilos() {
-	void destruirThreadEnTabla(void* hiloEnLaTabla) {
-		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
-		free(unHilo->semaforoOperacion);
-		free(unHilo->semaforoJournal);
-		free(unHilo);
-	}
-
 	bool esElPropioThread(void* hiloEnLaTabla) {
 		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
 		return pthread_equal(unHilo->thread, pthread_self());
@@ -1307,7 +1326,7 @@ void eliminarHiloDeListaDeHilos() {
 		printf("Hubo un problema eliminando el hilo de la lista de hilos\n");
 		return;
 	}
-	destruirThreadEnTabla((void*) hiloADestruir);
+	liberarThreadEnTabla((void*) hiloADestruir);
 	return;
 }
 
