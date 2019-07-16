@@ -35,8 +35,8 @@ typedef struct{
 	consistencia unCriterio;
 	int cantidadSelects;
 	int cantidadInserts;
-	unsigned long tiempoSelects; //aca es el tiempo total, realizar division cuando loggee
-	unsigned long tiempoInserts;
+	float tiempoSelects; //aca es el tiempo total, realizar division cuando loggee
+	float tiempoInserts;
 	t_list* memorias;
 }criterio;
 typedef struct{
@@ -116,6 +116,7 @@ void kernel_finalizar();
 int kernel_inicializarMemoria();
 /******************************OPERACIONES******************************************/
 void liberarMemoria(memoria* elemento);
+void realizarJournal(memoria * mem);
 
 bool kernel_create(char* operacion,int thread);
 bool kernel_describe(char* operacion,int thread);
@@ -127,7 +128,7 @@ bool kernel_drop(char* operacion,int thread);
 bool kernel_select(char* operacion,int thread);
 bool kernel_insert(char* operacion,int thread);
 
-void journal_consistencia(int consistencia);
+void journal_consistencia(int consistencia, pthread_mutex_t sem);
 void kernel_almacenar_en_new(char*operacion);
 void kernel_crearPCB(char* operacion);
 void kernel_run(char* operacion);
