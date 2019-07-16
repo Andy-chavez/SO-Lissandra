@@ -319,6 +319,7 @@ void realizarJournal(memoria * mem){
 	log_info(kernel_configYLog->log, "@@ journal memoria: %d", mem->numero);
 	pthread_mutex_unlock(&mLog);
 	enviarJournal(socket);
+	cerrarConexion(socket);
 }
 void journal_consistencia(int consistencia, pthread_mutex_t sem){
 	pthread_mutex_lock(&sem);
