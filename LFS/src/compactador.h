@@ -26,7 +26,7 @@ bool cargarInfoDeBloquesParaCompactacion(char** buffer, char**arrayDeBloques){
 		if(informacion != NULL) {
 			string_append(buffer, informacion);
 		};
-		//free(informacion);
+		munmap((void*) informacion, tamanioBloques);
 		i++;
 	}
 

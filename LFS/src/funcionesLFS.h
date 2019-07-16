@@ -229,6 +229,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int ke
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
+		list_destroy(registrosConLaKeyEnMemtable);
 		return NULL;
 	}
 
@@ -341,11 +342,13 @@ registro* devolverRegistroDeListaDeRegistros(t_list* listaRegistros, int key, in
 void cargarInfoDeBloques(char** buffer, char**arrayDeBloques){
 	int i = 0;
 		while(*(arrayDeBloques+i)!= NULL){
-							char* informacion = infoEnBloque(*(arrayDeBloques+i));
-							if(informacion!=NULL)
-								string_append(buffer, informacion);
-								i++;
-						}
+			char* informacion = infoEnBloque(*(arrayDeBloques+i));
+			if(informacion!=NULL) {
+				string_append(buffer, informacion);
+				munmap((void*) informacion, tamanioBloques);
+			}
+			i++;
+		}
 }
 
 void cargarInfoDeTmpYParticion(char** buffer, char* nombreTabla,char** arrayDeParticion){

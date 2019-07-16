@@ -27,11 +27,11 @@ int main(int argc, char *argv[]){
 	pthread_t threadDescribe;
 	pthread_t threadGossip;
 	pthread_t threadMetrics;
-	if(argc==1){
+	/*if(argc==1){ todo descomentar esto para entregar
 		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel.\n");
 		return EXIT_FAILURE;
-	}
-	pathConfig =(char*) argv[1];// "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
+	}*/
+	pathConfig ="/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";//(char*) argv[1];// "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
 	kernel_inicializarVariablesYListas();
 	if(kernel_inicializarMemoria()==-1){
 		printf("No memory to initialize\n");
