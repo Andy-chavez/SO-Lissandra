@@ -482,7 +482,7 @@ void eliminarTablaCreada(char* parametros){
 			return false;
 		}
 	pthread_mutex_lock(&mTablas);
-	/*tabla* aBorrar = */list_remove_by_condition(tablas, (void*)tablaDeNombre); //todo
+	list_remove_by_condition(tablas, (void*)tablaDeNombre);
 	pthread_mutex_unlock(&mTablas);
 
 }

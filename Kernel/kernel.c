@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
 	pthread_t threadDescribe;
 	pthread_t threadGossip;
 	pthread_t threadMetrics;
-	/*if(argc==1){
+	/*if(argc==1){ todo descomentar esto para entregar
 		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel.\n");
 		return EXIT_FAILURE;
 	}*/
