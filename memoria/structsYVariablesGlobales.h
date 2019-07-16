@@ -66,6 +66,7 @@ typedef struct {
 	sem_t *semaforoOperacion;
 	sem_t *semaforoJournal;
 	int numeroHilo;
+	bool seLockeoSemJournal;
 } hiloEnTabla;
 
 typedef struct {
