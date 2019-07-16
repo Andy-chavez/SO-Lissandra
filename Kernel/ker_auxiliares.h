@@ -474,7 +474,7 @@ void agregarTablaVerificandoSiLaTengo(tabla* t){
 }
 void eliminarTablaCreada(char* parametros){
 	bool tablaDeNombre(tabla* t){
-			if(t->nombreDeTabla == parametros){
+			if(string_equals_ignore_case(t->nombreDeTabla,parametros)){
 				free(t->nombreDeTabla);
 				free(t);
 				return true;
