@@ -754,13 +754,15 @@ void marcarHiloRealizandoSemaforo(sem_t *semaforo) {
 	sem_wait(semaforo); // yeah idk why this is here
 }
 
-void verSiHayJournalEjecutandose(sem_t *semaforo, int numeroHilo, int* seEjecutoJournal) {
+void verSiHayJournalEjecutandose(hiloEnTabla* hilo, int numeroHilo, int* seEjecutoJournal) {
 	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
 	if(JOURNAL_REALIZANDOSE) {
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
-		sem_wait(semaforo);
+		sem_wait(hilo->semaforoOperacion);
+		sem_wait(hilo->semaforoJournal);
 		*seEjecutoJournal = 1;
 	} else {
+		sem_wait(hilo->semaforoOperacion);
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 	}
 }
@@ -839,8 +841,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 	int seEjecutoJournal = 0;
 
-	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
-	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
+	verSiHayJournalEjecutandose(hiloQueEjecuta, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
 
 	bool seEjecutaraJournal = false;
 
@@ -930,8 +931,8 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	int seEjecutoJournal = 0;
 
 	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
-	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
-	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
+	verSiHayJournalEjecutandose(hiloQueEjecuta, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
+
 	char* timestamp = NULL;
 	bool seEjecutaraJournal = false;
 
@@ -1064,8 +1065,7 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 	int seEjecutoJournal = 0;
 	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
-	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
-	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
+	verSiHayJournalEjecutandose(hiloQueEjecuta, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
 
 	segmento* unSegmento = encontrarSegmentoPorNombre(operacionDrop->parametros);
 

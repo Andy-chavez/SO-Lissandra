@@ -96,7 +96,6 @@ void dump(){
 
 			sem_t *semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
 			sem_t *semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
-			sem_post(&mutexMemtable);
 			sem_wait(semaforoDeTablaMemtable);
 			list_iterate(unaTabla->listaRegistros,(void*)cargarRegistro); //while el bloque no este lleno, cantOcupada += lo que dumpeaste
 
@@ -137,15 +136,12 @@ void dump(){
 				return (string_equals_ignore_case(unaTablita->nombre,unaTabla->nombre));
 			}
 
-			sem_wait(&mutexMemtable);
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
 			sem_post(semaforoDeTablaMemtable);
 
 		}
 
-		sem_wait(&mutexMemtable);
 		list_iterate(memtable,(void*)dumpearTabla);
-		sem_post(&mutexMemtable);
 
 		//liberarPorTablas
 
