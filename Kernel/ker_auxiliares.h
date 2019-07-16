@@ -379,9 +379,9 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			pthread_mutex_lock(&mEventual);
 		 	list_remove_and_destroy_by_condition(criterios[EVENTUAL].memorias,(void*)memoriaASacar, (void*)freeMemoria);
 		 	pthread_mutex_unlock(&mEventual);
-			pthread_mutex_lock(&mMemorias);
+			/*pthread_mutex_lock(&mMemorias);
 		 	list_remove_and_destroy_by_condition(memorias,(void*)memoriaASacar, (void*)freeMemoria);
-		 	pthread_mutex_unlock(&mMemorias);
+		 	pthread_mutex_unlock(&mMemorias);*/
 			return false;
 		}
 		pthread_mutex_lock(&mEventual);
@@ -534,14 +534,19 @@ void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, ope
 	free(recibido);
 	liberarOperacionLQL(opAux);
 }
+void thread_loggearInfoconQuantum(char* estado, int threadProcesador,int quantum, char* operacion){
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log," %s[M:%d Q:%d]: %s",estado,threadProcesador,quantum, operacion);
+	pthread_mutex_unlock(&mLog);
+}
 void thread_loggearInfo(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
 	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
 }
-void thread_loggearInfoInstruccion(char* estado, int threadProcesador,char* archivoRun, char* operacion){
+void thread_loggearInfoInstruccion(char* estado, int threadProcesador,int quantum, char* archivoRun, char* operacion){
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log," %s[%d] de %s, %s",estado,threadProcesador,archivoRun, operacion);
+	log_info(kernel_configYLog->log," %s[M:%d Q:%d] de %s, %s",estado,threadProcesador,quantum,archivoRun, operacion);
 	pthread_mutex_unlock(&mLog);
 }
 //------ LISTAS ---------
