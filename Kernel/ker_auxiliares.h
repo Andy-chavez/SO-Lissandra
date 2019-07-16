@@ -6,7 +6,7 @@
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
-void actualizarTiemposInsert(int index, time_t tiempo){
+void actualizarTiemposInsert(int index, float tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
 		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
@@ -23,7 +23,7 @@ void actualizarTiemposInsert(int index, time_t tiempo){
 		pthread_mutex_unlock(&mEventual);
 	}
 }
-void actualizarTiemposSelect(int index, unsigned long tiempo){
+void actualizarTiemposSelect(int index, float tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
 		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
@@ -141,19 +141,32 @@ void describeTimeado(){
 			}
 			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
 			if(protocolo == METADATA){
+				pthread_mutex_lock(&mTablas);
+				list_clean_and_destroy_elements(tablas,(void*)liberarTabla);
+				//tablas = list_create();
+				pthread_mutex_unlock(&mTablas);
 				metadata * met = deserializarMetadata(bufferProtocolo);
 				actualizarListaMetadata(met);
-			}
-			if(protocolo == PAQUETEMETADATAS)
-				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
-			if(protocolo == ERROR){
 				pthread_mutex_lock(&mLog);
-				log_info(kernel_configYLog->log, "@ RECIBIDO: Describe realizado");
+				log_info(kernel_configYLog->log, " @@ Describe realizado");
 				pthread_mutex_unlock(&mLog);
 			}
-			pthread_mutex_lock(&mLog);
-			log_info(kernel_configYLog->log, " @@ Describe realizado");
-			pthread_mutex_unlock(&mLog);
+			else if(protocolo == PAQUETEMETADATAS){
+				pthread_mutex_lock(&mTablas);
+				list_clean_and_destroy_elements(tablas,(void*)liberarTabla);
+				//tablas = list_create();
+				pthread_mutex_unlock(&mTablas);
+				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
+				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log, " @@ Describe realizado");
+				pthread_mutex_unlock(&mLog);
+			}
+			else if(protocolo == ERROR){
+				pthread_mutex_lock(&mLog);
+				log_info(kernel_configYLog->log, "@@ Error: Describe timeado");
+				pthread_mutex_unlock(&mLog);
+			}
+
 			cerrarConexion(socket);
 			free(bufferProtocolo);
 		}
@@ -170,6 +183,7 @@ int enviarOperacion(operacionLQL* opAux,int index, int thread){
 		char* recibido = (char*) recibir(socket);
 		if(recibido == NULL){
 			thread_loggearInfo("@ RECIBIDO",thread, "DESCONEXION/ERROR EN MEMORIA");
+			cerrarConexion(socket);
 			return 1;
 		}
 		if(recibidoContiene(recibido, "ERROR")){
@@ -421,6 +435,7 @@ void enviarJournal(int socket){
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
+	//cerrarConexion(socket);
 }
 //------ INSTRUCCIONES DE PCB ---------
 bool instruccion_no_ejecutada(instruccion* instruc){
@@ -459,7 +474,7 @@ void agregarTablaVerificandoSiLaTengo(tabla* t){
 }
 void eliminarTablaCreada(char* parametros){
 	bool tablaDeNombre(tabla* t){
-			if(t->nombreDeTabla == parametros){
+			if(string_equals_ignore_case(t->nombreDeTabla,parametros)){
 				free(t->nombreDeTabla);
 				free(t);
 				return true;
