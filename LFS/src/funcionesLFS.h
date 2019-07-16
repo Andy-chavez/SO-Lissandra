@@ -229,6 +229,7 @@ registro* devolverRegistroDeMayorTimestampDeLaMemtable(char* nombreTabla, int ke
 	t_list* registrosConLaKeyEnMemtable = list_filter(encuentraLista->listaRegistros, encontrarLaKey);
 
 	if (registrosConLaKeyEnMemtable->elements_count == 0){
+		list_destroy(registrosConLaKeyEnMemtable);
 		return NULL;
 	}
 

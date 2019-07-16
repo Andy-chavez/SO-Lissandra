@@ -184,7 +184,6 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
-	sem_init(&BINARIO_CERRANDO_SERVIDOR, 0, 0);
 	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 	sem_init(&BINARIO_ALGORITMO_LRU, 0, 1);
 	sem_init(&BINARIO_HILO_EN_TABLA, 0, 1);
@@ -207,6 +206,13 @@ void liberarSegmento(void* segmentoEnMemoria) {
 
 }
 
+void liberarThreadEnTabla(void* hiloEnLaTabla) {
+	hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
+	free(unHilo->semaforoOperacion);
+	free(unHilo->semaforoJournal);
+	free(unHilo);
+}
+
 void liberarConfigYLogs() {
 	log_destroy(ARCHIVOS_DE_CONFIG_Y_LOG->logger);
 	log_destroy(LOGGER_CONSOLA);
@@ -215,14 +221,26 @@ void liberarConfigYLogs() {
 
 }
 
+void liberarTablaHilos() {
+	list_destroy_and_destroy_elements(TABLA_THREADS, liberarThreadEnTabla);
+	TABLA_THREADS = NULL;
+}
+
 void liberarMemoria() {
 	free(MEMORIA_PRINCIPAL->base);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
 	free(MEMORIA_PRINCIPAL);
+	MEMORIA_PRINCIPAL = NULL;
 }
 
 void liberarTablaGossip() {
 	list_destroy_and_destroy_elements(TABLA_GOSSIP, liberarSeed);
+	TABLA_GOSSIP = NULL;
+}
+
+void liberarTablaDeSeedsEnConfig() {
+	list_destroy_and_destroy_elements(TABLA_SEEDS_CONFIG, liberarSeed);
+	TABLA_SEEDS_CONFIG = NULL;
 }
 
 void vaciarMemoria() {
@@ -232,14 +250,12 @@ void vaciarMemoria() {
 		unMarco->estaEnUso = 0;
 		sem_post(&unMarco->mutexMarco);
 	}
+	size_t tamanioMemoria = MEMORIA_PRINCIPAL->limite - MEMORIA_PRINCIPAL->base;
 
 	sem_wait(&MUTEX_TABLA_MARCOS);
 	list_iterate(TABLA_MARCOS, marcarMarcoComoDisponible);
-	sem_post(&MUTEX_TABLA_MARCOS);
-
-	size_t tamanioMemoria = MEMORIA_PRINCIPAL->limite - MEMORIA_PRINCIPAL->base;
-
 	memset(MEMORIA_PRINCIPAL->base, 0, tamanioMemoria); // para que se vea lindo despues de hacer el journal tambien
+	sem_post(&MUTEX_TABLA_MARCOS);
 
 	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_destroy_and_destroy_elements(MEMORIA_PRINCIPAL->tablaSegmentos, liberarSegmento);
@@ -471,6 +487,7 @@ void* pedirALFS(operacionLQL *operacion) {
 	void* buffer = recibir(SOCKET_LFS);
 	if(buffer == NULL) {
 		enviarOMostrarYLogearInfo(-1, "Lissandra File System se ha desconectado");
+		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
 		sem_post(&MUTEX_SOCKET_LFS);
 		return NULL;
@@ -719,12 +736,6 @@ operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEn
 	return operacionARetornar;
 }
 
-void modificarValorJournalRealizandose(int valor) {
-	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
-	JOURNAL_REALIZANDOSE = valor;
-	sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
-}
-
 hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
 	bool esHiloPropio(void* unHilo) {
 		return pthread_equal(hilo, ((hiloEnTabla*) unHilo)->thread);
@@ -743,11 +754,12 @@ void marcarHiloRealizandoSemaforo(sem_t *semaforo) {
 	sem_wait(semaforo); // yeah idk why this is here
 }
 
-void verSiHayJournalEjecutandose(sem_t *semaforo) {
+void verSiHayJournalEjecutandose(sem_t *semaforo, int numeroHilo, int* seEjecutoJournal) {
 	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
 	if(JOURNAL_REALIZANDOSE) {
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 		sem_wait(semaforo);
+		*seEjecutoJournal = 1;
 	} else {
 		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 	}
@@ -760,9 +772,12 @@ void marcarHiloComoSemaforoRealizado(sem_t *semaforo) {
 void journalLQL(int socketKernel) {
 	// TODO nuevo semaforo para mutexear journals
 	sem_wait(&MUTEX_JOURNAL); // Para que no se ejecute el timeado con otro que se ejecuto por kernel o consola
-	modificarValorJournalRealizandose(1);
 
+	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
 	esperarAHilosEjecutandose(esperarSemaforoDeHilo);
+	JOURNAL_REALIZANDOSE = 1;
+	sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
+
 	t_log* logJournal = log_create("journal_inserts_enviados.log", "JOURNAL", 0, LOG_LEVEL_INFO);
 	t_list* insertsAEnviar = list_create();
 	log_info(logJournal, "Comenzando Journal, se enviaran los siguientes inserts:");
@@ -788,11 +803,11 @@ void journalLQL(int socketKernel) {
 
 	enviarOMostrarYLogearInfo(-1, "Tomo semaforo mutex en Journal");
 	sem_wait(&MUTEX_SOCKET_LFS);
-	if(SOCKET_LFS == -1) {
+	if(SOCKET_LFS == -1 || !ping()) {
 		enviarOMostrarYLogearInfo(-1, "ERROR: No se puede enviar la informacion del Journal, ya que el LFS no se encuentra disponible.");
 		enviarOMostrarYLogearInfo(-1, "Se pasara a borrar los datos en la memoria de todos modos. Se perderan los datos.");
-	}else {
-		enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo)); // TODO VERIFICAR SI SOCKETLFS NO EXISTE YA
+	} else {
+		enviar(SOCKET_LFS, (void*)&protocoloJournal, sizeof(operacionProtocolo));
 		serializarYEnviarPaqueteOperacionesLQL(SOCKET_LFS, insertsAEnviar);
 	}
 	sem_post(&MUTEX_SOCKET_LFS);
@@ -806,8 +821,11 @@ void journalLQL(int socketKernel) {
 	log_info(logJournal, "Journal Realizado.");
 	log_destroy(logJournal);
 
-	modificarValorJournalRealizandose(0);
+	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
+	JOURNAL_REALIZANDOSE = 0;
 	dejarEjecutarOperacionesDeNuevo();
+	sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
+
 	sem_post(&MUTEX_JOURNAL);
 }
 
@@ -817,9 +835,12 @@ void liberarRecursosSelectLQL(char* nombreTabla, char *key) {
 }
 
 void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
-	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
-	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
-	verSiHayJournalEjecutandose(semaforoDeOperacion);
+	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
+
+	int seEjecutoJournal = 0;
+
+	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
+	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
 
 	bool seEjecutaraJournal = false;
 
@@ -893,7 +914,10 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 
 	liberarRecursosSelectLQL(nombreTabla, keyString);
 	liberarParametrosSpliteados(parametrosSpliteados);
-	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
+	if(seEjecutoJournal) {
+		marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoJournal);
+	}
+	marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoOperacion);
 }
 
 void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
@@ -902,9 +926,12 @@ void liberarRecursosInsertLQL(char* nombreTabla, registro* unRegistro) {
 }
 
 void insertLQL(operacionLQL* operacionInsert, int socketKernel){
-	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
-	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
-	verSiHayJournalEjecutandose(semaforoDeOperacion);
+
+	int seEjecutoJournal = 0;
+
+	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
+	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
+	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
 	char* timestamp = NULL;
 	bool seEjecutaraJournal = false;
 
@@ -927,6 +954,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 		free(key);
 		liberarParametrosSpliteados(tablaYKey);
 		liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
+		marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoOperacion);
 		return;
 	}
 
@@ -967,7 +995,11 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	liberarParametrosSpliteados(parametrosSpliteadosPorComillas);
 	liberarParametrosSpliteados(tablaYKey);
 	liberarRecursosInsertLQL(tabla, registroNuevo);
-	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
+
+	if(seEjecutoJournal) {
+		marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoJournal);
+	}
+	marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoOperacion);
 }
 
 void createLQL(operacionLQL* operacionCreate, int socketKernel) {
@@ -1030,9 +1062,10 @@ void describeLQL(operacionLQL* operacionDescribe, int socketKernel) {
 }
 
 void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
-	sem_t* semaforoDeOperacion = obtenerHiloEnTabla(pthread_self())->semaforoOperacion;
-	marcarHiloRealizandoSemaforo(semaforoDeOperacion);
-	verSiHayJournalEjecutandose(semaforoDeOperacion);
+	int seEjecutoJournal = 0;
+	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
+	verSiHayJournalEjecutandose(hiloQueEjecuta->semaforoJournal, hiloQueEjecuta->numeroHilo, &seEjecutoJournal);
+	marcarHiloRealizandoSemaforo(hiloQueEjecuta->semaforoOperacion);
 
 	segmento* unSegmento = encontrarSegmentoPorNombre(operacionDrop->parametros);
 
@@ -1057,7 +1090,10 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 		free(mensaje);
 	}
 
-	marcarHiloComoSemaforoRealizado(semaforoDeOperacion);
+	if(seEjecutoJournal) {
+		marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoJournal);
+	}
+	marcarHiloComoSemaforoRealizado(hiloQueEjecuta->semaforoOperacion);
 }
 // ------------------------------------------------------------------------ //
 // 7) TIMED OPERATIONS //
@@ -1179,9 +1215,7 @@ void intentarConexiones(t_log* logGossip) {
 
 				return;
 			}
-			sem_wait(&MUTEX_LOG_CONSOLA);
-			log_info(LOGGER_CONSOLA, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
-			sem_post(&MUTEX_LOG_CONSOLA);
+			log_info(logGossip, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
 			return;
 		}
 
@@ -1212,12 +1246,17 @@ void intentarConexiones(t_log* logGossip) {
 	liberarSeed(seedPropia);
 }
 
+void liberarLogGossip(void* logGossip) {
+	log_destroy((t_log*) logGossip);
+}
+
 void* timedGossip() {
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	cargarSeeds();
 
 	t_log* logGossip = log_create("memoria_gossip.log", "GOSSIP", 0, LOG_LEVEL_INFO);
 
+	pthread_cleanup_push(liberarLogGossip, logGossip);
 
 	while(1) {
 		log_info(logGossip, "Gossip Realizandose...");
@@ -1235,6 +1274,7 @@ void* timedGossip() {
 		log_info(logGossip, "Gossip Realizado");
 
 	}
+	pthread_cleanup_pop(liberarLogGossip);
 }
 
 void* timedJournal(){
@@ -1262,23 +1302,17 @@ void agregarHiloAListaDeHilos() {
 	hiloPropio->thread = pthread_self();
 
 	hiloPropio->semaforoOperacion = malloc(sizeof(sem_t));
-	hiloPropio->cancelarThread = malloc(sizeof(sem_t));
+	hiloPropio->semaforoJournal = malloc(sizeof(sem_t));
 	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
-	sem_init(hiloPropio->cancelarThread, 0 , 0);
+	sem_init(hiloPropio->semaforoJournal, 0, 1);
 
 	sem_wait(&MUTEX_TABLA_THREADS);
+	hiloPropio->numeroHilo = list_size(TABLA_THREADS);
 	list_add(TABLA_THREADS, hiloPropio);
 	sem_post(&MUTEX_TABLA_THREADS);
 }
 
 void eliminarHiloDeListaDeHilos() {
-	void destruirThreadEnTabla(void* hiloEnLaTabla) {
-		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
-		free(unHilo->cancelarThread);
-		free(unHilo->semaforoOperacion);
-		free(unHilo);
-	}
-
 	bool esElPropioThread(void* hiloEnLaTabla) {
 		hiloEnTabla* unHilo = (hiloEnTabla*) hiloEnLaTabla;
 		return pthread_equal(unHilo->thread, pthread_self());
@@ -1292,7 +1326,7 @@ void eliminarHiloDeListaDeHilos() {
 		printf("Hubo un problema eliminando el hilo de la lista de hilos\n");
 		return;
 	}
-	destruirThreadEnTabla((void*) hiloADestruir);
+	liberarThreadEnTabla((void*) hiloADestruir);
 	return;
 }
 
@@ -1300,15 +1334,8 @@ void* esperarSemaforoDeHilo(void* buffer) {
 		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
 
 		sem_post(&BINARIO_HILO_EN_TABLA);
+		sem_wait(hiloAEsperar->semaforoJournal);
 		sem_wait(hiloAEsperar->semaforoOperacion);
-		pthread_exit(0);
-}
-
-void* esperarSemaforoDeCancelar(void* buffer) {
-		hiloEnTabla* hiloAEsperar = (hiloEnTabla*) buffer;
-
-		sem_post(&BINARIO_HILO_EN_TABLA);
-		sem_wait(hiloAEsperar->cancelarThread);
 		pthread_exit(0);
 }
 
@@ -1343,10 +1370,8 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 void dejarEjecutarOperacionesDeNuevo() {
 	void postSemaforoDelHilo(void* hilo) {
 		sem_post(((hiloEnTabla*) hilo)->semaforoOperacion);
+		sem_post(((hiloEnTabla*) hilo)->semaforoJournal);
 	}
-
-	int valorMutexTablaThreads;
-	sem_getvalue(&MUTEX_TABLA_THREADS, &valorMutexTablaThreads);
 
 	sem_wait(&MUTEX_TABLA_THREADS);
 	list_iterate(TABLA_THREADS, postSemaforoDelHilo);
@@ -1362,15 +1387,9 @@ void cancelarListaHilos(){
 			pthread_join(((hiloEnTabla*) hilo)->thread, NULL);
 		}
 
-	esperarAHilosEjecutandose(esperarSemaforoDeCancelar);
 	list_iterate(TABLA_THREADS,cancelarHilo);
 }
 
 void cleanupTrabajarConConexion() {
 	cancelarListaHilos();
-}
-
-void esperarParaCancelarConsola(pthread_t hiloConsola){
-	hiloEnTabla* hilo = obtenerHiloEnTabla(hiloConsola);
-	sem_wait(hilo->cancelarThread);
 }

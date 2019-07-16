@@ -98,15 +98,15 @@ int crearSocketServidor(char *ip, char *puerto) {
 
 // acepta un cliente
 int aceptarCliente(int unSocketDeServidor) {
-	t_log* logger = log_create("conexiones.log", "CONEXIONES", 0, LOG_LEVEL_ERROR);
 	struct sockaddr_in direccionCliente;
 	int tamanioDireccion = sizeof(struct sockaddr_in);
 
 	int socketDelCliente = accept(unSocketDeServidor, (void*) &direccionCliente, &tamanioDireccion);
 
+	t_log* logger = log_create("conexiones.log", "CONEXIONES", 0, LOG_LEVEL_INFO);
 	log_info(logger, "Se acepto la conexion de un cliente");
-
 	log_destroy(logger);
+
 	return socketDelCliente;
 }
 
