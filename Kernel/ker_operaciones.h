@@ -191,7 +191,7 @@ bool kernel_drop(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		guardarTablaCreada(*(parametros+1));
+		//guardarTablaCreada(*(parametros+1));
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
@@ -248,10 +248,16 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	}
 	pthread_mutex_unlock(&mEventual);
 	void printearMetrics(memoria* mem){
-		printf(">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
+		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		if( socket != -1)
+			printf(">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
+		cerrarConexion(socket);
 	}
 	void loggearMetrics(memoria* mem){
-		log_info(logMetrics,">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
+		int socket = crearSocketCliente(mem->ip,mem->puerto);
+		if( socket != -1)
+			log_info(logMetrics,">MEMORIA[%d]: Selects %d Inserts %d\n",mem->numero,mem->cantidadSel, mem->cantidadIns);
+		cerrarConexion(socket);
 	}
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
@@ -430,7 +436,7 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
+			thread_loggearInfoconQuantum("EXEC",threadProcesador,1, pcb_auxiliar->operacion);
 			if(kernel_api(pcb_auxiliar->operacion,threadProcesador)== false){
 				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
@@ -449,9 +455,8 @@ void kernel_roundRobin(int threadProcesador){
 			for(int quantum=0;quantum<q;quantum++){
 				if(pcb_auxiliar->ejecutado ==0){
 					pcb_auxiliar->ejecutado=1;
-					thread_loggearInfo("EXEC",threadProcesador, pcb_auxiliar->operacion);
+					thread_loggearInfoconQuantum("EXEC",threadProcesador,quantum, pcb_auxiliar->operacion);
 					if(kernel_api(pcb_auxiliar->operacion,threadProcesador)==false){
-//						thread_loggearInfo("@ EXEC",threadProcesador, pcb_auxiliar->operacion);
 						ERROR = -1;
 						break;
 					}
@@ -463,7 +468,7 @@ void kernel_roundRobin(int threadProcesador){
 					break;
 				}
 				instruc->ejecutado = 1;
-				thread_loggearInfoInstruccion("EXEC",threadProcesador, pcb_auxiliar->operacion, instruc->operacion);
+				thread_loggearInfoInstruccion("EXEC",threadProcesador,quantum, pcb_auxiliar->operacion, instruc->operacion);
 				if(kernel_api(instruc->operacion, threadProcesador)==false){
 					ERROR = -1;
 					break;
