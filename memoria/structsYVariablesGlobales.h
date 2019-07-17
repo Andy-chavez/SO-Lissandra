@@ -71,6 +71,11 @@ typedef struct {
 
 typedef struct {
 	pthread_t thread;
+	bool esHiloCancelable;
+} hiloEnTablaCancelacion;
+
+typedef struct {
+	pthread_t thread;
 } hiloQueEspera;
 
 int SOCKET_LFS;
@@ -81,7 +86,7 @@ int RETARDO_JOURNAL;
 int RETARDO_MEMORIA;
 int RETARDO_FS;
 int JOURNAL_REALIZANDOSE = 0;
-int CERRANDO_MEMORIA = 0;
+int AVISO_CANCELACION = 0;
 
 sem_t MUTEX_LOG;
 sem_t MUTEX_LOG_CONSOLA;
@@ -100,14 +105,18 @@ sem_t MUTEX_TABLA_THREADS;
 sem_t MUTEX_JOURNAL_REALIZANDOSE;
 sem_t MUTEX_TABLA_MARCOS;
 sem_t MUTEX_TABLA_SEGMENTOS;
+sem_t MUTEX_TABLA_THREADS_CANCELACION;
+sem_t MUTEX_AVISO_CANCELACION;
 sem_t BINARIO_ALGORITMO_LRU;
 sem_t BINARIO_HILO_EN_TABLA;
+sem_t BINARIO_THREAD_CARGADO;
 
 memoria* MEMORIA_PRINCIPAL;
 t_list* TABLA_MARCOS;
 t_list* TABLA_GOSSIP;
 t_list* TABLA_SEEDS_CONFIG;
 t_list* TABLA_THREADS;
+t_list* TABLA_THREADS_CANCELACION;
 
 configYLogs *ARCHIVOS_DE_CONFIG_Y_LOG;
 t_log* LOGGER_CONSOLA;

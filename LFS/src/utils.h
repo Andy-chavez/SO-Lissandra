@@ -224,7 +224,7 @@ void liberarBloquesDeTmpYPart(char* nombreArchivo,char* rutaTabla){
 
 	t_config* archivo= config_create(rutaCompleta);
 
-	while(archivo==NULL || !config_has_property(archivo, "PARTITIONS")){
+	while(archivo==NULL || !config_has_property(archivo, "BLOCKS")){
 		soloLoggearError(-1,"Hubo un error al abrir el archivo en la ruta %s se volvera a intentar",rutaCompleta);
 		archivo= config_create(rutaCompleta);
 	}
