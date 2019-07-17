@@ -32,6 +32,7 @@ void inicializarSemaforos(){
 		sem_init(&mutexResultadosConsola, 0, 1);
 		sem_init(&mutexResultados, 0, 1);
 		sem_init(&binarioSocket,0,1);
+		sem_init(&MUTEX_TABLA_THREADS,0,1);
 }
 
 void inicializarBloques(){

@@ -69,15 +69,54 @@ void parserGeneral(operacionLQL* operacionAParsear,int socket) { //cambio parser
 	liberarOperacionLQL(operacionAParsear);
 }
 
-void realizarHandshake(int socket){
+int realizarHandshake(int socket){
 	void* buffer = recibir(socket);
 	int esCero= deserializarHandshake(buffer);
 	if(esCero==0){
+		soloLoggear(1,"Se realizo handshake correctamente");
 		serializarYEnviarHandshake(socket, tamanioValue);
+		return 1;
+	}
+	else if(esCero==1){
+		soloLoggear(1,"Se recibio un Ping");
+		serializarYEnviarHandshake(socket,tamanioValue);
+		return 0;
 	}
 	else {
 		soloLoggear(1,"No se pudo realizar handshake");
+		return 0;
 	}
+}
+
+void agregarHiloAListaDeHilos() {
+
+	hiloMemoria* hiloPropio = malloc(sizeof(hiloMemoria));
+	hiloPropio->thread = pthread_self();
+	sem_wait(&MUTEX_TABLA_THREADS);
+	list_add(TABLA_THREADS, hiloPropio);
+	sem_post(&MUTEX_TABLA_THREADS);
+
+}
+void cancelarHilo(hiloMemoria* hilo){
+	pthread_cancel(hilo->thread);
+	pthread_join(hilo->thread, NULL);
+	free(hilo);
+}
+
+void eliminarHiloDeListaDeHilos() {
+	bool esElPropioThread(hiloMemoria* hiloEnLaTabla) {
+		return pthread_equal(hiloEnLaTabla->thread, pthread_self());
+	}
+
+	sem_wait(&MUTEX_TABLA_THREADS);
+	list_remove_and_destroy_by_condition(TABLA_THREADS, esElPropioThread,(void*)cancelarHilo);
+	sem_post(&MUTEX_TABLA_THREADS);
+	return;
+}
+void cancelarListaHilos(){
+	sem_wait(&MUTEX_TABLA_THREADS);
+	list_destroy_and_destroy_elements(TABLA_THREADS,(void*)cancelarHilo);
+	sem_post(&MUTEX_TABLA_THREADS);
 }
 
 int APIProtocolo(void* buffer, int socket) {
@@ -98,32 +137,13 @@ int APIProtocolo(void* buffer, int socket) {
 		return 1;
 	case DESCONEXION:
 		soloLoggearError(1,"Se cierra la conexion\n");
+		eliminarHiloDeListaDeHilos();
 		cerrarConexion(socket);
 		return 0;
 	}
 	return 0;
 	free(buffer);
 }
-
-void agregarHiloAListaDeHilos() {
-
-	hiloMemoria* hiloPropio = malloc(sizeof(hiloMemoria));
-	hiloPropio->thread = pthread_self();
-	list_add(TABLA_THREADS, hiloPropio);
-
-}
-
-void cancelarListaHilos(){
-		void cancelarHilo(hiloMemoria* hilo){
-			pthread_cancel(hilo->thread);
-			pthread_join(hilo->thread, NULL);
-			free(hilo);
-		}
-
-	list_destroy_and_destroy_elements(TABLA_THREADS,(void*)cancelarHilo);
-
-}
-
 
 void trabajarConexion(void* socket){
 
@@ -135,12 +155,11 @@ void trabajarConexion(void* socket){
 	while(hayMensaje) {
 			void* bufferRecepcion = recibir(socketMemoria);
 			sem_wait(&mutexRetardo);
-			usleep(retardo*1000);
+			int retardoActual= retardo;
 			sem_post(&mutexRetardo);
+			usleep(retardoActual*1000);
 			hayMensaje = APIProtocolo(bufferRecepcion, socketMemoria);
 		}
-
-	// TODO agregar la funcion que elimine el hilo de la lista de hilos a cancelar cuando cierren LFS
 	pthread_exit(0);
 }
 
@@ -149,8 +168,8 @@ void* servidorLisandra(){
 	int socketServidorLisandra = crearSocketServidor(ipLisandra,puertoLisandra);
 	if(socketServidorLisandra == -1) {
 		cerrarConexion(socketServidorLisandra);
-		pthread_exit(0);
 		log_error(logger, "No se pudo crear el servidor lissandra");
+		pthread_exit(0);
 	}
 
 	while(1){
@@ -162,12 +181,14 @@ void* servidorLisandra(){
 			continue;
 		}
 		soloLoggear(socketMemoria,"Se conecto una nueva Memoria");
-		realizarHandshake(socketMemoria);
-
+		int resultado =realizarHandshake(socketMemoria);
+		if(resultado==0){
+			cerrarConexion(socketMemoria);
+			sem_post(&binarioSocket);
+			continue;
+		} //esto es por el ping y si no se realiza handshake
 		pthread_t threadMemoria;
 		if(pthread_create(&threadMemoria,NULL,(void*) trabajarConexion,&socketMemoria)<0){
-
-			//
 
 			soloLoggearError(socketMemoria,"No se pudo crear socket para memoria");
 			continue;
