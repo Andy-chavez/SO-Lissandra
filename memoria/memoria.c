@@ -112,6 +112,11 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 
 //------------------------------------------------------------------------
 
+void cerrarConexionDeKernel(void* bufferSocket) {
+	int socket = *(int*) bufferSocket;
+	cerrarConexion(socket);
+}
+
 void* trabajarConConexion(void* socket) {
 	sem_wait(&BINARIO_THREAD_CARGADO);
 	hiloEnTablaCancelacion* propioHilo = obtenerHiloCancelacion(pthread_self());
@@ -119,6 +124,8 @@ void* trabajarConConexion(void* socket) {
 
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
+
+	pthread_cleanup_push(cerrarConexionDeKernel, &socketKernel);
 
 	int hayMensaje = 1;
 	int esGossip = 0;
@@ -147,6 +154,7 @@ void* trabajarConConexion(void* socket) {
 		sem_post(&MUTEX_AVISO_CANCELACION);
 	}
 
+	pthread_cleanup_pop(0);
 	eliminarHiloDeListaDeHilosCancelacion();
 	pthread_detach(pthread_self());
 	pthread_exit(0);
