@@ -163,7 +163,7 @@ void describeTimeado(){
 			}
 			else if(protocolo == ERROR){
 				pthread_mutex_lock(&mLog);
-				log_info(kernel_configYLog->log, "@@ Error: Describe timeado");
+				log_info(kernel_configYLog->log, "@@ Describe timeado vacio");
 				pthread_mutex_unlock(&mLog);
 			}
 
@@ -529,7 +529,7 @@ void kernel_semFinalizar() {
 //----------------- LOGS -----------------------------
 void thread_loggearInfoYLiberarParametrosRECIBIDO(int thread,char* recibido, operacionLQL *opAux){
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log," RECIBIDO[%d]: %s",thread, recibido);
+	log_info(kernel_configYLog->log," RECIBIDO[M:%d]: %s",thread, recibido);
 	pthread_mutex_unlock(&mLog);
 	free(recibido);
 	liberarOperacionLQL(opAux);
@@ -541,7 +541,7 @@ void thread_loggearInfoconQuantum(char* estado, int threadProcesador,int quantum
 }
 void thread_loggearInfo(char* estado, int threadProcesador, char* operacion){
 	pthread_mutex_lock(&mLog);
-	log_info(kernel_configYLog->log," %s[%d]: %s",estado,threadProcesador, operacion);
+	log_info(kernel_configYLog->log," %s[M:%d]: %s",estado,threadProcesador, operacion);
 	pthread_mutex_unlock(&mLog);
 }
 void thread_loggearInfoInstruccion(char* estado, int threadProcesador,int quantum, char* archivoRun, char* operacion){
