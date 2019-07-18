@@ -112,12 +112,20 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 
 //------------------------------------------------------------------------
 
+void cerrarConexionDeKernel(void* bufferSocket) {
+	int socket = *(int*) bufferSocket;
+	cerrarConexion(socket);
+}
+
 void* trabajarConConexion(void* socket) {
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+	sem_wait(&BINARIO_THREAD_CARGADO);
+	hiloEnTablaCancelacion* propioHilo = obtenerHiloCancelacion(pthread_self());
 	agregarHiloAListaDeHilos();
 
 	int socketKernel = *(int*) socket;
 	sem_post(&BINARIO_SOCKET_KERNEL);
+
+	pthread_cleanup_push(cerrarConexionDeKernel, &socketKernel);
 
 	int hayMensaje = 1;
 	int esGossip = 0;
@@ -125,16 +133,29 @@ void* trabajarConConexion(void* socket) {
 	while(hayMensaje) {
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		void* bufferRecepcion = recibir(socketKernel);
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 		sem_wait(&MUTEX_RETARDO_MEMORIA);
 		int retardoMemoria = RETARDO_MEMORIA * 1000;
 		sem_post(&MUTEX_RETARDO_MEMORIA);
 		usleep(retardoMemoria);
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 		hayMensaje = APIProtocolo(bufferRecepcion, socketKernel, &esGossip);
 	}
 
 	eliminarHiloDeListaDeHilos();
+
+	sem_wait(&MUTEX_AVISO_CANCELACION);
+	if(AVISO_CANCELACION) {
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+		sem_post(&MUTEX_AVISO_CANCELACION);
+		pause();
+	} else {
+		propioHilo->esHiloCancelable = false;
+		sem_post(&MUTEX_AVISO_CANCELACION);
+	}
+
+	pthread_cleanup_pop(0);
+	eliminarHiloDeListaDeHilosCancelacion();
 	pthread_detach(pthread_self());
 	pthread_exit(0);
 }
@@ -247,8 +268,10 @@ void *servidorMemoria() {
 		}
 		if(pthread_create(&threadConexion, NULL, trabajarConConexion, (void*) &socketKernel) < 0) {
 			enviarYLogearMensajeError(socketKernel, "No se pudo crear un hilo para trabajar con el socket");
+			continue;
 		}
-
+		agregarEnTablaHilosCancelacion(threadConexion);
+		sem_post(&BINARIO_THREAD_CARGADO);
 	}
 
 	pthread_cleanup_pop(cancelarListaHilos);
@@ -257,7 +280,6 @@ void *servidorMemoria() {
 }
 
 void* cambiosConfig() {
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	char buffer[BUF_LEN_CONFIG];
 	int fdConfig = inotify_init();
 
@@ -272,9 +294,7 @@ void* cambiosConfig() {
 	}
 
 	while(1) {
-		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		int size = read(fdConfig, buffer, BUF_LEN_CONFIG);
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 		if(size<0) {
 			enviarOMostrarYLogearInfo(-1, "hubo un error al leer modificaciones del config");
@@ -340,19 +360,18 @@ void* cambiosConfig() {
 
 void cerrarMemoria() {
 	sem_wait(&BINARIO_FINALIZACION_PROCESO);
-	sem_wait(&MUTEX_CERRANDO_MEMORIA);
-	CERRANDO_MEMORIA = 1;
-	sem_post(&MUTEX_CERRANDO_MEMORIA);
 
-	sem_wait(&MUTEX_LOG);
-	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Finalizando el proceso memoria...");
-	sem_post(&MUTEX_LOG);
+	sem_wait(&MUTEX_LOG_CONSOLA);
+	log_info(LOGGER_CONSOLA, "Finalizando el proceso memoria...");
+	sem_post(&MUTEX_LOG_CONSOLA);
 
 	pthread_cancel(threadConsola);
 	pthread_join(threadConsola, NULL);
 
 	pthread_cancel(threadServer);
 	pthread_join(threadServer, NULL);
+
+	journalLQL(-1);
 
 	pthread_cancel(threadCambiosConfig);
 	pthread_cancel(threadTimedGossiping);
@@ -387,7 +406,7 @@ int ping() {
 		return 0;
 	}
 
-	serializarYEnviarHandshake(socketPingLFS, 0);
+	serializarYEnviarHandshake(socketPingLFS, 1);
 	void* bufferHandshake = recibir(socketPingLFS);
 
 	if(bufferHandshake == NULL) {
@@ -436,7 +455,7 @@ int main() {
 	int cerrarMemoriaTotalmente = 0;
 
 	while(!cerrarMemoriaTotalmente) {
-		system("clear");
+		//system("clear");
 		printf("\n\nSi quiere que la memoria se cierre completamente, escriba \"SI\"\n");
 		printf("Si quiere intentar reiniciar la memoria, escriba \"NO\"\n");
 		printf("Si la memoria no se puede conectar al LFS en este intento, se cerrara por completo.\n");

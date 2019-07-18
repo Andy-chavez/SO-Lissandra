@@ -554,9 +554,8 @@ void funcionCreate(char* argumentos,int socket) {
 
 	char** argSeparados = string_n_split(argumentos,4," ");
 
-	//es todo char porque cuando lo guardes en el metadata se guarda como caracteres
 	char* nombreTabla = *(argSeparados + 0);
-	string_to_upper(nombreTabla); //para que nos quede en el file system todo en mayuscula
+	string_to_upper(nombreTabla);
     char* consistenciaTabla = *(argSeparados + 1);
 	char* numeroParticiones = *(argSeparados + 2);
 	char* tiempoCompactacion = *(argSeparados + 3);

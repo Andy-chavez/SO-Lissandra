@@ -9,6 +9,7 @@
 #include "structsYVariablesGlobales.h"
 #include <unistd.h>
 #include <stdarg.h>
+#include <signal.h>
 #include <fcntl.h>
 
 // DECLARACIONES //
@@ -75,7 +76,7 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo);
 void intentarConexiones();
 void* timedGossip();
 void* timedJournal();
-void agregarHiloAListaDeHilos();
+hiloEnTabla* agregarHiloAListaDeHilos();
 void eliminarHiloDeListaDeHilos();
 void* esperarSemaforoDeHilo(void* buffer);
 void* esperarSemaforoDeCancelar(void* buffer);
@@ -152,6 +153,7 @@ memoria* inicializarMemoria(datosInicializacion* datosParaInicializar) {
 	inicializarTablaGossip();
 	inicializarTablaSeedsConfig();
 	TABLA_THREADS = list_create();
+	TABLA_THREADS_CANCELACION = list_create();
 
 	log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Memoria inicializada.");
 	return nuevaMemoria;
@@ -184,9 +186,11 @@ void inicializarSemaforos() {
 	sem_init(&MUTEX_JOURNAL_REALIZANDOSE, 0, 1);
 	sem_init(&MUTEX_TABLA_MARCOS, 0, 1);
 	sem_init(&MUTEX_TABLA_SEGMENTOS, 0, 1);
-	sem_init(&MUTEX_CERRANDO_MEMORIA, 0, 1);
 	sem_init(&BINARIO_ALGORITMO_LRU, 0, 1);
 	sem_init(&BINARIO_HILO_EN_TABLA, 0, 1);
+	sem_init(&MUTEX_TABLA_THREADS_CANCELACION, 0, 1);
+	sem_init(&BINARIO_THREAD_CARGADO, 0, 0);
+	sem_init(&MUTEX_AVISO_CANCELACION, 0, 1);
 }
 
 void liberarSegmento(void* segmentoEnMemoria) {
@@ -222,6 +226,9 @@ void liberarConfigYLogs() {
 }
 
 void liberarTablaHilos() {
+	sem_wait(&MUTEX_TABLA_THREADS_CANCELACION);
+	list_destroy_and_destroy_elements(TABLA_THREADS_CANCELACION, free);
+	sem_post(&MUTEX_TABLA_THREADS_CANCELACION);
 	list_destroy_and_destroy_elements(TABLA_THREADS, liberarThreadEnTabla);
 	TABLA_THREADS = NULL;
 }
@@ -741,33 +748,24 @@ operacionLQL* armarInsertLQLParaPaquete(char* nombreTablaPerteneciente, paginaEn
 }
 
 hiloEnTabla* obtenerHiloEnTabla(pthread_t hilo) {
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+
 	bool esHiloPropio(void* unHilo) {
 		return pthread_equal(hilo, ((hiloEnTabla*) unHilo)->thread);
 	}
 
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	sem_wait(&MUTEX_TABLA_THREADS);
+	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 	hiloEnTabla* unHilo = (hiloEnTabla*) list_find(TABLA_THREADS, esHiloPropio);
 	sem_post(&MUTEX_TABLA_THREADS);
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	return unHilo;
 }
 
-void marcarHiloRealizandoSemaforo(sem_t *semaforo) {
-	// En el caso en que el journal ya se esta ejecutando, tendra que esperar a que el journal termine de ejecutar. Por lo tanto espera de nuevo a su propio semaforo
-	// (El journal lo liberara)
-	sem_wait(semaforo); // yeah idk why this is here
-}
-
 void verSiHayJournalEjecutandose(hiloEnTabla* hilo, int numeroHilo) {
-	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
-	if(JOURNAL_REALIZANDOSE) {
-		hilo->seLockeoSemJournal = true;
-		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
-		sem_wait(hilo->semaforoJournal);
-	} else {
-		sem_wait(hilo->semaforoOperacion);
-		sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
-	}
+	sem_wait(hilo->semaforoOperacion);
 }
 
 void marcarHiloComoSemaforoRealizado(sem_t *semaforo) {
@@ -777,12 +775,13 @@ void marcarHiloComoSemaforoRealizado(sem_t *semaforo) {
 void journalLQL(int socketKernel) {
 	// TODO nuevo semaforo para mutexear journals
 	sem_wait(&MUTEX_JOURNAL); // Para que no se ejecute el timeado con otro que se ejecuto por kernel o consola
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	sem_wait(&MUTEX_TABLA_THREADS);
+	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
 	esperarAHilosEjecutandose(esperarSemaforoDeHilo);
-	JOURNAL_REALIZANDOSE = 1;
-	sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 
 	t_log* logJournal = log_create("journal_inserts_enviados.log", "JOURNAL", 0, LOG_LEVEL_INFO);
 	t_list* insertsAEnviar = list_create();
@@ -825,10 +824,7 @@ void journalLQL(int socketKernel) {
 	log_info(logJournal, "Journal Realizado.");
 	log_destroy(logJournal);
 
-	sem_wait(&MUTEX_JOURNAL_REALIZANDOSE);
-	JOURNAL_REALIZANDOSE = 0;
 	dejarEjecutarOperacionesDeNuevo();
-	sem_post(&MUTEX_JOURNAL_REALIZANDOSE);
 
 	sem_post(&MUTEX_TABLA_THREADS);
 	sem_post(&MUTEX_JOURNAL);
@@ -1285,20 +1281,22 @@ void* timedJournal(){
 // ------------------------------------------------------------------------ //
 // 8) LISTA DE HILOS //
 
-void agregarHiloAListaDeHilos() {
+hiloEnTabla* agregarHiloAListaDeHilos() {
 	hiloEnTabla* hiloPropio = malloc(sizeof(hiloEnTabla));
 	hiloPropio->thread = pthread_self();
 
 	hiloPropio->semaforoOperacion = malloc(sizeof(sem_t));
 	hiloPropio->semaforoJournal = malloc(sizeof(sem_t));
 	sem_init(hiloPropio->semaforoOperacion, 0 , 1);
-	sem_init(hiloPropio->semaforoJournal, 0, 0);
-	hiloPropio->seLockeoSemJournal = false;
 
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	sem_wait(&MUTEX_TABLA_THREADS);
+	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 	hiloPropio->numeroHilo = list_size(TABLA_THREADS);
 	list_add(TABLA_THREADS, hiloPropio);
 	sem_post(&MUTEX_TABLA_THREADS);
+
+	return hiloPropio;
 }
 
 void eliminarHiloDeListaDeHilos() {
@@ -1307,7 +1305,9 @@ void eliminarHiloDeListaDeHilos() {
 		return pthread_equal(unHilo->thread, pthread_self());
 	}
 
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	sem_wait(&MUTEX_TABLA_THREADS);
+	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 	hiloEnTabla* hiloADestruir = (hiloEnTabla*) list_remove_by_condition(TABLA_THREADS, esElPropioThread);
 	sem_post(&MUTEX_TABLA_THREADS);
 
@@ -1356,12 +1356,7 @@ void esperarAHilosEjecutandose(void* (*esperarSemaforoParticular)(void*)){
 void dejarEjecutarOperacionesDeNuevo() {
 	void postSemaforoDelHilo(void* hiloEnLaTabla) {
 		hiloEnTabla* hilo = (hiloEnTabla*) hiloEnLaTabla;
-		if(hilo->seLockeoSemJournal){
-			hilo->seLockeoSemJournal = false;
-			sem_post(hilo->semaforoJournal);
-		}else {
-			sem_post(hilo->semaforoOperacion);
-		}
+		sem_post(hilo->semaforoOperacion);
 	}
 
 	list_iterate(TABLA_THREADS, postSemaforoDelHilo);
@@ -1369,14 +1364,51 @@ void dejarEjecutarOperacionesDeNuevo() {
 
 //----------------Cancelaciones---------------------------
 
+bool esPropioHilo(void* unHilo) {
+	return pthread_equal(pthread_self(), ((hiloEnTablaCancelacion*) unHilo)->thread);
+}
+void eliminarHiloDeListaDeHilosCancelacion() {
+
+	sem_wait(&MUTEX_TABLA_THREADS_CANCELACION);
+	hiloEnTablaCancelacion* hiloABorrar = list_remove_by_condition(TABLA_THREADS_CANCELACION, esPropioHilo);
+	sem_post(&MUTEX_TABLA_THREADS_CANCELACION);
+
+	free(hiloABorrar);
+}
+
+void agregarEnTablaHilosCancelacion(pthread_t threadNuevo) {
+	hiloEnTablaCancelacion* hiloNuevo = malloc(sizeof(hiloEnTablaCancelacion));
+	hiloNuevo->thread = threadNuevo;
+	hiloNuevo->esHiloCancelable = true;
+
+	sem_wait(&MUTEX_TABLA_THREADS_CANCELACION);
+	list_add(TABLA_THREADS_CANCELACION, hiloNuevo);
+	sem_post(&MUTEX_TABLA_THREADS_CANCELACION);
+}
+
+hiloEnTablaCancelacion* obtenerHiloCancelacion(pthread_t hilo) {
+	sem_wait(&MUTEX_TABLA_THREADS_CANCELACION);
+	hiloEnTablaCancelacion* hiloARetornar = list_find(TABLA_THREADS_CANCELACION, esPropioHilo);
+	sem_post(&MUTEX_TABLA_THREADS_CANCELACION);
+	return hiloARetornar;
+}
 
 void cancelarListaHilos(){
-		void cancelarHilo(void* hilo){
-			pthread_cancel(((hiloEnTabla*) hilo)->thread);
-			pthread_join(((hiloEnTabla*) hilo)->thread, NULL);
-		}
+	sem_wait(&MUTEX_AVISO_CANCELACION);
+	AVISO_CANCELACION = 1;
+	sem_post(&MUTEX_AVISO_CANCELACION);
 
-	list_iterate(TABLA_THREADS,cancelarHilo);
+	void cancelarHilo(void* hilo) {
+		hiloEnTablaCancelacion* hiloACancelar = hilo;
+		if(hiloACancelar->esHiloCancelable) {
+			pthread_cancel(hiloACancelar->thread);
+			pthread_join(hiloACancelar->thread, NULL);
+		}
+	}
+
+	sem_wait(&MUTEX_TABLA_THREADS_CANCELACION);
+	list_iterate(TABLA_THREADS_CANCELACION, cancelarHilo);
+	sem_post(&MUTEX_TABLA_THREADS_CANCELACION);
 }
 
 void cleanupTrabajarConConexion() {
