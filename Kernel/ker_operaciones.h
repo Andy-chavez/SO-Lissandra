@@ -18,7 +18,7 @@ void metrics(){
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion, int thread){
-	float tiempo =time(NULL);
+	float tiempo = fabs(time(NULL));
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
@@ -32,12 +32,12 @@ bool kernel_insert(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = ((float) time(NULL)) - tiempo;
+		tiempo = fabs(((float) time(NULL)) - tiempo);
 		actualizarTiemposInsert(index,tiempo); //((double)tiempo)/CLOCKS_PER_SEC;
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
-	tiempo = ((float) time(NULL)) - tiempo;
+	tiempo = fabs(((float) time(NULL)) - tiempo);
 	criterios[index].tiempoInserts +=  tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 	actualizarTiemposInsert(index,tiempo);
 	liberarParametrosSpliteados(parametros);
@@ -46,7 +46,7 @@ bool kernel_insert(char* operacion, int thread){
 bool kernel_select(char* operacion, int thread){
 //	struct timeval horaInicio;
 //	struct timeval horaFin;
-	float tiempo = time(NULL);
+	float tiempo = fabs(time(NULL));
 
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
@@ -60,14 +60,14 @@ bool kernel_select(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = ((float) time(NULL)) - tiempo;
+		tiempo = fabs(((float) time(NULL)) - tiempo);
 //		gettimeofday(&horaInicio);
 		actualizarTiemposSelect(index,tiempo);
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 //	gettimeofday(&horaFin);
-	tiempo = ((float) time(NULL)) - tiempo;
+	tiempo = fabs(((float) time(NULL)) - tiempo);
 	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
@@ -388,7 +388,7 @@ bool kernel_tables(){
 		printf(">TABLA NOMBRE %s CONSISTENCIA %d\n",t->nombreDeTabla, t->consistenciaDeTabla);
 	}
 	pthread_mutex_lock(&mTablas);
-	printf("TABLAS::\n");
+	printf("TABLAS:\n");
 	list_iterate(tablas,(void*)printearTablas);
 	pthread_mutex_unlock(&mTablas);
 	return true;
@@ -436,7 +436,7 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			thread_loggearInfoconQuantum("EXEC",threadProcesador,1, pcb_auxiliar->operacion);
+			thread_loggearInfoconQuantum("EXEC",threadProcesador,0, pcb_auxiliar->operacion);
 			if(kernel_api(pcb_auxiliar->operacion,threadProcesador)== false){
 				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
