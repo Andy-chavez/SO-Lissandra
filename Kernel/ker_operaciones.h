@@ -18,7 +18,7 @@ void metrics(){
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion, int thread){
-	float tiempo =time(NULL);
+	float tiempo = fabs(time(NULL));
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
@@ -32,12 +32,12 @@ bool kernel_insert(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = time(NULL) - tiempo;
+		tiempo = fabs(((float) time(NULL)) - tiempo);
 		actualizarTiemposInsert(index,tiempo); //((double)tiempo)/CLOCKS_PER_SEC;
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
-	tiempo = time(NULL) - tiempo;
+	tiempo = fabs(((float) time(NULL)) - tiempo);
 	criterios[index].tiempoInserts +=  tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 	actualizarTiemposInsert(index,tiempo);
 	liberarParametrosSpliteados(parametros);
@@ -46,7 +46,7 @@ bool kernel_insert(char* operacion, int thread){
 bool kernel_select(char* operacion, int thread){
 //	struct timeval horaInicio;
 //	struct timeval horaFin;
-	float tiempo = time(NULL);
+	float tiempo = fabs(time(NULL));
 
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
@@ -60,14 +60,14 @@ bool kernel_select(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = time(NULL) - tiempo;
+		tiempo = fabs(((float) time(NULL)) - tiempo);
 //		gettimeofday(&horaInicio);
 		actualizarTiemposSelect(index,tiempo);
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 //	gettimeofday(&horaFin);
-	tiempo = time(NULL) - tiempo;
+	tiempo = fabs(((float) time(NULL)) - tiempo);
 	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
@@ -115,7 +115,7 @@ bool kernel_describe(char* operacion, int thread){
 				return true;
 			}
 			operacionProtocolo protocolo = empezarDeserializacion(&bufferProtocolo);
-			if(protocolo == METADATA){
+			if(protocolo == METADATA){ //puede ser que no entre jamas aca
 				pthread_mutex_lock(&mTablas);
 				list_clean_and_destroy_elements(tablas,(void*)liberarTabla);
 				//tablas = list_create();
@@ -217,10 +217,10 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float hash_tiempoSelect = 0;
 	float hash_tiempoInsert = 0;
 	if(hash_cantidadInsert != 0){
-		hash_tiempoInsert = (criterios[HASH].tiempoSelects/hash_cantidadInsert);
+		hash_tiempoInsert = (criterios[HASH].tiempoSelects/hash_cantidadInsert);//);
 	}
 	if(hash_cantidadSelect!=0){
-		hash_tiempoSelect = (criterios[HASH].tiempoInserts/hash_cantidadInsert);;
+		hash_tiempoSelect = (criterios[HASH].tiempoInserts/hash_cantidadInsert);//);
 	}
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mStrong);
@@ -229,10 +229,10 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float strong_tiempoSelect = 0;//= criterios[STRONG].tiempoSelects;
 	float strong_tiempoInsert = 0;// criterios[STRONG].tiempoInserts;
 	if(strong_cantidadInsert != 0){
-		strong_tiempoInsert = (criterios[STRONG].tiempoSelects/strong_cantidadInsert);
+		strong_tiempoInsert = (criterios[STRONG].tiempoSelects/strong_cantidadInsert);//);
 	}
 	if(strong_cantidadSelect!=0){
-		strong_tiempoSelect = (criterios[STRONG].tiempoInserts/strong_cantidadSelect);;
+		strong_tiempoSelect = (criterios[STRONG].tiempoInserts/strong_cantidadSelect);//);
 	}
 	pthread_mutex_unlock(&mStrong);
 	pthread_mutex_lock(&mEventual);
@@ -241,10 +241,10 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float eventual_tiempoSelect = 0; //= criterios[EVENTUAL].tiempoSelects;
 	float eventual_tiempoInsert = 0;//= criterios[EVENTUAL].tiempoInserts;
 	if(eventual_cantidadInsert != 0){
-		eventual_tiempoInsert = (criterios[EVENTUAL].tiempoSelects/eventual_cantidadInsert);
+		eventual_tiempoInsert = (criterios[EVENTUAL].tiempoSelects/eventual_cantidadInsert);//);
 	}
 	if(eventual_cantidadSelect!=0){
-		eventual_tiempoSelect = (criterios[EVENTUAL].tiempoInserts/eventual_cantidadSelect);;
+		eventual_tiempoSelect = (criterios[EVENTUAL].tiempoInserts/eventual_cantidadSelect);//);
 	}
 	pthread_mutex_unlock(&mEventual);
 	void printearMetrics(memoria* mem){
@@ -388,7 +388,7 @@ bool kernel_tables(){
 		printf(">TABLA NOMBRE %s CONSISTENCIA %d\n",t->nombreDeTabla, t->consistenciaDeTabla);
 	}
 	pthread_mutex_lock(&mTablas);
-	printf("TABLAS::\n");
+	printf("TABLAS:\n");
 	list_iterate(tablas,(void*)printearTablas);
 	pthread_mutex_unlock(&mTablas);
 	return true;
@@ -436,7 +436,7 @@ void kernel_roundRobin(int threadProcesador){
 		pthread_mutex_unlock(&quantum);
 		if(pcb_auxiliar->instruccion == NULL){
 			pcb_auxiliar->ejecutado=1;
-			thread_loggearInfoconQuantum("EXEC",threadProcesador,1, pcb_auxiliar->operacion);
+			thread_loggearInfoconQuantum("EXEC",threadProcesador,0, pcb_auxiliar->operacion);
 			if(kernel_api(pcb_auxiliar->operacion,threadProcesador)== false){
 				thread_loggearInfo("@ FINISHED",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_terminados, pcb_auxiliar,colaTerminados);
