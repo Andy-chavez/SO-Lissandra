@@ -1088,19 +1088,10 @@ void cargarSeeds() {
 
 	int i = 0;
 	while(*(IPs + i) != NULL && *(puertos + i) != NULL) {
-		seed *unaSeedParaTablaGossip = malloc(sizeof(seed));
-		unaSeedParaTablaGossip->ip = string_duplicate(*(IPs + i));
-		unaSeedParaTablaGossip->puerto = string_duplicate(*(puertos + i));
-		unaSeedParaTablaGossip->numero = -1;
-
 		seed* unaSeedParaTablaDeSeeds = malloc(sizeof(seed)); // YEAH THIS FUCKING SUCKS
 		unaSeedParaTablaDeSeeds->ip = string_duplicate(*(IPs + i));
 		unaSeedParaTablaDeSeeds->puerto = string_duplicate(*(puertos + i));
 		unaSeedParaTablaDeSeeds->numero = -1;
-
-		sem_wait(&MUTEX_TABLA_GOSSIP);
-		list_add(TABLA_GOSSIP, unaSeedParaTablaGossip);
-		sem_post(&MUTEX_TABLA_GOSSIP);
 
 		sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
 		list_add(TABLA_SEEDS_CONFIG, unaSeedParaTablaDeSeeds);
@@ -1149,7 +1140,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 			seedAGuardar->puerto = string_duplicate(unaSeed->puerto);
 			seedAGuardar->numero = unaSeed->numero;
 
+			sem_wait(&MUTEX_TABLA_GOSSIP);
 			list_add(TABLA_GOSSIP, seedAGuardar);
+			sem_post(&MUTEX_TABLA_GOSSIP);
 		}
 
 	}
@@ -1173,7 +1166,7 @@ void intentarConexiones(t_log* logGossip) {
 	seedPropia->ip = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "IP_MEMORIA"));
 	seedPropia->puerto = string_duplicate(config_get_string_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "PUERTO"));
 
-	void intentarConexion(void* seedEnTabla, int tabla) {
+	void intentarConexion(void* seedEnTabla) {
 		seed* unaSeed = (seed*) seedEnTabla;
 
 		bool esIgualA(void* otraSeed) {
@@ -1189,15 +1182,13 @@ void intentarConexiones(t_log* logGossip) {
 		log_info(logGossip, "Intentando conexion con la memoria de IP \"%s\" y puerto \"%s\"", unaSeed->ip, unaSeed->puerto);
 
 		if(socketMemoria == -1) {
-			if(tabla==1){
+			if(seedEnTablaGossip((void*) unaSeed)){
 
 				log_info(logGossip, "Se cerro la conexion con esta IP y este puerto. Eliminando de la tabla gossip...");
 
 				seed* seedRemovida = (seed*) list_remove_by_condition(TABLA_GOSSIP, esIgualA);
 
 				liberarSeed(seedRemovida);
-
-				return;
 			}
 			log_info(logGossip, "No se pudo conectar con esta seed proveniente del archivo de config, no se agregara a la tabla de Gossip.");
 			return;
@@ -1210,22 +1201,8 @@ void intentarConexiones(t_log* logGossip) {
 		cerrarConexion(socketMemoria);
 	}
 
-	void intentarConexionTablaGossip(void* seedEnTablaGossip){
-		intentarConexion(seedEnTablaGossip,1);
-	}
-
-	void intentarConexionTablaConfig(void* seedEnTablaConfig){
-		if(!seedEnTablaGossip(seedEnTablaConfig)){
-			intentarConexion(seedEnTablaConfig,0);
-		}
-	}
-
-	sem_wait(&MUTEX_TABLA_GOSSIP);
-	list_iterate(TABLA_GOSSIP, intentarConexionTablaGossip);
-	sem_post(&MUTEX_TABLA_GOSSIP);
-
 	sem_wait(&MUTEX_TABLA_SEEDS_CONFIG);
-	list_iterate(TABLA_SEEDS_CONFIG, intentarConexionTablaConfig);
+	list_iterate(TABLA_SEEDS_CONFIG, intentarConexion);
 	sem_post(&MUTEX_TABLA_SEEDS_CONFIG);
 	liberarSeed(seedPropia);
 }
@@ -1246,6 +1223,8 @@ void* timedGossip() {
 		log_info(logGossip, "Gossip Realizandose...");
 		intentarConexiones(logGossip);
 
+		log_info(logGossip, "Gossip Realizado");
+
 		sem_wait(&MUTEX_RETARDO_GOSSIP);
 		int retardoGossip = RETARDO_GOSSIP * 1000;
 		sem_post(&MUTEX_RETARDO_GOSSIP);
@@ -1254,8 +1233,6 @@ void* timedGossip() {
 		usleep(retardoGossip);
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-
-		log_info(logGossip, "Gossip Realizado");
 
 	}
 	pthread_cleanup_pop(liberarLogGossip);
