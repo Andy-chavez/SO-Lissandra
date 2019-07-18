@@ -51,8 +51,8 @@ bool APIProtocolo(void* buffer, int socket, int *fueGossip) {
 		cerrarConexion(socket);
 		return false;
 	case TABLAGOSSIP:
-		sem_wait(&MUTEX_TABLA_GOSSIP);
 		recibirYGuardarEnTablaGossip(socket, 0);
+		sem_wait(&MUTEX_TABLA_GOSSIP);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 		free(buffer);

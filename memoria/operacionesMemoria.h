@@ -1127,7 +1127,7 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 
 		seed* seedEnTablaGossip = list_find(TABLA_GOSSIP, esIgualA);
 		if(seedEnTablaGossip && seedEnTablaGossip->numero == -1) {
-
+			printf("la seed estaba en la tabla de gossip\n");
 			seedEnTablaGossip->numero = unaSeed->numero;
 			return;
 		}
