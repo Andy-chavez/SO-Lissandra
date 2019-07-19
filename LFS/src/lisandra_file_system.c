@@ -370,35 +370,26 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		//runearScript();
-
 		sem_init(&binarioLFS, 0, 0);
 
 		struct sigaction terminar;
-			terminar.sa_handler = terminarTodo;
-			sigemptyset(&terminar.sa_mask);
-			terminar.sa_flags = SA_RESTART;
-			sigaction(SIGINT, &terminar, NULL);
+		terminar.sa_handler = terminarTodo;
+		sigemptyset(&terminar.sa_mask);
+		terminar.sa_flags = SA_RESTART;
+		sigaction(SIGINT, &terminar, NULL);
 
-			sem_wait(&binarioLFS);
+		sem_wait(&binarioLFS);
 
 
-			pthread_cancel(threadServer);
-				pthread_cancel(threadConsola);
-			pthread_cancel(threadDump);
-				pthread_cancel(threadCambiosConfig);
+		pthread_cancel(threadServer);
+		pthread_cancel(threadConsola);
+		pthread_cancel(threadDump);
+		pthread_cancel(threadCambiosConfig);
 
-				pthread_join(threadServer,NULL);
-				pthread_join(threadConsola,NULL);
-				pthread_join(threadDump,NULL);
-				pthread_join(threadCambiosConfig,NULL);
-
-/*
-				pthread_create(&threadDump, NULL,(void*) dump, NULL);
-				pthread_cancel(threadDump);
-				pthread_join(threadDump,NULL);
-*/
-
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
 
 
 		cancelarListaHilos();

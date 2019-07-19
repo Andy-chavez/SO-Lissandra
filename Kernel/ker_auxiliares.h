@@ -6,37 +6,37 @@
 
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
-void actualizarTiemposInsert(int index, float tiempo){
+void actualizarTiemposInsert(int index, double tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoInserts += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempo/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mEventual);
 	}
 }
-void actualizarTiemposSelect(int index, float tiempo){
+void actualizarTiemposSelect(int index, double tiempo){
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoSelects += tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += tiempo/CLOCKS_PER_SEC;
 		pthread_mutex_unlock(&mEventual);
 	}
 }
@@ -82,6 +82,17 @@ void agregarCriterioVerificandoSiLaTengo(memoria* memAux,int index,pthread_mutex
 		agregarALista(criterios[index].memorias,memAux,mMemorias);
 	}
 }
+void actualizarListaMetadataDeCero(metadata* met){
+	tabla* t = malloc(sizeof(tabla));
+	pthread_mutex_lock(&mLogResultados);
+	log_info(logResultados, " [R] DESCRIBE %s %d %d %d", met->nombreTabla,
+			met->tipoConsistencia, met->cantParticiones, met->tiempoCompactacion);
+	pthread_mutex_unlock(&mLogResultados);
+	t->nombreDeTabla = string_duplicate(met->nombreTabla);
+	t->consistenciaDeTabla = met->tipoConsistencia;
+	list_add(tablas,t);
+	//agregarTablaVerificandoSiLaTengo(t);
+}
 void actualizarListaMetadata(metadata* met){
 	tabla* t = malloc(sizeof(tabla));
 	pthread_mutex_lock(&mLogResultados);
@@ -111,7 +122,10 @@ void kernel_gossiping(){
 		enviar(socket,(void*)&protocoloGossip, sizeof(operacionProtocolo));
 		t_list* tabla = list_create();
 		serializarYEnviarTablaGossip(socket,tabla);
-		recibirYDeserializarTablaDeGossipRealizando(socket,guardarMemorias);
+		//pthread_mutex_lock(&mMemorias);
+		//list_clean(memorias);//,(void*)liberarMemoria); //todo cambie aca
+		recibirYDeserializarTablaDeGossipRealizando(socket,(void*)guardarMemorias);
+		//pthread_mutex_unlock(&mMemorias);
 		free(tabla);
 		cerrarConexion(socket);
 		pthread_mutex_lock(&mLog);
@@ -144,8 +158,8 @@ void describeTimeado(){
 				pthread_mutex_lock(&mTablas);
 				list_clean_and_destroy_elements(tablas,(void*)liberarTabla);
 				//tablas = list_create();
-				pthread_mutex_unlock(&mTablas);
 				metadata * met = deserializarMetadata(bufferProtocolo);
+				pthread_mutex_unlock(&mTablas);
 				actualizarListaMetadata(met);
 				pthread_mutex_lock(&mLog);
 				log_info(kernel_configYLog->log, " @@ Describe realizado");
@@ -155,13 +169,16 @@ void describeTimeado(){
 				pthread_mutex_lock(&mTablas);
 				list_clean_and_destroy_elements(tablas,(void*)liberarTabla);
 				//tablas = list_create();
+				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadataDeCero);
 				pthread_mutex_unlock(&mTablas);
-				recibirYDeserializarPaqueteDeMetadatasRealizando(socket, actualizarListaMetadata);
 				pthread_mutex_lock(&mLog);
 				log_info(kernel_configYLog->log, " @@ Describe realizado");
 				pthread_mutex_unlock(&mLog);
 			}
 			else if(protocolo == ERROR){
+				pthread_mutex_lock(&mTablas);
+				list_clean_and_destroy_elements(tablas,(void*)liberarTabla);
+				pthread_mutex_unlock(&mTablas);
 				pthread_mutex_lock(&mLog);
 				log_info(kernel_configYLog->log, "@@ Describe timeado vacio");
 				pthread_mutex_unlock(&mLog);
@@ -169,6 +186,11 @@ void describeTimeado(){
 
 			cerrarConexion(socket);
 			free(bufferProtocolo);
+		}
+		else{
+			pthread_mutex_lock(&mLog);
+			log_info(kernel_configYLog->log, "@@ Error: Describe timeado");
+			pthread_mutex_unlock(&mLog);
 		}
 		liberarOperacionLQL(opAux);
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
@@ -248,15 +270,9 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			return true;
 		}
 		else{
-			bool memoriaASacar(memoria* mem2){
-				return mem2->numero == mem->numero;
-			}
 			pthread_mutex_lock(&mStrong);
-		 	list_remove_and_destroy_by_condition(criterios[STRONG].memorias,(void*)memoriaASacar, (void*)freeMemoria);
+		 	list_remove(criterios[STRONG].memorias,0);
 		 	pthread_mutex_unlock(&mStrong);
-			pthread_mutex_lock(&mMemorias);
-		 	list_remove_and_destroy_by_condition(memorias,(void*)memoriaASacar, (void*)freeMemoria);
-		 	pthread_mutex_unlock(&mMemorias);
 		 	return false;
 		}
 	}
@@ -349,7 +365,7 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		int rand = random_int(0,tamLista);
 		pthread_mutex_lock(&mEventual);
 		mem = list_get(criterios[EVENTUAL].memorias, rand);
-		pthread_mutex_unlock(&mEventual);
+		//pthread_mutex_unlock(&mEventual);
 		pthread_mutex_lock(&mConexion);
 		socket = crearSocketCliente(mem->ip,mem->puerto);
 		pthread_mutex_unlock(&mConexion);
@@ -370,21 +386,23 @@ int eventual_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			pthread_mutex_lock(&mLog);
 			log_info(kernel_configYLog->log, " ENVIADO: %s %s", opAux->operacion, opAux->parametros);
 			pthread_mutex_unlock(&mLog);
+			pthread_mutex_unlock(&mEventual);
 			break;
 		}
 		else{
 			bool memoriaASacar(memoria* mem2){
 				return mem2->numero == mem->numero;
 			}
-			pthread_mutex_lock(&mEventual);
+			//pthread_mutex_lock(&mEventual);
 		 	list_remove_and_destroy_by_condition(criterios[EVENTUAL].memorias,(void*)memoriaASacar, (void*)freeMemoria);
-		 	pthread_mutex_unlock(&mEventual);
+		 	//pthread_mutex_unlock(&mEventual);
 			/*pthread_mutex_lock(&mMemorias);
 		 	list_remove_and_destroy_by_condition(memorias,(void*)memoriaASacar, (void*)freeMemoria);
 		 	pthread_mutex_unlock(&mMemorias);*/
-			return false;
+			//return false;
 		}
-		pthread_mutex_lock(&mEventual);
+
+		//pthread_mutex_lock(&mEventual);
 		tamLista = list_size(criterios[EVENTUAL].memorias);
 		pthread_mutex_unlock(&mEventual);
 	}
@@ -504,16 +522,17 @@ memoria* encontrarMemoria(int numero){
 }
 //------ CRITERIOS ---------
 consistencia encontrarConsistenciaDe(char* nombreTablaBuscada){
-	consistencia c = -1;
+	consistencia c = NS;
 	bool encontrarTabla(tabla* t){
 		return string_equals_ignore_case(t->nombreDeTabla, nombreTablaBuscada);
 	}
 	pthread_mutex_lock(&mTablas);
 	tabla* retorno =(tabla*) list_find(tablas,(void*)encontrarTabla);
-	pthread_mutex_unlock(&mTablas);
 	if(retorno){
 		c = retorno->consistenciaDeTabla;
 	}
+	pthread_mutex_unlock(&mTablas);
+
 	return c;
 }
 //------ ERRORES ---------
