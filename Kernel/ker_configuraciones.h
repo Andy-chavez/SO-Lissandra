@@ -278,10 +278,10 @@ void* cambiosConfig(){
  		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
- 			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "QUANTUM") && config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION") && config_get_int_value(configConNuevosDatos, "METADATA_REFRESH") ) {
- 				pthread_mutex_lock(&mLog);
-				log_info(kernel_configYLog->log,"Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
-				pthread_mutex_unlock(&mLog);
+ 			if ((event->mask & IN_MODIFY) && config_has_property(configConNuevosDatos, "QUANTUM") && config_has_property(configConNuevosDatos, "SLEEP_EJECUCION") && config_has_property(configConNuevosDatos, "METADATA_REFRESH") ) {
+
+				printf("Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos.\n");
+
 
 				pthread_mutex_lock(&quantum);
  				quantumMax = config_get_int_value(configConNuevosDatos, "QUANTUM");

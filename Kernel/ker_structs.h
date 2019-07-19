@@ -17,7 +17,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
-#include <math.h>
+//#include <math.h>
 #define HASH 2
 #define STRONG 1
 #define EVENTUAL 0
