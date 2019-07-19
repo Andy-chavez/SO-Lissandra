@@ -201,7 +201,7 @@ void liberarThreads(t_thread* t){
 }
 void liberarListas(){
 	pthread_mutex_lock(&colaNuevos);
-	list_destroy_and_destroy_elements(cola_proc_nuevos,free);
+	list_destroy_and_destroy_elements(cola_proc_nuevos, free);
 	pthread_mutex_unlock(&colaNuevos);
 
 	pthread_mutex_lock(&colaListos);

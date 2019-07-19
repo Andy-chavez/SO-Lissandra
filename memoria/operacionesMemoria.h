@@ -526,6 +526,43 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 // ------------------------------------------------------------------------ //
 // 4) OPERACIONES SOBRE LISTAS, SEGMENTOS Y PAGINAS //
 
+void esperarATodosLosMarcos() {
+	void esperarAMarco(void* unMarco) {
+		marco* marcoAEsperar = (marco*) unMarco;
+		sem_wait(&marcoAEsperar->mutexMarco);
+	}
+
+	list_iterate(TABLA_MARCOS, esperarAMarco);
+}
+
+void postearSemaforoDeTodosLosMarcos() {
+	void postearMarco(void* unMarco) {
+		marco* marcoAEsperar = (marco*) unMarco;
+		sem_post(&marcoAEsperar->mutexMarco);
+	}
+
+	list_iterate(TABLA_MARCOS, postearMarco);
+}
+
+void mostrarTablasPaginas() {
+	void mostrarPaginaDeSegmento(void* unaPagina) {
+		paginaEnTabla* paginaAMostrar = (paginaEnTabla*) unaPagina;
+		printf("NUMERO DE PAGINA: %d, MARCO ESTABLECIDO: %d, TIMESTAMP: %d, FLAG: %d\n", paginaAMostrar->numeroPagina, paginaAMostrar->marco, paginaAMostrar->timestamp, paginaAMostrar->flag);
+	}
+
+	void mostrarSegmento(void* unSegmento) {
+		segmento* segmentoAMostrar = (segmento*) unSegmento;
+		sem_wait(&segmentoAMostrar->mutexSegmento);
+		printf("\nSEGMENTO: %s\n", segmentoAMostrar->nombreTabla);
+		list_iterate(segmentoAMostrar->tablaPaginas, mostrarPaginaDeSegmento);
+		sem_post(&segmentoAMostrar->mutexSegmento);
+	}
+
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
+	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, mostrarSegmento);
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
+}
+
 paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
 
