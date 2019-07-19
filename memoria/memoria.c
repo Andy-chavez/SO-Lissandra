@@ -105,6 +105,9 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if(string_starts_with(operacionAParsear->operacion, "PAGINAS")) {
 		mostrarTablasPaginas();
 	}
+	else if(string_starts_with(operacionAParsear->operacion, "MARCOS")) {
+		mostrarTablaMarcos();
+	}
 	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
 		sem_post(&BINARIO_FINALIZACION_PROCESO);
 	}
