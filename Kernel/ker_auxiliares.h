@@ -252,7 +252,7 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 		pthread_mutex_lock(&mConexion);
 		socket = crearSocketCliente(mem->ip,mem->puerto);
 		pthread_mutex_unlock(&mConexion);
-		if(socket){
+		if(socket != -1){
 			if(string_contains(opAux->operacion,"INSERT")){
 				mem->cantidadIns ++;
 
@@ -270,9 +270,7 @@ int strong_obtenerSocketAlQueSeEnvio(operacionLQL* opAux){
 			return true;
 		}
 		else{
-			pthread_mutex_lock(&mStrong);
 		 	list_remove(criterios[STRONG].memorias,0);
-		 	pthread_mutex_unlock(&mStrong);
 		 	return false;
 		}
 	}
