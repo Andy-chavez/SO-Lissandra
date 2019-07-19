@@ -133,7 +133,7 @@ void dump(){
 
 			liberarDoblePuntero(bloquesAsignados);
 
-			sem_wait(&mutexMemtable);
+			//sem_wait(&mutexMemtable);
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
 			sem_post(semaforoDeTablaMemtable);
 
