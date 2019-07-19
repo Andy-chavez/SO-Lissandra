@@ -179,6 +179,8 @@ void agregarTablaALista(char* nombreTabla){
 	}
 	else{
 		free(metadataBuscado->nombreTabla);
+		free(metadataBuscado->semaforoFS);
+		free(metadataBuscado->semaforoMemtable);
 		free(metadataBuscado);
 	}
 	sem_post(&mutexListaDeTablas);
@@ -268,7 +270,7 @@ metadata* obtenerMetadata(char* nombreTabla){
 	configMetadata = config_create(ruta);
 
 	while(configMetadata == NULL || !config_has_property(configMetadata, "PARTITIONS") || !config_has_property(configMetadata, "CONSISTENCY") || !config_has_property(configMetadata, "COMPACTION_TIME")) {
-		printf("No se abrio bien la metadata de la tabla %s", nombreTabla);
+		soloLoggearError(-1,"No se abrio bien la metadata de la tabla %s", nombreTabla);
 		configMetadata = config_create(ruta);
 	}
 
@@ -438,11 +440,7 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 		sem_post(semaforoTablaMemtable);
 		if (cantElementosMemtable == 0 || !registroBuscado){
 			soloLoggear(socket,"Memtable esta Vacia o no se encuentra en la memtable el registro buscado");
-			int valorSemaforoDeTabla;
-			sem_getvalue(semaforoDeTabla, &valorSemaforoDeTabla);
-			printf("valor semaforo de tabla %s en select: %d\n", nombreTabla, valorSemaforoDeTabla);
 			sem_wait(semaforoDeTabla);
-			printf("entre en el select de la tabla %s\n", nombreTabla);
 			metadata* metadataTabla = obtenerMetadata(nombreTabla);
 			particion = string_itoa(calcularParticion(key,metadataTabla->cantParticiones));
 			liberarMetadata(metadataTabla);
@@ -458,7 +456,6 @@ void funcionSelect(char* argumentos,int socket){ //en la pos 0 esta el nombre y 
 			char** arrayDeBloques = config_get_array_value(part,"BLOCKS");
 			config_destroy(part);
 			cargarInfoDeTmpYParticion(&buffer, nombreTabla,arrayDeBloques);
-			printf("libere semaforo de tabla %s en select\n", nombreTabla);
 			sem_post(semaforoDeTabla);
 
 			separarRegistrosYCargarALista(buffer, listaRegistros);
