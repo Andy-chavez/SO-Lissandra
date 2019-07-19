@@ -407,6 +407,7 @@ int ping() {
 	if(socketPingLFS == -1) {
 		printf("No se pudo crear el socket para realizar el ping con LFS. Se supone LFS desconectado\n");
 		sem_wait(&MUTEX_SOCKET_LFS);
+		printf("pase el sem wait\n");
 		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
 		sem_post(&MUTEX_SOCKET_LFS);
