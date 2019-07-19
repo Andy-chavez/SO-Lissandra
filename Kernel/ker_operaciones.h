@@ -18,11 +18,11 @@ void metrics(){
 }
 // _____________________________.: OPERACIONES DE API PARA LAS CUALES SELECCIONAR MEMORIA SEGUN CRITERIO:.____________________________________________
 bool kernel_insert(char* operacion, int thread){
-	float tiempo = fabs(time(NULL));
+	clock_t tiempo = clock(); //fabs(time(NULL));
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,3," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros+1));
-	if(consist == -1){
+	if(consist == NS){
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
@@ -32,12 +32,12 @@ bool kernel_insert(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = fabs(((float) time(NULL)) - tiempo);
+		tiempo = clock() - tiempo;
 		actualizarTiemposInsert(index,tiempo); //((double)tiempo)/CLOCKS_PER_SEC;
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
-	tiempo = fabs(((float) time(NULL)) - tiempo);
+	tiempo = clock() - tiempo;
 	criterios[index].tiempoInserts +=  tiempo; //((double)tiempo)/CLOCKS_PER_SEC;
 	actualizarTiemposInsert(index,tiempo);
 	liberarParametrosSpliteados(parametros);
@@ -46,12 +46,12 @@ bool kernel_insert(char* operacion, int thread){
 bool kernel_select(char* operacion, int thread){
 //	struct timeval horaInicio;
 //	struct timeval horaFin;
-	float tiempo = fabs(time(NULL));
+	clock_t tiempo = clock();
 
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
-	if(consist == -1){
+	if(consist == NS){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
@@ -60,14 +60,14 @@ bool kernel_select(char* operacion, int thread){
 		return false;
 	}
 	if((enviarOperacion(opAux,index,thread))== -1){
-		tiempo = fabs(((float) time(NULL)) - tiempo);
+		tiempo = clock() - tiempo;
 //		gettimeofday(&horaInicio);
 		actualizarTiemposSelect(index,tiempo);
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
 //	gettimeofday(&horaFin);
-	tiempo = fabs(((float) time(NULL)) - tiempo);
+	tiempo = clock() - tiempo;
 	actualizarTiemposSelect(index,tiempo);
 	liberarParametrosSpliteados(parametros);
 	return true;
@@ -77,7 +77,7 @@ bool kernel_create(char* operacion, int thread){
 	guardarTablaCreada(opAux->parametros);
 	char** parametros = string_n_split(opAux->parametros,2," ");
 	consistencia consist =encontrarConsistenciaDe(*(parametros));
-	if(consist == -1){
+	if(consist == NS){
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
@@ -142,6 +142,9 @@ bool kernel_describe(char* operacion, int thread){
 			free(bufferProtocolo);
 			return true;
 		}
+		pthread_mutex_lock(&mLog);
+		log_info(kernel_configYLog->log, "@ Error realizando el describe all, memoria principal desconectada.");
+		pthread_mutex_unlock(&mLog);
 		return false;
 	}
 	operacionLQL* operacionAux = malloc(sizeof(operacionLQL));
@@ -153,7 +156,7 @@ bool kernel_describe(char* operacion, int thread){
 	free(*opSpliteada);
 	free(opSpliteada);
 	consistencia consist =encontrarConsistenciaDe(operacionAux->parametros);
-	if(consist == -1){
+	if(consist == NS){
 		return false;
 	}
 	int index =  obtenerIndiceDeConsistencia(consist);
@@ -181,7 +184,7 @@ bool kernel_drop(char* operacion, int thread){
 	operacionLQL* opAux=splitear_operacion(operacion);
 	char** parametros = string_n_split(operacion,2," ");
 	consistencia consist =encontrarConsistenciaDe(opAux->parametros);
-	if(consist == -1){
+	if(consist == NS){
 		liberarParametrosSpliteados(parametros);
 		return false;
 	}
@@ -217,10 +220,10 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float hash_tiempoSelect = 0;
 	float hash_tiempoInsert = 0;
 	if(hash_cantidadInsert != 0){
-		hash_tiempoInsert = (criterios[HASH].tiempoSelects/hash_cantidadInsert);//);
+		hash_tiempoInsert = ((criterios[HASH].tiempoInserts/1000000)/hash_cantidadInsert);//);
 	}
 	if(hash_cantidadSelect!=0){
-		hash_tiempoSelect = (criterios[HASH].tiempoInserts/hash_cantidadInsert);//);
+		hash_tiempoSelect = (criterios[HASH].tiempoSelects/hash_cantidadInsert);//);
 	}
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mStrong);
@@ -229,10 +232,10 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float strong_tiempoSelect = 0;//= criterios[STRONG].tiempoSelects;
 	float strong_tiempoInsert = 0;// criterios[STRONG].tiempoInserts;
 	if(strong_cantidadInsert != 0){
-		strong_tiempoInsert = (criterios[STRONG].tiempoSelects/strong_cantidadInsert);//);
+		strong_tiempoInsert = ((criterios[STRONG].tiempoInserts/1000000)/strong_cantidadInsert);//);
 	}
 	if(strong_cantidadSelect!=0){
-		strong_tiempoSelect = (criterios[STRONG].tiempoInserts/strong_cantidadSelect);//);
+		strong_tiempoSelect = (criterios[STRONG].tiempoSelects/strong_cantidadSelect);//);
 	}
 	pthread_mutex_unlock(&mStrong);
 	pthread_mutex_lock(&mEventual);
@@ -241,10 +244,10 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float eventual_tiempoSelect = 0; //= criterios[EVENTUAL].tiempoSelects;
 	float eventual_tiempoInsert = 0;//= criterios[EVENTUAL].tiempoInserts;
 	if(eventual_cantidadInsert != 0){
-		eventual_tiempoInsert = (criterios[EVENTUAL].tiempoSelects/eventual_cantidadInsert);//);
+		eventual_tiempoInsert = ((criterios[EVENTUAL].tiempoInserts/1000000)/eventual_cantidadInsert);//);
 	}
 	if(eventual_cantidadSelect!=0){
-		eventual_tiempoSelect = (criterios[EVENTUAL].tiempoInserts/eventual_cantidadSelect);//);
+		eventual_tiempoSelect = (criterios[EVENTUAL].tiempoSelects/eventual_cantidadSelect);//);
 	}
 	pthread_mutex_unlock(&mEventual);
 	void printearMetrics(memoria* mem){
@@ -262,7 +265,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	if(consolaOLog==0){
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: HASH\n"
-				">tiempo por select de HASH: %f ms,\n>tiempo por insert de HASH: %f ms,\n"
+				">tiempo por select de HASH: %f seg,\n>tiempo por insert de HASH: %f seg,\n"
 				">cantidad inserts en HASH : %d,\n>cantidad selects en HASH : %d\n",
 				hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect);
 		pthread_mutex_lock(&mHash);
@@ -272,7 +275,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: STRONG\n"
-				">tiempo por select de STRONG: %f ms,\n>tiempo por insert de STRONG: %f ms,\n"
+				">tiempo por select de STRONG: %f seg,\n>tiempo por insert de STRONG: %f seg,\n"
 				">cantidad inserts en STRONG : %d,\n>cantidad selects en STRONG : %d\n",
 				strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect);
 		pthread_mutex_lock(&mStrong);
@@ -282,7 +285,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 
 		pthread_mutex_lock(&mLogMetrics);
 		log_info(logMetrics, "METRICS: EVENTUAL\n"
-				">tiempo por select de EVENTUAL: %f ms,\n>tiempo por insert de EVENTUAL: %f ms,\n"
+				">tiempo por select de EVENTUAL: %f seg,\n>tiempo por insert de EVENTUAL: %f seg,\n"
 				">cantidad inserts en EVENTUAL : %d,\n>cantidad selects en EVENTUAL : %d\n",
 				eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_lock(&mEventual);
@@ -293,21 +296,21 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	}
 	else if (consolaOLog==1){
 		printf("METRICS: HASH\n"
-						">tiempo por select de HASH: %f ms,\n>tiempo por insert de HASH: %f ms,\n"
+						">tiempo por select de HASH: %f seg,\n>tiempo por insert de HASH: %f seg,\n"
 						">cantidad inserts en HASH : %d,\n>cantidad selects en HASH : %d\n",
 						hash_tiempoSelect,hash_tiempoInsert,hash_cantidadInsert,hash_cantidadSelect);
 		pthread_mutex_lock(&mHash);
 		list_iterate(criterios[HASH].memorias,(void*)printearMetrics);
 		pthread_mutex_unlock(&mHash);
 		printf("METRICS: STRONG\n"
-						">tiempo por select de STRONG: %f ms,\n>tiempo por insert de STRONG: %f ms,\n"
+						">tiempo por select de STRONG: %f seg,\n>tiempo por insert de STRONG: %f seg,\n"
 						">cantidad inserts en STRONG : %d,\n>cantidad selects en STRONG : %d\n",
 						strong_tiempoSelect,strong_tiempoInsert,strong_cantidadInsert,strong_cantidadSelect);
 		pthread_mutex_lock(&mStrong);
 		list_iterate(criterios[STRONG].memorias,(void*)printearMetrics);
 		pthread_mutex_unlock(&mStrong);
 		printf("METRICS: EVENTUAL\n"
-						">tiempo por select de EVENTUAL: %f ms,\n>tiempo por insert de EVENTUAL: %f ms,\n"
+						">tiempo por select de EVENTUAL: %f seg,\n>tiempo por insert de EVENTUAL: %f seg,\n"
 						">cantidad inserts en EVENTUAL : %d,\n>cantidad selects en EVENTUAL : %d\n",
 						eventual_tiempoSelect,eventual_tiempoInsert,eventual_cantidadInsert,eventual_cantidadSelect);
 		pthread_mutex_lock(&mEventual);
@@ -344,7 +347,7 @@ bool kernel_add(char* operacion){
 			return true;
 		}
 		else if(string_contains(*(opAux+4),"SC")){
-			if(list_size(criterios[STRONG].memorias)==0){
+			if((criterios[STRONG].memorias->elements_count)==0){
 				agregarCriterioVerificandoSiLaTengo(mem,STRONG,mStrong);
 				liberarParametrosSpliteados(opAux);
 				return true;
@@ -477,7 +480,7 @@ void kernel_roundRobin(int threadProcesador){
 				usleep(sleep);
 			}
 			if(list_any_satisfy(pcb_auxiliar->instruccion,(void*)instruccion_no_ejecutada) && ERROR !=-1){
-				thread_loggearInfo("NEW",threadProcesador, pcb_auxiliar->operacion);
+				thread_loggearInfo("READY",threadProcesador, pcb_auxiliar->operacion);
 				agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
 				sem_post(&hayReady);
 				//pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
@@ -551,6 +554,9 @@ void kernel_crearPCB(char* operacion){
 	pcb_auxiliar->ejecutado = 0;
 	pcb_auxiliar->instruccion = NULL;
 	agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, " READY: %s",pcb_auxiliar->operacion);
+	pthread_mutex_unlock(&mLog);
 	sem_post(&hayReady);
 }
 void kernel_pasar_a_ready(){
@@ -617,6 +623,9 @@ void kernel_run(char* operacion){
 		lineaLeida = NULL;
 	}
 	agregarALista(cola_proc_listos, pcb_auxiliar,colaListos);
+	pthread_mutex_lock(&mLog);
+	log_info(kernel_configYLog->log, " READY: %s",pcb_auxiliar->operacion);
+	pthread_mutex_unlock(&mLog);
 	free(lineaLeida);
 	free(*(opYArg+1));
 	free(*(opYArg));

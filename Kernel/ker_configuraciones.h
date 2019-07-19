@@ -20,22 +20,22 @@ void metrics_resetVariables(){
 	pthread_mutex_lock(&mHash);
 	criterios[HASH].cantidadInserts = 0;
 	criterios[HASH].cantidadSelects = 0;
-	criterios[HASH].tiempoInserts = 0;
-	criterios[HASH].tiempoSelects = 0;
+	criterios[HASH].tiempoInserts = 0.0;
+	criterios[HASH].tiempoSelects = 0.0;
 	list_iterate(criterios[HASH].memorias, (void*) memoria_resetearMetricas);
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mStrong);
 	criterios[STRONG].cantidadInserts = 0;
 	criterios[STRONG].cantidadSelects = 0;
-	criterios[STRONG].tiempoInserts = 0;
-	criterios[STRONG].tiempoSelects = 0;
+	criterios[STRONG].tiempoInserts = 0.0;
+	criterios[STRONG].tiempoSelects = 0.0;
 	list_iterate(criterios[STRONG].memorias, (void*) memoria_resetearMetricas);
 	pthread_mutex_unlock(&mStrong);
 	pthread_mutex_lock(&mEventual);
 	criterios[EVENTUAL].cantidadInserts = 0;
 	criterios[EVENTUAL].cantidadSelects = 0;
-	criterios[EVENTUAL].tiempoInserts = 0;
-	criterios[EVENTUAL].tiempoSelects = 0;
+	criterios[EVENTUAL].tiempoInserts = 0.0;
+	criterios[EVENTUAL].tiempoSelects = 0.0;
 	list_iterate(criterios[EVENTUAL].memorias, (void*) memoria_resetearMetricas);
 	pthread_mutex_unlock(&mEventual);
 
@@ -201,7 +201,7 @@ void liberarThreads(t_thread* t){
 }
 void liberarListas(){
 	pthread_mutex_lock(&colaNuevos);
-	list_destroy_and_destroy_elements(cola_proc_nuevos,free);
+	list_destroy_and_destroy_elements(cola_proc_nuevos, free);
 	pthread_mutex_unlock(&colaNuevos);
 
 	pthread_mutex_lock(&colaListos);
@@ -278,10 +278,10 @@ void* cambiosConfig(){
  		while(desplazamiento < size) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[desplazamiento];
 
- 			if (event->mask == IN_MODIFY && config_get_int_value(configConNuevosDatos, "QUANTUM") && config_get_int_value(configConNuevosDatos, "SLEEP_EJECUCION") && config_get_int_value(configConNuevosDatos, "METADATA_REFRESH") ) {
- 				pthread_mutex_lock(&mLog);
-				log_info(kernel_configYLog->log,"Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos...");
-				pthread_mutex_unlock(&mLog);
+ 			if ((event->mask & IN_MODIFY) && config_has_property(configConNuevosDatos, "QUANTUM") && config_has_property(configConNuevosDatos, "SLEEP_EJECUCION") && config_has_property(configConNuevosDatos, "METADATA_REFRESH") ) {
+
+				printf("Hubieron cambios en el archivo de config. Analizando y realizando cambios a retardos.\n");
+
 
 				pthread_mutex_lock(&quantum);
  				quantumMax = config_get_int_value(configConNuevosDatos, "QUANTUM");

@@ -445,13 +445,8 @@ int guardarEnMemoria(registroConNombreTabla* unRegistro,int socketKernel, bool* 
 	return marcoGuardado->marco;
 }
 
-registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
+registro* leerDatosDeUnMarco(marco* marcoEnMemoria) {
 	registro* registroARetornar = malloc(sizeof(registro));
-
-	sem_wait(&MUTEX_TABLA_MARCOS);
-	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
-	sem_post(&MUTEX_TABLA_MARCOS);
-
 	sem_wait(&marcoEnMemoria->mutexMarco);
 	memcpy(&(registroARetornar->timestamp),(time_t*) marcoEnMemoria->lugarEnMemoria, sizeof(time_t));
 	int desplazamiento = sizeof(time_t);
@@ -464,6 +459,14 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	sem_post(&marcoEnMemoria->mutexMarco);
 
 	return registroARetornar;
+}
+
+registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
+	sem_wait(&MUTEX_TABLA_MARCOS);
+	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
+	sem_post(&MUTEX_TABLA_MARCOS);
+
+	return leerDatosDeUnMarco(marcoEnMemoria);
 }
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
@@ -525,6 +528,57 @@ registroConNombreTabla* pedirRegistroLFS(operacionLQL *operacion) {
 
 // ------------------------------------------------------------------------ //
 // 4) OPERACIONES SOBRE LISTAS, SEGMENTOS Y PAGINAS //
+
+void esperarATodosLosMarcos() {
+	void esperarAMarco(void* unMarco) {
+		marco* marcoAEsperar = (marco*) unMarco;
+		sem_wait(&marcoAEsperar->mutexMarco);
+	}
+
+	list_iterate(TABLA_MARCOS, esperarAMarco);
+}
+
+void postearSemaforoDeTodosLosMarcos() {
+	void postearMarco(void* unMarco) {
+		marco* marcoAEsperar = (marco*) unMarco;
+		sem_post(&marcoAEsperar->mutexMarco);
+	}
+
+	list_iterate(TABLA_MARCOS, postearMarco);
+}
+
+void mostrarTablasPaginas() {
+	void mostrarPaginaDeSegmento(void* unaPagina) {
+		paginaEnTabla* paginaAMostrar = (paginaEnTabla*) unaPagina;
+		printf("NUMERO DE PAGINA: %d, MARCO ESTABLECIDO: %d, TIMESTAMP: %d, FLAG: %d\n", paginaAMostrar->numeroPagina, paginaAMostrar->marco, paginaAMostrar->timestamp, paginaAMostrar->flag);
+	}
+
+	void mostrarSegmento(void* unSegmento) {
+		segmento* segmentoAMostrar = (segmento*) unSegmento;
+		sem_wait(&segmentoAMostrar->mutexSegmento);
+		printf("\nSEGMENTO: %s\n", segmentoAMostrar->nombreTabla);
+		list_iterate(segmentoAMostrar->tablaPaginas, mostrarPaginaDeSegmento);
+		sem_post(&segmentoAMostrar->mutexSegmento);
+	}
+
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
+	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, mostrarSegmento);
+	sem_post(&MUTEX_TABLA_SEGMENTOS);
+}
+
+void mostrarTablaMarcos() {
+	void mostrarMarco(void* unMarco) {
+		marco* marcoAMostrar = (marco*) unMarco;
+		sem_wait(&marcoAMostrar->mutexMarco);
+		printf("NUMERO: %d, ESTA EN USO: %d\n", marcoAMostrar->marco, marcoAMostrar->estaEnUso);
+		sem_post(&marcoAMostrar->mutexMarco);
+	}
+
+	printf("\n TABLA MARCOS \n");
+	sem_wait(&MUTEX_TABLA_MARCOS);
+	list_iterate(TABLA_MARCOS, mostrarMarco);
+	sem_post(&MUTEX_TABLA_MARCOS);
+}
 
 paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
 	paginaEnTabla* pagina = malloc(sizeof(paginaEnTabla));
@@ -1125,9 +1179,10 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 			return sonSeedsIguales(unaSeed,(seed*) otraSeed);
 		}
 
+		sem_wait(&MUTEX_TABLA_GOSSIP);
 		seed* seedEnTablaGossip = list_find(TABLA_GOSSIP, esIgualA);
+		sem_post(&MUTEX_TABLA_GOSSIP);
 		if(seedEnTablaGossip && seedEnTablaGossip->numero == -1) {
-			printf("la seed estaba en la tabla de gossip\n");
 			seedEnTablaGossip->numero = unaSeed->numero;
 			return;
 		}
@@ -1148,7 +1203,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 	}
 
 	if(estoyPidiendo) {
+		sem_wait(&MUTEX_TABLA_GOSSIP);
 		pedirTablaGossip(socketMemoria);
+		sem_post(&MUTEX_TABLA_GOSSIP);
 	}
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }

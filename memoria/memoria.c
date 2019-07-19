@@ -97,8 +97,16 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		sem_wait(&MUTEX_TABLA_MARCOS);
+		esperarATodosLosMarcos();
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
+		postearSemaforoDeTodosLosMarcos();
 		sem_post(&MUTEX_TABLA_MARCOS);
+	}
+	else if(string_starts_with(operacionAParsear->operacion, "PAGINAS")) {
+		mostrarTablasPaginas();
+	}
+	else if(string_starts_with(operacionAParsear->operacion, "MARCOS")) {
+		mostrarTablaMarcos();
 	}
 	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
 		sem_post(&BINARIO_FINALIZACION_PROCESO);
@@ -399,6 +407,7 @@ int ping() {
 	if(socketPingLFS == -1) {
 		printf("No se pudo crear el socket para realizar el ping con LFS. Se supone LFS desconectado\n");
 		sem_wait(&MUTEX_SOCKET_LFS);
+		printf("pase el sem wait\n");
 		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
 		sem_post(&MUTEX_SOCKET_LFS);
