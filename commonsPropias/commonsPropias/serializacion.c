@@ -671,6 +671,9 @@ int esOperacionEjecutable(char* unaOperacion) {
 	else if(string_starts_with(unaOperacion, "PAGINAS")) {
 		return 1;
 	}
+	else if(string_starts_with(unaOperacion, "MARCOS")) {
+		return 1;
+	}
 	else if(string_starts_with(unaOperacion, "ADD")) {
 		return esAddEjecutable(unaOperacion);
 	}
@@ -693,7 +696,8 @@ operacionLQL* splitear_operacion(char* operacion){
 	if(string_equals_ignore_case(operacion, "JOURNAL") ||
 			string_equals_ignore_case(operacion, "DESCRIBE") ||
 			string_equals_ignore_case(operacion, "HEXDUMP") ||
-			string_equals_ignore_case(operacion, "PAGINAS")) {
+			string_equals_ignore_case(operacion, "PAGINAS") ||
+			string_equals_ignore_case(operacion, "MARCOS")) {
 		operacionAux->operacion = string_duplicate(operacion);
 		operacionAux->parametros = string_duplicate("ALL");
 	} else {

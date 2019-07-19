@@ -105,6 +105,9 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if(string_starts_with(operacionAParsear->operacion, "PAGINAS")) {
 		mostrarTablasPaginas();
 	}
+	else if(string_starts_with(operacionAParsear->operacion, "MARCOS")) {
+		mostrarTablaMarcos();
+	}
 	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
 		sem_post(&BINARIO_FINALIZACION_PROCESO);
 	}
@@ -240,9 +243,9 @@ void* manejarConsola() {
 }
 
 void cancelarServidor(void* bufferSocket) {
+	cancelarListaHilos();
 	int socket = *(int*) bufferSocket;
 	cerrarConexion(socket);
-	cancelarListaHilos();
 }
 
 void *servidorMemoria() {
@@ -403,11 +406,8 @@ int ping() {
 
 	if(socketPingLFS == -1) {
 		printf("No se pudo crear el socket para realizar el ping con LFS. Se supone LFS desconectado\n");
-		sem_wait(&MUTEX_SOCKET_LFS);
 		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
-		sem_post(&MUTEX_SOCKET_LFS);
-		// TODO ver que hacer si el ping da mal
 		return 0;
 	}
 
@@ -416,10 +416,8 @@ int ping() {
 
 	if(bufferHandshake == NULL) {
 		printf("Ping fallido. Se supone LFS desconectado\n");
-		sem_wait(&MUTEX_SOCKET_LFS);
 		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
-		sem_post(&MUTEX_SOCKET_LFS);
 		cerrarConexion(socketPingLFS);
 		return 0;
 	}

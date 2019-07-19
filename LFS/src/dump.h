@@ -70,6 +70,10 @@ void dump(){
 
 
 		void dumpearTabla(tablaMem* unaTabla){
+			if(!verificarExistenciaDirectorioTabla(unaTabla->nombre,-1)) {
+				printf("Se intento dumpear en una tabla que no existe en el FS\n");
+				return;
+			}
 			char* buffer = string_new();
 			int cantidadRegistrosDumpeados = 0;
 			void cargarRegistro(registro* unRegistro){

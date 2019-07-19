@@ -445,13 +445,8 @@ int guardarEnMemoria(registroConNombreTabla* unRegistro,int socketKernel, bool* 
 	return marcoGuardado->marco;
 }
 
-registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
+registro* leerDatosDeUnMarco(marco* marcoEnMemoria) {
 	registro* registroARetornar = malloc(sizeof(registro));
-
-	sem_wait(&MUTEX_TABLA_MARCOS);
-	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
-	sem_post(&MUTEX_TABLA_MARCOS);
-
 	sem_wait(&marcoEnMemoria->mutexMarco);
 	memcpy(&(registroARetornar->timestamp),(time_t*) marcoEnMemoria->lugarEnMemoria, sizeof(time_t));
 	int desplazamiento = sizeof(time_t);
@@ -464,6 +459,14 @@ registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
 	sem_post(&marcoEnMemoria->mutexMarco);
 
 	return registroARetornar;
+}
+
+registro* leerDatosEnMemoria(paginaEnTabla* unaPagina) {
+	sem_wait(&MUTEX_TABLA_MARCOS);
+	marco* marcoEnMemoria = encontrarMarcoEscrito(unaPagina->marco);
+	sem_post(&MUTEX_TABLA_MARCOS);
+
+	return leerDatosDeUnMarco(marcoEnMemoria);
 }
 
 void cambiarDatosEnMemoria(paginaEnTabla* registroACambiar, registro* registroNuevo) {
@@ -561,6 +564,20 @@ void mostrarTablasPaginas() {
 	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_iterate(MEMORIA_PRINCIPAL->tablaSegmentos, mostrarSegmento);
 	sem_post(&MUTEX_TABLA_SEGMENTOS);
+}
+
+void mostrarTablaMarcos() {
+	void mostrarMarco(void* unMarco) {
+		marco* marcoAMostrar = (marco*) unMarco;
+		sem_wait(&marcoAMostrar->mutexMarco);
+		printf("NUMERO: %d, ESTA EN USO: %d\n", marcoAMostrar->marco, marcoAMostrar->estaEnUso);
+		sem_post(&marcoAMostrar->mutexMarco);
+	}
+
+	printf("\n TABLA MARCOS \n");
+	sem_wait(&MUTEX_TABLA_MARCOS);
+	list_iterate(TABLA_MARCOS, mostrarMarco);
+	sem_post(&MUTEX_TABLA_MARCOS);
 }
 
 paginaEnTabla* crearPaginaParaSegmento(registro* unRegistro, int deDondeVengo, int socketKernel, bool* seEjecutaraJournal) { // deDondevengo insert= 1 ,select=0
