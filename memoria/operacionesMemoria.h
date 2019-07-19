@@ -1125,9 +1125,10 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 			return sonSeedsIguales(unaSeed,(seed*) otraSeed);
 		}
 
+		sem_wait(&MUTEX_TABLA_GOSSIP);
 		seed* seedEnTablaGossip = list_find(TABLA_GOSSIP, esIgualA);
+		sem_post(&MUTEX_TABLA_GOSSIP);
 		if(seedEnTablaGossip && seedEnTablaGossip->numero == -1) {
-			printf("la seed estaba en la tabla de gossip\n");
 			seedEnTablaGossip->numero = unaSeed->numero;
 			return;
 		}
@@ -1148,7 +1149,9 @@ void recibirYGuardarEnTablaGossip(int socketMemoria, int estoyPidiendo) {
 	}
 
 	if(estoyPidiendo) {
+		sem_wait(&MUTEX_TABLA_GOSSIP);
 		pedirTablaGossip(socketMemoria);
+		sem_post(&MUTEX_TABLA_GOSSIP);
 	}
 	recibirYDeserializarTablaDeGossipRealizando(socketMemoria, guardarEnTablaGossip);
 }
