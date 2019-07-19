@@ -7,38 +7,43 @@
 /******************************IMPLEMENTACIONES******************************************/
 //------ MEGA AUXILIARES ---------
 void actualizarTiemposInsert(int index, double tiempo){
+	float tiempoAActualizar = (float) (tiempo/CLOCKS_PER_SEC);
+	printf("Tiempo que se va a actualizar en insert: %f, hecha cuenta: %f\n", tiempo, tiempoAActualizar);
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoInserts += tiempo/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempoAActualizar;
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoInserts += tiempo/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempoAActualizar;
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoInserts += tiempo/CLOCKS_PER_SEC;
+		criterios[index].tiempoInserts += tiempoAActualizar;
 		pthread_mutex_unlock(&mEventual);
 	}
+	printf("Tiempo actualizado en %d (INSERT): %f\n", index, criterios[index].tiempoInserts/1000000);
 }
 void actualizarTiemposSelect(int index, double tiempo){
+	printf("Tiempo que se va a actualizar en select: %f, hecha cuenta: %f\n", tiempo, (float) (tiempo/CLOCKS_PER_SEC));
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
-		criterios[index].tiempoSelects += tiempo/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += (float) (tiempo/CLOCKS_PER_SEC);
 		pthread_mutex_unlock(&mStrong);
 	}
 	else if(index == HASH){
 		pthread_mutex_lock(&mHash);
-		criterios[index].tiempoSelects += tiempo/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += (float) (tiempo/CLOCKS_PER_SEC);
 		pthread_mutex_unlock(&mHash);
 	}
 	else if(index == EVENTUAL){
 		pthread_mutex_lock(&mEventual);
-		criterios[index].tiempoSelects += tiempo/CLOCKS_PER_SEC;
+		criterios[index].tiempoSelects += (float) (tiempo/CLOCKS_PER_SEC);
 		pthread_mutex_unlock(&mEventual);
 	}
+	printf("Tiempo actualizado en %d (SELECT): %f\n", index, criterios[index].tiempoSelects);
 }
 void freeMemoria(memoria* mem3){
 	free(mem3->ip);

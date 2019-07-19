@@ -220,7 +220,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float hash_tiempoSelect = 0;
 	float hash_tiempoInsert = 0;
 	if(hash_cantidadInsert != 0){
-		hash_tiempoInsert = (criterios[HASH].tiempoInserts/hash_cantidadInsert);//);
+		hash_tiempoInsert = ((criterios[HASH].tiempoInserts/1000000)/hash_cantidadInsert);//);
 	}
 	if(hash_cantidadSelect!=0){
 		hash_tiempoSelect = (criterios[HASH].tiempoSelects/hash_cantidadInsert);//);
@@ -232,7 +232,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float strong_tiempoSelect = 0;//= criterios[STRONG].tiempoSelects;
 	float strong_tiempoInsert = 0;// criterios[STRONG].tiempoInserts;
 	if(strong_cantidadInsert != 0){
-		strong_tiempoInsert = (criterios[STRONG].tiempoInserts/strong_cantidadInsert);//);
+		strong_tiempoInsert = ((criterios[STRONG].tiempoInserts/1000000)/strong_cantidadInsert);//);
 	}
 	if(strong_cantidadSelect!=0){
 		strong_tiempoSelect = (criterios[STRONG].tiempoSelects/strong_cantidadSelect);//);
@@ -244,7 +244,7 @@ bool kernel_metrics(int consolaOLog){ // consola 1 log 0
 	float eventual_tiempoSelect = 0; //= criterios[EVENTUAL].tiempoSelects;
 	float eventual_tiempoInsert = 0;//= criterios[EVENTUAL].tiempoInserts;
 	if(eventual_cantidadInsert != 0){
-		eventual_tiempoInsert = (criterios[EVENTUAL].tiempoInserts/eventual_cantidadInsert);//);
+		eventual_tiempoInsert = ((criterios[EVENTUAL].tiempoInserts/1000000)/eventual_cantidadInsert);//);
 	}
 	if(eventual_cantidadSelect!=0){
 		eventual_tiempoSelect = (criterios[EVENTUAL].tiempoSelects/eventual_cantidadSelect);//);
