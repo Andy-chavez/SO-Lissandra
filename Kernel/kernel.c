@@ -31,7 +31,7 @@ int main(int argc, char *argv[]){
 		printf("Pruebe ingresando el path del archivo de configuracion como parametro del kernel.\n");
 		return EXIT_FAILURE;
 	}
-	pathConfig =(char*) argv[1];//"/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";// "/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/KER_CONFIG";
+	pathConfig =(char*) argv[1]; //"/home/utnso/workspace/tp-2019-1c-Why-are-you-running-/Kernel/prueba-kernel.config";
 	kernel_inicializarVariablesYListas();
 	if(kernel_inicializarMemoria()==-1){
 		printf("No memory to initialize\n");
