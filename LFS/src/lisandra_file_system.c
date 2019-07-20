@@ -163,6 +163,11 @@ void trabajarConexion(void* socket){
 	pthread_exit(0);
 }
 
+void cerrarSocketLisandra(void* bufferSocket) {
+	int socket = *(int*) bufferSocket;
+	cerrarConexion(socket);
+}
+
 void* servidorLisandra(){
 
 	int socketServidorLisandra = crearSocketServidor(ipLisandra,puertoLisandra);
@@ -171,6 +176,8 @@ void* servidorLisandra(){
 		log_error(logger, "No se pudo crear el servidor lissandra");
 		pthread_exit(0);
 	}
+
+	pthread_cleanup_push(cerrarSocketLisandra, &socketServidorLisandra);
 
 	while(1){
 		sem_wait(&binarioSocket);
@@ -196,7 +203,7 @@ void* servidorLisandra(){
 		pthread_detach(threadMemoria);
 	}
 
-	cerrarConexion(socketServidorLisandra);
+	pthread_cleanup_pop(0);
 
 }
 
@@ -370,35 +377,26 @@ int main(int argc, char* argv[]) {
 		pthread_create(&threadDump, NULL,(void*) dump, NULL);
 		pthread_create(&threadCambiosConfig, NULL, cambiosConfig, NULL);
 
-		//runearScript();
-
 		sem_init(&binarioLFS, 0, 0);
 
 		struct sigaction terminar;
-			terminar.sa_handler = terminarTodo;
-			sigemptyset(&terminar.sa_mask);
-			terminar.sa_flags = SA_RESTART;
-			sigaction(SIGINT, &terminar, NULL);
+		terminar.sa_handler = terminarTodo;
+		sigemptyset(&terminar.sa_mask);
+		terminar.sa_flags = SA_RESTART;
+		sigaction(SIGINT, &terminar, NULL);
 
-			sem_wait(&binarioLFS);
+		sem_wait(&binarioLFS);
 
 
-			pthread_cancel(threadServer);
-				pthread_cancel(threadConsola);
-			pthread_cancel(threadDump);
-				pthread_cancel(threadCambiosConfig);
+		pthread_cancel(threadServer);
+		pthread_cancel(threadConsola);
+		pthread_cancel(threadDump);
+		pthread_cancel(threadCambiosConfig);
 
-				pthread_join(threadServer,NULL);
-				pthread_join(threadConsola,NULL);
-				pthread_join(threadDump,NULL);
-				pthread_join(threadCambiosConfig,NULL);
-
-/*
-				pthread_create(&threadDump, NULL,(void*) dump, NULL);
-				pthread_cancel(threadDump);
-				pthread_join(threadDump,NULL);
-*/
-
+		pthread_join(threadServer,NULL);
+		pthread_join(threadConsola,NULL);
+		pthread_join(threadDump,NULL);
+		pthread_join(threadCambiosConfig,NULL);
 
 
 		cancelarListaHilos();

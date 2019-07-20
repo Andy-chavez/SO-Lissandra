@@ -20,22 +20,22 @@ void metrics_resetVariables(){
 	pthread_mutex_lock(&mHash);
 	criterios[HASH].cantidadInserts = 0;
 	criterios[HASH].cantidadSelects = 0;
-	criterios[HASH].tiempoInserts = 0;
-	criterios[HASH].tiempoSelects = 0;
+	criterios[HASH].tiempoInserts = 0.0;
+	criterios[HASH].tiempoSelects = 0.0;
 	list_iterate(criterios[HASH].memorias, (void*) memoria_resetearMetricas);
 	pthread_mutex_unlock(&mHash);
 	pthread_mutex_lock(&mStrong);
 	criterios[STRONG].cantidadInserts = 0;
 	criterios[STRONG].cantidadSelects = 0;
-	criterios[STRONG].tiempoInserts = 0;
-	criterios[STRONG].tiempoSelects = 0;
+	criterios[STRONG].tiempoInserts = 0.0;
+	criterios[STRONG].tiempoSelects = 0.0;
 	list_iterate(criterios[STRONG].memorias, (void*) memoria_resetearMetricas);
 	pthread_mutex_unlock(&mStrong);
 	pthread_mutex_lock(&mEventual);
 	criterios[EVENTUAL].cantidadInserts = 0;
 	criterios[EVENTUAL].cantidadSelects = 0;
-	criterios[EVENTUAL].tiempoInserts = 0;
-	criterios[EVENTUAL].tiempoSelects = 0;
+	criterios[EVENTUAL].tiempoInserts = 0.0;
+	criterios[EVENTUAL].tiempoSelects = 0.0;
 	list_iterate(criterios[EVENTUAL].memorias, (void*) memoria_resetearMetricas);
 	pthread_mutex_unlock(&mEventual);
 
@@ -201,7 +201,7 @@ void liberarThreads(t_thread* t){
 }
 void liberarListas(){
 	pthread_mutex_lock(&colaNuevos);
-	list_destroy_and_destroy_elements(cola_proc_nuevos,free);
+	list_destroy_and_destroy_elements(cola_proc_nuevos, free);
 	pthread_mutex_unlock(&colaNuevos);
 
 	pthread_mutex_lock(&colaListos);

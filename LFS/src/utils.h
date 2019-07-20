@@ -343,7 +343,7 @@ void guardarInfoEnArchivo(char* ruta, const char* info){
 	if (fp != NULL){
 		//fwrite(info , 1 , largo , fp );
 		if(!fputs(info, fp)) {
-			printf("Hubo un error cargando la informacion en el archivo");
+			soloLoggearError(-1,"Hubo un error cargando la informacion en el archivo");
 		}
 		fclose(fp);
 		return;

@@ -51,8 +51,8 @@ bool APIProtocolo(void* buffer, int socket, int *fueGossip) {
 		cerrarConexion(socket);
 		return false;
 	case TABLAGOSSIP:
-		sem_wait(&MUTEX_TABLA_GOSSIP);
 		recibirYGuardarEnTablaGossip(socket, 0);
+		sem_wait(&MUTEX_TABLA_GOSSIP);
 		serializarYEnviarTablaGossip(socket, TABLA_GOSSIP);
 		sem_post(&MUTEX_TABLA_GOSSIP);
 		free(buffer);
@@ -97,8 +97,16 @@ void APIMemoria(operacionLQL* operacionAParsear, int socketKernel) {
 	else if(string_starts_with(operacionAParsear->operacion, "HEXDUMP")) {
 		size_t length = config_get_int_value(ARCHIVOS_DE_CONFIG_Y_LOG->config, "TAM_MEM");
 		sem_wait(&MUTEX_TABLA_MARCOS);
+		esperarATodosLosMarcos();
 		mem_hexdump(MEMORIA_PRINCIPAL->base, length);
+		postearSemaforoDeTodosLosMarcos();
 		sem_post(&MUTEX_TABLA_MARCOS);
+	}
+	else if(string_starts_with(operacionAParsear->operacion, "PAGINAS")) {
+		mostrarTablasPaginas();
+	}
+	else if(string_starts_with(operacionAParsear->operacion, "MARCOS")) {
+		mostrarTablaMarcos();
 	}
 	else if(string_starts_with(operacionAParsear->operacion, "CERRAR")) {
 		sem_post(&BINARIO_FINALIZACION_PROCESO);
@@ -235,9 +243,9 @@ void* manejarConsola() {
 }
 
 void cancelarServidor(void* bufferSocket) {
+	cancelarListaHilos();
 	int socket = *(int*) bufferSocket;
 	cerrarConexion(socket);
-	cancelarListaHilos();
 }
 
 void *servidorMemoria() {
@@ -398,11 +406,8 @@ int ping() {
 
 	if(socketPingLFS == -1) {
 		printf("No se pudo crear el socket para realizar el ping con LFS. Se supone LFS desconectado\n");
-		sem_wait(&MUTEX_SOCKET_LFS);
 		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
-		sem_post(&MUTEX_SOCKET_LFS);
-		// TODO ver que hacer si el ping da mal
 		return 0;
 	}
 
@@ -411,10 +416,8 @@ int ping() {
 
 	if(bufferHandshake == NULL) {
 		printf("Ping fallido. Se supone LFS desconectado\n");
-		sem_wait(&MUTEX_SOCKET_LFS);
 		cerrarConexion(SOCKET_LFS);
 		SOCKET_LFS = -1;
-		sem_post(&MUTEX_SOCKET_LFS);
 		cerrarConexion(socketPingLFS);
 		return 0;
 	}
