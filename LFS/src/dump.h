@@ -70,10 +70,6 @@ void dump(){
 
 
 		void dumpearTabla(tablaMem* unaTabla){
-			if(!verificarExistenciaDirectorioTabla(unaTabla->nombre,-1)) {
-				printf("Se intento dumpear en una tabla que no existe en el FS\n");
-				return;
-			}
 			char* buffer = string_new();
 			int cantidadRegistrosDumpeados = 0;
 			void cargarRegistro(registro* unRegistro){
@@ -96,7 +92,18 @@ void dump(){
 
 			}
 
+			sem_post(&mutexMemtable);
+			bool tablaActual(tablaMem* unaTablita){
+				return (string_equals_ignore_case(unaTablita->nombre,unaTabla->nombre));
+			}
 			soloLoggearResultados(-1,0,"DUMP: EMPEZANDO DUMP");
+
+			if(!verificarExistenciaDirectorioTabla(unaTabla->nombre,-1)){
+				soloLoggearError(-1,"No se pudo dumpear los registros porque la tabla %s fue dropeado. Se procedera a eliminar los registros de la memtable",unaTabla->nombre);
+				sem_wait(&mutexMemtable);
+				list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
+				return;
+			}
 
 			sem_t *semaforoDeTablaFS = devolverSemaforoDeTablaFS(unaTabla->nombre);
 			sem_t *semaforoDeTablaMemtable = devolverSemaforoDeTablaMemtable(unaTabla->nombre);
@@ -129,17 +136,14 @@ void dump(){
 
 			liberarDoblePuntero(bloquesAsignados);
 
-			bool tablaActual(tablaMem* unaTablita){
-				return (string_equals_ignore_case(unaTablita->nombre,unaTabla->nombre));
-			}
-
+			sem_wait(&mutexMemtable);
 			list_remove_and_destroy_by_condition(memtable, tablaActual, liberarTablaMem);
 			sem_post(semaforoDeTablaMemtable);
 
 		}
-
+		sem_wait(&mutexMemtable);
 		list_iterate(memtable,(void*)dumpearTabla);
-
+		sem_post(&mutexMemtable);
 		//liberarPorTablas
 
 //		liberarMemtable();

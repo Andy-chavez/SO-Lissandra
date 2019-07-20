@@ -8,7 +8,7 @@
 //------ MEGA AUXILIARES ---------
 void actualizarTiemposInsert(int index, double tiempo){
 	float tiempoAActualizar = (float) (tiempo/CLOCKS_PER_SEC);
-	printf("Tiempo que se va a actualizar en insert: %f, hecha cuenta: %f\n", tiempo, tiempoAActualizar);
+	//printf("Tiempo que se va a actualizar en insert: %f, hecha cuenta: %f\n", tiempo, tiempoAActualizar);
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
 		criterios[index].tiempoInserts += tiempoAActualizar;
@@ -24,10 +24,10 @@ void actualizarTiemposInsert(int index, double tiempo){
 		criterios[index].tiempoInserts += tiempoAActualizar;
 		pthread_mutex_unlock(&mEventual);
 	}
-	printf("Tiempo actualizado en %d (INSERT): %f\n", index, criterios[index].tiempoInserts/1000000);
+	//printf("Tiempo actualizado en %d (INSERT): %f\n", index, criterios[index].tiempoInserts/1000000);
 }
 void actualizarTiemposSelect(int index, double tiempo){
-	printf("Tiempo que se va a actualizar en select: %f, hecha cuenta: %f\n", tiempo, (float) (tiempo/CLOCKS_PER_SEC));
+	//printf("Tiempo que se va a actualizar en select: %f, hecha cuenta: %f\n", tiempo, (float) (tiempo/CLOCKS_PER_SEC));
 	if(index == STRONG){
 		pthread_mutex_lock(&mStrong);
 		criterios[index].tiempoSelects += (float) (tiempo/CLOCKS_PER_SEC);
@@ -43,15 +43,14 @@ void actualizarTiemposSelect(int index, double tiempo){
 		criterios[index].tiempoSelects += (float) (tiempo/CLOCKS_PER_SEC);
 		pthread_mutex_unlock(&mEventual);
 	}
-	printf("Tiempo actualizado en %d (SELECT): %f\n", index, criterios[index].tiempoSelects);
+	//printf("Tiempo actualizado en %d (SELECT): %f\n", index, criterios[index].tiempoSelects);
 }
 void freeMemoria(memoria* mem3){
 	free(mem3->ip);
 	free(mem3->puerto);
 	free(mem3);
 }
-int random_int(int min, int max)
-{
+int random_int(int min, int max){
 	return min + rand() % (max - min);
 }
 void guardarMemorias(seed* unaSeed){

@@ -682,7 +682,10 @@ registro* crearRegistroNuevo(char* value, char* timestamp, char* key, int tamani
 void dropearSegmento(segmento* unSegmento) {
 	void liberarMarcoYPagina(void* unaPagina) {
 		marco* marcoDePagina = list_get(TABLA_MARCOS,((paginaEnTabla*) unaPagina)->marco);
+
+		sem_wait(&marcoDePagina->mutexMarco);
 		marcoDePagina->estaEnUso = 0;
+		sem_post(&marcoDePagina->mutexMarco);
 
 		free(unaPagina);
 	}
@@ -694,12 +697,10 @@ void dropearSegmento(segmento* unSegmento) {
 	sem_wait(&unSegmento->mutexSegmento);
 	sem_wait(&MUTEX_TABLA_MARCOS);
 	list_destroy_and_destroy_elements(unSegmento->tablaPaginas, liberarMarcoYPagina);
-	sem_post(&unSegmento->mutexSegmento);
 	sem_post(&MUTEX_TABLA_MARCOS);
+	sem_post(&unSegmento->mutexSegmento);
 
-	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	list_remove_by_condition(MEMORIA_PRINCIPAL->tablaSegmentos,igualNombreSegmento);
-	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 	free(unSegmento->nombreTabla);
 	free(unSegmento);
@@ -719,9 +720,7 @@ segmento* encontrarSegmentoPorNombre(char* tablaNombre){
 		return tienenIgualNombre(unSegmento->nombreTabla, tablaNombre);
 	}
 
-	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	segmento* segmentoARetornar = (segmento*) list_find(MEMORIA_PRINCIPAL->tablaSegmentos, (void*)segmentoDeIgualNombre);
-	sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 	return segmentoARetornar;
 }
@@ -901,6 +900,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 	char *keyString = (char*) obtenerValorDe(parametrosSpliteados, 1);
 	uint16_t key = atoi(keyString);
 
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	segmento* unSegmento = encontrarSegmentoPorNombre(nombreTabla);
 	if(unSegmento){
 
@@ -916,6 +916,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 			paginaEncontrada->timestamp = time(NULL);
 
 			sem_post(&unSegmento->mutexSegmento);
+			sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 			enviarOMostrarYLogearInfo(socketKernel, mensaje);
 
@@ -925,6 +926,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 		else {
 			// Pedir a LFS un registro para guardar el registro en segmento encontrado.
 			sem_post(&unSegmento->mutexSegmento);
+			sem_post(&MUTEX_TABLA_SEGMENTOS);
 			registroConNombreTabla* registroLFS;
 			if(!(registroLFS = pedirRegistroLFS(operacionSelect))) {
 				enviarYLogearMensajeError(socketKernel, "Por la operacion %s %s, No se encontro el registro en LFS, o hubo un problema al buscarlo.", operacionSelect->operacion, operacionSelect->parametros);
@@ -945,6 +947,7 @@ void selectLQL(operacionLQL *operacionSelect, int socketKernel) {
 	}
 
 	else {
+		sem_post(&MUTEX_TABLA_SEGMENTOS);
 		// pedir a LFS un registro para guardar registro con el nombre de la tabla.
 		registroConNombreTabla* registroLFS = pedirRegistroLFS(operacionSelect);
 		if(!registroLFS) {
@@ -1004,6 +1007,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 		return;
 	}
 
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	segmento* unSegmento = encontrarSegmentoPorNombre(tabla);
 	if(unSegmento){
 
@@ -1015,10 +1019,12 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 			paginaEncontrada->flag = SI;
 
 			sem_post(&unSegmento->mutexSegmento);
+			sem_post(&MUTEX_TABLA_SEGMENTOS);
 
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else {
 			sem_post(&unSegmento->mutexSegmento);
+			sem_post(&MUTEX_TABLA_SEGMENTOS);
 			if(agregarPaginaEnSegmento(unSegmento, registroNuevo, socketKernel, 1, &seEjecutaraJournal)){
 				enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 			} else if(!seEjecutaraJournal){
@@ -1029,6 +1035,7 @@ void insertLQL(operacionLQL* operacionInsert, int socketKernel){
 	}
 
 	else {
+		sem_post(&MUTEX_TABLA_SEGMENTOS);
 		if(agregarSegmento(registroNuevo,tabla,1, socketKernel, &seEjecutaraJournal)) {
 			enviarOMostrarYLogearInfo(socketKernel, "Por la operacion %s %s, Se inserto exitosamente.", operacionInsert->operacion, operacionInsert->parametros);
 		} else if(!seEjecutaraJournal){
@@ -1108,14 +1115,17 @@ void dropLQL(operacionLQL* operacionDrop, int socketKernel) {
 	hiloEnTabla* hiloQueEjecuta = obtenerHiloEnTabla(pthread_self());
 	verSiHayJournalEjecutandose(hiloQueEjecuta, hiloQueEjecuta->numeroHilo);
 
+	sem_wait(&MUTEX_TABLA_SEGMENTOS);
 	segmento* unSegmento = encontrarSegmentoPorNombre(operacionDrop->parametros);
 
 	if(unSegmento) {
 		dropearSegmento(unSegmento);
+		sem_post(&MUTEX_TABLA_SEGMENTOS);
 		sem_wait(&MUTEX_LOG_CONSOLA);
 		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "Se ha dropeado el segmento %s de la memoria. enviando al LFS para que dropee la tabla...", operacionDrop->parametros);
 		sem_post(&MUTEX_LOG_CONSOLA);
 	} else {
+		sem_post(&MUTEX_TABLA_SEGMENTOS);
 		sem_wait(&MUTEX_LOG_CONSOLA);
 		log_info(ARCHIVOS_DE_CONFIG_Y_LOG->logger, "El segmento %s no existe en la memoria. enviando al LFS para que dropee la tabla...", operacionDrop->parametros);
 		sem_post(&MUTEX_LOG_CONSOLA);

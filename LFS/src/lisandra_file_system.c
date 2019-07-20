@@ -163,6 +163,11 @@ void trabajarConexion(void* socket){
 	pthread_exit(0);
 }
 
+void cerrarSocketLisandra(void* bufferSocket) {
+	int socket = *(int*) bufferSocket;
+	cerrarConexion(socket);
+}
+
 void* servidorLisandra(){
 
 	int socketServidorLisandra = crearSocketServidor(ipLisandra,puertoLisandra);
@@ -171,6 +176,8 @@ void* servidorLisandra(){
 		log_error(logger, "No se pudo crear el servidor lissandra");
 		pthread_exit(0);
 	}
+
+	pthread_cleanup_push(cerrarSocketLisandra, &socketServidorLisandra);
 
 	while(1){
 		sem_wait(&binarioSocket);
@@ -196,7 +203,7 @@ void* servidorLisandra(){
 		pthread_detach(threadMemoria);
 	}
 
-	cerrarConexion(socketServidorLisandra);
+	pthread_cleanup_pop(0);
 
 }
 
